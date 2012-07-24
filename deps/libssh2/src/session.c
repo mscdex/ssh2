@@ -834,7 +834,7 @@ session_free(LIBSSH2_SESSION *session)
         _libssh2_debug(session, LIBSSH2_TRACE_TRANS, "Freeing session resource",
                        session->remote.banner);
 
-        session->state = libssh2_NB_state_created;
+        session->free_state = libssh2_NB_state_created;
     }
 
     if (session->free_state == libssh2_NB_state_created) {
@@ -845,17 +845,17 @@ session_free(LIBSSH2_SESSION *session)
                 return rc;
         }
 
-        session->state = libssh2_NB_state_sent;
+        session->free_state = libssh2_NB_state_sent;
     }
 
-    if (session->state == libssh2_NB_state_sent) {
+    if (session->free_state == libssh2_NB_state_sent) {
         while ((l = _libssh2_list_first(&session->listeners))) {
             rc = _libssh2_channel_forward_cancel(l);
             if (rc == LIBSSH2_ERROR_EAGAIN)
                 return rc;
         }
 
-        session->state = libssh2_NB_state_sent1;
+        session->free_state = libssh2_NB_state_sent1;
     }
 
     if (session->state & LIBSSH2_STATE_NEWKEYS) {
