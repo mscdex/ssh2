@@ -1,0 +1,11 @@
+{ "name": "ssh2",
+  "version": "0.0.0",
+  "author": "Brian White <mscdex@mscdex.net>",
+  "description": "An async libssh2 binding for node.js",
+  "main": "./index",
+  "scripts": { "preinstall": "node preconfig.js", "install": "node-gyp rebuild" },
+  "engines": { "node": ">=0.8.0" },
+  "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "scp" ],
+  "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
+  "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
+}
