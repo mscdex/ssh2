@@ -1,0 +1,21 @@
+libssh2 1.4.2
+
+This release includes the following bugfixes:
+
+ o Return LIBSSH2_ERROR_SOCKET_DISCONNECT on EOF when reading banner
+ o userauth.c: fread() from public key file to correctly detect any errors
+ o configure.ac: Add option to disable build of the example applications
+ o Added 'Requires.private:' line to libssh2.pc
+ o SFTP: filter off incoming "zombie" responses
+ o gettimeofday: no need for a replacement under cygwin
+ o SSH_MSG_CHANNEL_REQUEST: default to want_reply
+ o win32/libssh2_config.h: Remove hardcoded #define LIBSSH2_HAVE_ZLIB
+
+This release would not have looked like this without help, code, reports and
+advice from friends like these:
+
+ Alexander Lamaison, Rafael Kitover, Guenter Knauf, Peter Stuge,
+ Oleksiy Zagorskyi
+ 
+        Thanks! (and sorry if I forgot to mention someone)
+
