@@ -4,6 +4,9 @@
       'target_name': 'libssh2_lib',
       'type': 'static_library',
       'include_dirs': [ 'src', 'include' ],
+      'defines': [
+        'LIBSSH2_HAVE_ZLIB',
+      ],
       'dependencies': [
         '../zlib/zlib.gyp:zlib',
         '../openssl/openssl.gyp:openssl',

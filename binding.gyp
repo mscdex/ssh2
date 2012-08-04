@@ -3,7 +3,8 @@
     {
       'target_name': 'ssh2',
       'sources': [
-        'binding.cc',
+        'src/session.cc',
+        #'src/channel.cc',
       ],
       'include_dirs': [
         'deps/libssh2/include',

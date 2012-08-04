@@ -9,7 +9,7 @@
 #define ZCONF_H
 
 /* This include does prefixing as below, but with an updated set of names */
-#include "mozzconf.h"
+//#include "mozzconf.h"
 
 /*
  * If you *really* need a unique prefix for all types and library functions,
