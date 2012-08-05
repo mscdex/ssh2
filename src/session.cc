@@ -271,13 +271,14 @@ printf("sent keepalive probe (next one in %d secs)\n", next_intvl);
                                                  obj->config.username,
                                                  strlen(obj->config.username));
           rc = libssh2_session_last_errno(obj->session);
-          if (!rc && authlist) {
+          if (authlist) {
             if (strstr(authlist, "password") != NULL)
               obj->remote_auths |= AUTH_PASSWORD;
             if (strstr(authlist, "keyboard-interactive") != NULL)
               obj->remote_auths |= AUTH_KEYBOARD;
             if (strstr(authlist, "publickey") != NULL)
               obj->remote_auths |= AUTH_PUBKEY;
+            rc = 0;
           } else if (rc != LIBSSH2_ERROR_EAGAIN && rc != LIBSSH2_ERROR_SOCKET_DISCONNECT) {
             EmitError(obj, "Unable to retrieve supported authentication methods");
             return;
@@ -338,10 +339,9 @@ printf("authenticated!\n");
             Timer_cb(&obj->keepalive_timer, 0);
           }
           rc = 0;
-        } else {
+        } else
           rc = LIBSSH2_ERROR_EAGAIN;
-          break;
-        }
+
         if (!rc)
           ++obj->state;
       }
