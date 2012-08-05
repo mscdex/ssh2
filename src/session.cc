@@ -389,15 +389,16 @@ printf("Close()\n");
         obj->config.password = strdup(*password_s);
       } else if (priv_key_v->IsString()
                  && priv_key_v->ToString()->Length() > 0
-                 && pub_key_v->IsString()
-                 && pub_key_v->ToString()->Length() > 0
                  && passphrase_v->IsString()
                  && passphrase_v->ToString()->Length() > 0) {
+        if (pub_key_v->IsString() && pub_key_v->ToString()->Length() > 0) {
+          String::Utf8Value pub_key_s(pub_key_v);
+          obj->config.pub_key = strdup(*pub_key_s);
+        } else
+          obj->config.pub_key = NULL;
+
         String::Utf8Value priv_key_s(priv_key_v);
         obj->config.priv_key = strdup(*priv_key_s);
-
-        String::Utf8Value pub_key_s(pub_key_v);
-        obj->config.pub_key = strdup(*pub_key_s);
 
         String::Utf8Value passphrase_s(passphrase_v);
         obj->config.passphrase = strdup(*passphrase_s);
