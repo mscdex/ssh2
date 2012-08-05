@@ -1,4 +1,5 @@
 // TODO:
+//        * keyboard-interactive authentication support
 //        * connection timeout
 //        * authentication via ssh agent
 //        * post-authentication functionality -- sftp, shell exec, port forward,
@@ -88,8 +89,12 @@ static Persistent<FunctionTemplate> SSHSession_constructor;
 int STATE_INIT = 0,
     STATE_HANDSHAKE = 1,
     STATE_FINGERPRINT = 2,
-    STATE_AUTH = 3;
+    STATE_AUTHLIST = 3,
+    STATE_AUTH = 4;
 int NO_EVENTS = 0;
+int AUTH_PASSWORD = 1,
+    AUTH_KEYBOARD = 2,
+    AUTH_PUBKEY = 4;
 unsigned int DEFAULT_KEEPALIVE_INTVL = 60; // in seconds
 
 struct ses_config {
@@ -113,6 +118,7 @@ class SSHSession : public ObjectWrap {
     bool hadError;
     char* remote_ip;
     unsigned int remote_port;
+    int remote_auths;
     int state;
     int events;
     struct ses_config config;
@@ -147,6 +153,7 @@ printf("init()\n");
       config.keepalive_intvl = DEFAULT_KEEPALIVE_INTVL;
       remote_ip = NULL;
       remote_port = 0;
+      remote_auths = 0;
       session = libssh2_session_init();
       if (session == NULL) {
         ThrowException(Exception::Error(
@@ -195,12 +202,7 @@ printf("close()\n");
       }
     }
 
-    static void EmitLibError(SSHSession* obj) {
-printf("EmitLibError()\n");
-      HandleScope scope;
-      char* msg;
-      msg = (char*)malloc(512);
-      libssh2_session_last_error(obj->session, &msg, NULL, 0);
+    static void EmitError(SSHSession* obj, const char* msg) {
       Local<Function> Emit = Local<Function>::Cast(obj->handle_->Get(emit_symbol));
       Local<Value> emit_argv[2] = {
         String::New("error"),
@@ -210,22 +212,31 @@ printf("EmitLibError()\n");
       Emit->Call(obj->handle_, 2, emit_argv);
       if (try_catch.HasCaught())
         FatalException(try_catch);
-      free(msg);
       obj->hadError = true;
       obj->close();
       uv_close((uv_handle_t*) &obj->poll_handle, Close_cb);
     }
+
+    static void EmitLibError(SSHSession* obj) {
+printf("EmitLibError()\n");
+      HandleScope scope;
+      char* msg;
+      msg = (char*)malloc(512);
+      libssh2_session_last_error(obj->session, &msg, NULL, 0);
+      EmitError(obj, msg);
+      free(msg);
+    }
+
     static void Timer_cb(uv_timer_t* handle, int status) {
       HandleScope scope;
       assert(status == 0);
       SSHSession* obj = (SSHSession*) handle->data;
       int next_intvl,
           r = libssh2_keepalive_send(obj->session, &next_intvl);
-      if (r == 0) {
+      assert(r == 0);
 printf("sent keepalive probe (next one in %d secs)\n", next_intvl);
-        uv_timer_stop(&obj->keepalive_timer);
-        uv_timer_start(&obj->keepalive_timer, Timer_cb, next_intvl * 1000, 0);
-      }
+      uv_timer_stop(&obj->keepalive_timer);
+      uv_timer_start(&obj->keepalive_timer, Timer_cb, next_intvl * 1000, 0);
     }
 
     static void Poll_cb(uv_poll_t* handle, int status, int events) {
@@ -256,23 +267,68 @@ printf("sent keepalive probe (next one in %d secs)\n", next_intvl);
             return;
           rc = 0;
         } else if (obj->state == STATE_FINGERPRINT) {
-          if (obj->config.password) {
+          char* authlist = libssh2_userauth_list(obj->session,
+                                                 obj->config.username,
+                                                 strlen(obj->config.username));
+          rc = libssh2_session_last_errno(obj->session);
+          if (!rc && authlist) {
+            if (strstr(authlist, "password") != NULL)
+              obj->remote_auths |= AUTH_PASSWORD;
+            if (strstr(authlist, "keyboard-interactive") != NULL)
+              obj->remote_auths |= AUTH_KEYBOARD;
+            if (strstr(authlist, "publickey") != NULL)
+              obj->remote_auths |= AUTH_PUBKEY;
+          } else if (rc != LIBSSH2_ERROR_EAGAIN && rc != LIBSSH2_ERROR_SOCKET_DISCONNECT) {
+            EmitError(obj, "Unable to retrieve supported authentication methods");
+            return;
+          }
+        } else if (obj->state == STATE_AUTHLIST) {
+          if ((obj->remote_auths & AUTH_PASSWORD) && obj->config.password) {
             rc = libssh2_userauth_password(obj->session,
                                            obj->config.username,
                                            obj->config.password);
-          } else {
+          } else if ((obj->remote_auths & AUTH_PUBKEY) && obj->config.pub_key) {
             rc = libssh2_userauth_publickey_fromfile(obj->session,
                                                      obj->config.username,
                                                      obj->config.pub_key,
                                                      obj->config.priv_key,
                                                      obj->config.passphrase);
+          } else {
+            char msg[128] = "Unable to agree on authentication method. Server supports: ";
+            if (!obj->remote_auths)
+              strcat(msg, "nothing");
+            else {
+              int mask = 0;
+              if (obj->remote_auths & AUTH_PASSWORD) {
+                strcat(msg, "password");
+                mask |= AUTH_PASSWORD;
+                if (obj->remote_auths & (~mask))
+                  strcat(msg, ", ");
+              }
+              if (obj->remote_auths & AUTH_KEYBOARD) {
+                strcat(msg, "keyboard-interactive");
+                mask |= AUTH_KEYBOARD;
+                if (obj->remote_auths & (~mask))
+                  strcat(msg, ", ");
+              }
+              if (obj->remote_auths & AUTH_PUBKEY) {
+                strcat(msg, "public key");
+                mask |= AUTH_PUBKEY;
+                if (obj->remote_auths & (~mask))
+                  strcat(msg, ", ");
+              }
+            }
+            EmitError(obj, msg);
+            return;
           }
-          Local<Function> Emit = Local<Function>::Cast(obj->handle_->Get(emit_symbol));
-          Local<Value> emit_argv[1] = { String::New("authenticated") };
-          TryCatch try_catch;
-          Emit->Call(obj->handle_, 1, emit_argv);
-          if (try_catch.HasCaught())
-            FatalException(try_catch);
+          if (!rc) {
+            Local<Function> Emit = Local<Function>::Cast(obj->handle_->Get(emit_symbol));
+            Local<Value> emit_argv[1] = { String::New("authenticated") };
+            TryCatch try_catch;
+            Emit->Call(obj->handle_, 1, emit_argv);
+            if (try_catch.HasCaught())
+              FatalException(try_catch);
+          }
         } else if (obj->state == STATE_AUTH) {
 printf("authenticated!\n");
           if (obj->config.keepalive_intvl > 0) {
@@ -443,19 +499,8 @@ printf("Close()\n");
         else
           obj->remote_ip = strdup(ip);
         StartConnect(obj);
-      } else {
-        obj->hadError = true;
-        obj->close();
-        Local<Function> Emit = Local<Function>::Cast(obj->handle_->Get(emit_symbol));
-        Local<Value> emit_argv[2] = {
-          String::New("error"),
-          Exception::Error(String::New("Unable to resolve hostname"))
-        };
-        TryCatch try_catch;
-        Emit->Call(obj->handle_, 2, emit_argv);
-        if (try_catch.HasCaught())
-          FatalException(try_catch);
-      }
+      } else
+        EmitError(obj, "Unable to resolve hostname");
       free(handle);
       uv_freeaddrinfo(res);
     }
