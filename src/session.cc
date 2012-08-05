@@ -1,5 +1,4 @@
 // TODO:
-//        * getaddrinfo() for hostname
 //        * connection timeout
 //        * authentication via ssh agent
 //        * post-authentication functionality -- sftp, shell exec, port forward,
@@ -112,6 +111,8 @@ class SSHSession : public ObjectWrap {
     uv_poll_t poll_handle;
     uv_timer_t keepalive_timer;
     bool hadError;
+    char* remote_ip;
+    unsigned int remote_port;
     int state;
     int events;
     struct ses_config config;
@@ -128,6 +129,7 @@ printf("SSHSession()\n");
 printf("~SSHSession()\n");
       close();
     }
+
     void init() {
 printf("init()\n");
       HandleScope scope;
@@ -143,6 +145,8 @@ printf("init()\n");
       config.pub_key = NULL;
       config.compress = false;
       config.keepalive_intvl = DEFAULT_KEEPALIVE_INTVL;
+      remote_ip = NULL;
+      remote_port = 0;
       session = libssh2_session_init();
       if (session == NULL) {
         ThrowException(Exception::Error(
@@ -151,6 +155,7 @@ printf("init()\n");
       }
       libssh2_session_set_blocking(session, 0);
     }
+
     void close() {
 printf("close()\n");
       HandleScope scope;
@@ -167,6 +172,8 @@ printf("close()\n");
           free(config.priv_key);
         if (config.pub_key)
           free(config.pub_key);
+        if (remote_ip)
+          free(remote_ip);
         int rc = libssh2_session_free(session);
         if (rc != NULL) {
           char msg[128];
@@ -187,6 +194,7 @@ printf("close()\n");
         sock = NULL;
       }
     }
+
     static void EmitLibError(SSHSession* obj) {
 printf("EmitLibError()\n");
       HandleScope scope;
@@ -219,6 +227,7 @@ printf("sent keepalive probe (next one in %d secs)\n", next_intvl);
         uv_timer_start(&obj->keepalive_timer, Timer_cb, next_intvl * 1000, 0);
       }
     }
+
     static void Poll_cb(uv_poll_t* handle, int status, int events) {
       HandleScope scope;
       SSHSession* obj = (SSHSession*) handle->data;
@@ -309,6 +318,7 @@ printf("attempt to change events from %d to %d\n", obj->events, new_events);
         }
       }
     }
+
     static void Close_cb(uv_handle_t* handle) {
 printf("Close_cb()\n");
       HandleScope scope;
@@ -353,6 +363,101 @@ printf("Close()\n");
       obj->close();
       uv_close((uv_handle_t*) &obj->poll_handle, Close_cb);
       return Undefined();
+    }
+
+    static void StartConnect(SSHSession* obj) {
+      bool addrIsIPv4 = isIPv4(obj->remote_ip),
+           addrIsIPv6 = isIPv6(obj->remote_ip);
+      int r;
+
+      assert(addrIsIPv4 || addrIsIPv6);
+      if (addrIsIPv4)
+        obj->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+      else
+        obj->sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
+      assert(set_sock_keepalive(obj->sock, 1, 60) == 0);
+#ifdef _WIN32
+      unsigned long on = 1;
+      r = ioctlsocket(obj->sock, FIONBIO, &on);
+#else
+      {
+        /* Allow reuse of the port. */
+        int yes = 1;
+        r = setsockopt(obj->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+      }
+      int flags = fcntl(obj->sock, F_GETFL, 0);
+      r = fcntl(obj->sock, F_SETFL, flags | O_NONBLOCK);
+#endif
+      r = uv_poll_init_socket(uv_default_loop(), &obj->poll_handle, obj->sock);
+      obj->poll_handle.data = obj;
+      obj->events = UV_WRITABLE;
+      r = uv_poll_start(&obj->poll_handle, UV_WRITABLE, Poll_cb);
+      if (addrIsIPv4) {
+        struct sockaddr_in address = uv_ip4_addr(obj->remote_ip, obj->remote_port);
+        r = connect(obj->sock, (struct sockaddr*) &address, sizeof address);
+      } else {
+        struct sockaddr_in6 address = uv_ip6_addr(obj->remote_ip, obj->remote_port);
+        r = connect(obj->sock, (struct sockaddr*) &address, sizeof address);
+      }
+    }
+
+    static void DNS_cb(uv_getaddrinfo_t* handle, int status, struct addrinfo* res) {
+      SSHSession* obj = (SSHSession*)(handle->data);
+      struct addrinfo* ptr = res;
+      bool found = false;
+      char* ip = NULL;
+      if (status == 0 && res != NULL) {
+        for (; ptr != NULL; ptr=ptr->ai_next) {
+          // just use the first IPv4 or IPv6 result
+          if (res->ai_family == AF_INET) {
+            struct sockaddr_in *sockaddr_ip = (struct sockaddr_in*)ptr->ai_addr;
+            ip = inet_ntoa(sockaddr_ip->sin_addr);
+            found = true;
+            break;
+          } else if (res->ai_family == AF_INET6) {
+#ifdef _WIN32
+            LPSOCKADDR sockaddr_ip = (LPSOCKADDR)ptr->ai_addr;
+            DWORD ipLen = 46;
+            ip = (char*)malloc(ipLen);
+            assert(WSAAddressToString(sockaddr_ip, (DWORD)ptr->ai_addrlen, NULL, 
+                                      ip, &ipLen) == 0);
+#else
+            struct sockaddr_in6 *sockaddr_ip;
+            ip = (char*)malloc(INET6_ADDRSTRLEN);
+            assert(inet_ntop(AF_INET6,
+                             sockaddr_ip->sin6_addr,
+                             ip,
+                             INET6_ADDRSTRLEN) != NULL);
+#endif
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        // free what was our stored hostname first
+        free(obj->remote_ip);
+        if (isIPv6(ip))
+          obj->remote_ip = ip;
+        else
+          obj->remote_ip = strdup(ip);
+        StartConnect(obj);
+      } else {
+        obj->hadError = true;
+        obj->close();
+        Local<Function> Emit = Local<Function>::Cast(obj->handle_->Get(emit_symbol));
+        Local<Value> emit_argv[2] = {
+          String::New("error"),
+          Exception::Error(String::New("Unable to resolve hostname"))
+        };
+        TryCatch try_catch;
+        Emit->Call(obj->handle_, 2, emit_argv);
+        if (try_catch.HasCaught())
+          FatalException(try_catch);
+      }
+      free(handle);
+      uv_freeaddrinfo(res);
     }
 
     static Handle<Value> Connect(const Arguments& args) {
@@ -436,43 +541,23 @@ printf("Close()\n");
       unsigned int port = port_v->Uint32Value();
       int r;
 
-      if (isIPv4(*host_s))
-        obj->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-      else if (isIPv6(*host_s))
-        obj->sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
-      else {
-        obj->close();
-        return ThrowException(Exception::Error(
-          String::New("Invalid IP address"))
-        );
-      }
-      if (set_sock_keepalive(obj->sock, 1, 60) != 0) {
-        printf("keepalive error #: %d\n", WSAGetLastError());
-        assert(1==0);
-      }
-#ifdef _WIN32
-      unsigned long on = 1;
-      r = ioctlsocket(obj->sock, FIONBIO, &on);
-#else
-      {
-        /* Allow reuse of the port. */
-        int yes = 1;
-        r = setsockopt(obj->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-      }
-      int flags = fcntl(obj->sock, F_GETFL, 0);
-      r = fcntl(obj->sock, F_SETFL, flags | O_NONBLOCK);
-#endif
-      r = uv_poll_init_socket(uv_default_loop(), &obj->poll_handle, obj->sock);
-      obj->poll_handle.data = obj;
-      obj->events = UV_WRITABLE;
-      r = uv_poll_start(&obj->poll_handle, UV_WRITABLE, Poll_cb);
-      if (isIPv4(*host_s)) {
-        struct sockaddr_in address = uv_ip4_addr(*host_s, port);
-        r = connect(obj->sock, (struct sockaddr*) &address, sizeof address);
-      } else {
-        struct sockaddr_in6 address = uv_ip6_addr(*host_s, port);
-        r = connect(obj->sock, (struct sockaddr*) &address, sizeof address);
-      }
+      obj->remote_ip = strdup(*host_s);
+      obj->remote_port = port;
+
+      if (!isIPv4(obj->remote_ip) && !isIPv6(obj->remote_ip)) {
+        uv_getaddrinfo_t* getaddrinfo_handle =
+            (uv_getaddrinfo_t*)malloc(sizeof(uv_getaddrinfo_t));
+        getaddrinfo_handle->data = obj;
+        r = uv_getaddrinfo(uv_default_loop(),
+                           getaddrinfo_handle,
+                           &DNS_cb,
+                           obj->remote_ip,
+                           NULL,
+                           NULL);
+        assert(r == 0);
+      } else
+        StartConnect(obj);
+
       return scope.Close(v8::True());
     }
 
