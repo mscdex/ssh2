@@ -129,7 +129,6 @@ printf("SSHSession()\n");
       session = NULL;
       poll_handle.type = UV_UNKNOWN_HANDLE;
       keepalive_timer.type = UV_UNKNOWN_HANDLE;
-      //init();
     }
     ~SSHSession() {
 printf("~SSHSession()\n");
@@ -353,13 +352,30 @@ printf("authenticated!\n");
         } else
           EmitLibError(obj);
       } else {
+printf("directions()\n");
         dirs = libssh2_session_block_directions(obj->session);
         if (dirs & LIBSSH2_SESSION_BLOCK_INBOUND)
           new_events |= UV_READABLE;
         if (dirs & LIBSSH2_SESSION_BLOCK_OUTBOUND)
           new_events |= UV_WRITABLE;
         if (new_events != obj->events) {
-printf("attempt to change events from %d to %d\n", obj->events, new_events);
+
+printf("attempt to change events from %s to %s\n",
+  (obj->events == (UV_READABLE | UV_WRITABLE)
+   ? "UV_READABLE | UV_WRITABLE"
+   : (obj->events & UV_READABLE
+      ? "UV_READABLE"
+      : (obj->events & UV_WRITABLE
+         ? "UV_WRITABLE"
+         : "<no events>"))),
+  (new_events == (UV_READABLE | UV_WRITABLE)
+   ? "UV_READABLE | UV_WRITABLE"
+   : (new_events & UV_READABLE
+      ? "UV_READABLE"
+      : (new_events & UV_WRITABLE
+         ? "UV_WRITABLE"
+         : "<no events>"))));
+
           obj->events = new_events;
           // Even if libssh2 says there's nothing left to do, we still want to
           // keep the event loop alive. For some silly reason, we need to make
