@@ -3,7 +3,7 @@
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "An SSH2 client module written in pure JavaScript for node.js",
   "main": "./index",
-  "engines": { "node": ">=0.8.0" },
+  "engines": { "node": ">=0.8.3" },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "scp" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
   "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
