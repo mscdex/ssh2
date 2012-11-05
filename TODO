@@ -1,0 +1,14 @@
+TODO (In no particular order)
+====
+
+* 'publickey' authentication
+
+* 'hostbased' authentication
+
+* SSH agent authentication (including pageant)
+
+* streaming cipher support
+
+* working incoming hmac verification
+
+* gracefully handle key re-exchanges (no other data to be sent to server until _after_ NEWKEYS)
