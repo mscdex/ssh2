@@ -11,6 +11,6 @@ TODO (In no particular order)
 
 * working incoming hmac verification
 
-* gracefully handle key re-exchanges (no other data to be sent to server until _after_ NEWKEYS)
+* ensure non-channel, non-key exchange data does not sent to server until _after_ NEWKEYS is received
 
 * Diffie-Hellman group exchange support
