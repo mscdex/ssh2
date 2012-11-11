@@ -38,7 +38,7 @@ c.on('ready', function() {
       throw err;
     stream.on('data', function(data, extended) {
       console.log((extended === 'stderr' ? 'STDERR: ' : 'STDOUT: ')
-                  + data));
+                  + data);
     });
     stream.on('end', function() {
       console.log('Stream :: EOF');
