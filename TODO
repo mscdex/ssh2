@@ -1,16 +1,22 @@
 TODO (In no particular order)
 ====
 
-* 'publickey' authentication
-
 * 'hostbased' authentication
 
-* SSH agent authentication (including pageant)
+* SSH agent authentication (including pageant?)
+
+* SFTP subsystem
+
+* interactive/pty sessions
+
+* port forwarding
+
+* X11 forwarding
 
 * streaming cipher support
 
 * working incoming hmac verification
 
-* ensure non-channel, non-key exchange data does not sent to server until _after_ NEWKEYS is received
+* ensure non-channel, non-key exchange data is not sent to server until _after_ NEWKEYS is received
 
-* Diffie-Hellman group exchange support
+* Diffie-Hellman group exchange (and other common variants) support
