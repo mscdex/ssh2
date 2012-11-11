@@ -1,10 +1,10 @@
 { "name": "ssh2",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "An SSH2 client module written in pure JavaScript for node.js",
-  "main": "./index",
+  "main": "./lib/Connection",
   "engines": { "node": ">=0.8.3" },
-  "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "scp" ],
+  "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "scp", "client" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
   "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
 }
