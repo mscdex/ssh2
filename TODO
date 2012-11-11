@@ -7,8 +7,6 @@ TODO (In no particular order)
 
 * SFTP subsystem
 
-* interactive/pty sessions
-
 * port forwarding
 
 * X11 forwarding
