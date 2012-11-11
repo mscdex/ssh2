@@ -24,7 +24,7 @@ Examples
 
 * Authenticate using keys, execute `uptime` on a server, and disconnect afterwards:
 
-```javascsript
+```javascript
 var Connection = require('ssh2');
 
 var c = new Connection();
