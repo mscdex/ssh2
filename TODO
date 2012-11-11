@@ -3,6 +3,10 @@ TODO (In no particular order)
 
 * 'hostbased' authentication
 
+* support for encrypted private keys
+
+* allow specifying of only the private key and derive the public key automatically from that
+
 * SSH agent authentication (including pageant?)
 
 * SFTP subsystem
