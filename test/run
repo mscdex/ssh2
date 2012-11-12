@@ -1,0 +1,36 @@
+#!/bin/sh
+echo "Running test suite"
+
+passed=0
+failed=0
+total=0
+
+for t in test/*-test.js; do
+  total=`expr $total + 1`
+
+  echo
+
+  echo "Running $t..."
+  output=`node $t`
+  code=$?
+  if [ $code -ne 0 ]; then
+    failed=`expr $failed + 1`
+
+    echo $output
+    echo "  $(tput setaf 1)✗ $t (exit code: $code)$(tput sgr0)"
+  else
+    passed=`expr $passed + 1`
+
+    echo "  $(tput setaf 2)✓ $t $(tput sgr0)"
+  fi
+done
+
+echo
+
+if [ $failed -eq 0 ]; then
+  echo "$(tput setaf 2)✓ OK » $passed passed$(tput sgr0)"
+else
+  echo "$(tput setaf 1)✗ Failed » $failed failed$(tput sgr0)"
+  echo "$(tput setaf 2)           $passed passed$(tput sgr0)"
+  exit 1
+fi

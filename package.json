@@ -6,5 +6,11 @@
   "engines": { "node": ">=0.8.3" },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "scp", "client" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
-  "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
+  "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" },
+  "devDependencies": {
+    "assert-called": "0.1.x"
+  },
+  "scripts": {
+    "test": "test/run"
+  }
 }
