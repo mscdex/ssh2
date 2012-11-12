@@ -133,4 +133,10 @@ Connection methods
 ChannelStream
 -------------
 
-This is a normal duplex Stream, with one change: for any special data events (e.g. data from stderr for exec/shell), a second (string) argument is passed in to the 'data' event callback containing the type. So far the only defined type is 'stderr'.
+This is a normal duplex Stream, with the following changes:
+
+* 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
+
+* For interactive shells, an extra function is available:
+
+    * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The behavior of these arguments is the same as described for shell().
