@@ -15,10 +15,6 @@ TODO (In no particular order)
 
 * X11 forwarding
 
-* streaming cipher support
-
-* working incoming hmac verification
-
 * ensure non-channel, non-key exchange data is not sent to server until _after_ NEWKEYS is received
 
 * Diffie-Hellman group exchange (and other common variants) support
