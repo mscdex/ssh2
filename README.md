@@ -117,6 +117,8 @@ Connection methods
     * **port** - < _integer_ > - Port number of the server. **Default:** 22
 
     * **privateKey** - < _mixed_ > - Buffer or string that contains an **unencrypted** private key for key-based user authentication (OpenSSH format). **Default:** (none)
+
+    * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
     
     * **publicKey** - < _mixed_ > - Buffer or string that contains a public key for key-based user authentication (OpenSSH format). **Default:** (none)
 
