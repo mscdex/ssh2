@@ -9,8 +9,6 @@ TODO (in no particular order)
 
 * SFTP subsystem
 
-* port forwarding
-
 * X11 forwarding
 
 * Diffie-Hellman group exchange (and other common variants) support
