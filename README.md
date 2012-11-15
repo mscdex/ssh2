@@ -152,6 +152,84 @@ c.connect({
 // Connection :: close
 ```
 
+* Authenticate using password and forward remote connections on port 8000 to us:
+
+```javascript
+var Connection = require('ssh2');
+
+var c = new Connection();
+c.on('connect', function() {
+  console.log('Connection :: connect');
+});
+c.on('tcp connection', function(info, accept, reject) {
+  console.log('TCP :: INCOMING CONNECTION: ' + require('util').inspect(info));
+
+  var stream = accept();
+
+  stream.on('data', function(data) {
+    console.log('TCP :: DATA: ' + data);
+  });
+  stream.on('end', function() {
+    console.log('TCP :: EOF');
+  });
+  stream.on('error', function(err) {
+    console.log('TCP :: ERROR: ' + err);
+  });
+  stream.on('close', function(had_err) {
+    console.log('TCP :: CLOSED');
+  });
+  var response = [
+    'HTTP/1.1 404 Not Found',
+    'Date: Thu, 15 Nov 2012 02:07:58 GMT',
+    'Server: ForwardedConnection',
+    'Content-Length: 0',
+    'Connection: close',
+    '',
+    ''
+  ];
+  stream.end(response.join('\r\n'));
+});
+c.on('ready', function() {
+  console.log('Connection :: ready');
+  c.forwardIn('127.0.0.1', 8000, function(err) {
+    if (err) throw err;
+    console.log('Listening for connections on server on port 8000!');
+  });
+});
+c.on('error', function(err) {
+  console.log('Connection :: error :: ' + err);
+});
+c.on('end', function() {
+  console.log('Connection :: end');
+});
+c.on('close', function(had_error) {
+  console.log('Connection :: close');
+});
+c.connect({
+  host: '192.168.100.100',
+  port: 22,
+  username: 'frylock',
+  password: 'nodejsrules'
+});
+
+// example output:
+// Connection :: connect
+// Connection :: ready
+// Listening for connections on server on port 8000!
+//  (.... then from another terminal on the server: `curl -I http://127.0.0.1:8000`)
+// TCP :: INCOMING CONNECTION: { destIP: '127.0.0.1',
+//  destPort: 8000,
+//  srcIP: '127.0.0.1',
+//  srcPort: 41969 }
+// TCP DATA: HEAD / HTTP/1.1
+// User-Agent: curl/7.27.0
+// Host: 127.0.0.1:8000
+// Accept: */*
+//
+//
+// TCP :: CLOSED
+```
+
 
 API
 ===
