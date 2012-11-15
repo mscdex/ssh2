@@ -92,6 +92,16 @@ Connection events
 
 * **ready**() - Authentication was successful.
 
+* **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `ChannelStream` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+
+    * **srcIP** - _string_ - The originating IP of the connection.
+
+    * **srcPort** - _integer_ - The originating port of the connection.
+
+    * **dstIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
+
+    * **dstPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
+
 * **keyboard-interactive**(< _string_ >name, < _string_ >instructions, < _string_ >instructionsLang, < _array_ >prompts, < _function_ >finish) - The server is asking for replies to the given `prompts` for keyboard-interactive user authentication. `name` is generally what you'd use as a window title (for GUI apps). `prompts` is an array of `{ prompt: 'Password: ', echo: false }` style objects (here `echo` indicates whether user input should be displayed on the screen). The answers for all prompts must be provided as an array of strings and passed to `finish` when you are ready to continue. Note: It's possible for the server to come back and ask more questions.
 
 * **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'connection-socket' for socket-level errors and 'connection-ssh' for SSH disconnection messages. In the case of 'connection-ssh' messages, there may be a 'description' property that provides more detail.
@@ -128,6 +138,22 @@ Connection methods
 
 * **shell**([< _object_ >window,] < _function_ >callback]]) - _(void)_ - Starts an interactive shell session on the server, with optional terminal `window` settings. Valid `window` properties include: rows (defaults to 24), cols (defaults to 80), height (in pixels, defaults to 480), width (in pixels, defaults to 640), and term (value to use for $TERM, defaults to 'vt100'). Rows and cols overrides width and height when rows and cols are non-zero. Pixel dimensions refer to the drawable area of the window. Zero dimension parameters are ignored. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
+* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback]]) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
+
+    * '' - Connections are to be accepted on all protocol families supported by the server.
+
+    * '0.0.0.0' - Listen on all IPv4 addresses.
+
+    * '::' - Listen on all IPv6 addresses.
+
+    * 'localhost' - Listen on all protocol families supported by the server on loopback addresses only.
+
+    * '127.0.0.1' and '::1' - Listen on the loopback interfaces for IPv4 and IPv6, respectively.
+
+* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback]]) - _(void)_ - Unbind `remoteAddr` on `remotePort` on the server and stop forwarding incoming connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
+
+* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback]]) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+
 * **end**() - _(void)_ - Disconnects the connection.
 
 
@@ -137,8 +163,6 @@ ChannelStream
 
 This is a normal duplex Stream, with the following changes:
 
-* 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
-
 * A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is true, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `false`.
 
 * For shell(), an extra function is available:
@@ -146,5 +170,7 @@ This is a normal duplex Stream, with the following changes:
     * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The behavior of these arguments is the same as described for shell().
 
 * For shell() and exec(), an extra function is available:
+
+    * 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
 
     * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message."
