@@ -14,3 +14,5 @@ TODO (in no particular order)
 * X11 forwarding
 
 * Diffie-Hellman group exchange (and other common variants) support
+
+* add support for AES-GCM ciphers (RFC5647, OpenSSL 1.0.1+)
