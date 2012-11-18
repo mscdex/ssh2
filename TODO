@@ -7,8 +7,6 @@ TODO (in no particular order)
 
 * SSH agent authentication (including pageant?)
 
-* SFTP subsystem
-
 * X11 forwarding
 
 * Diffie-Hellman group exchange (and other common variants) support
