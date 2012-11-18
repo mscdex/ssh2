@@ -230,6 +230,99 @@ c.connect({
 // TCP :: CLOSED
 ```
 
+* Authenticate using password, start an SFTP session, and get a directory listing:
+
+```javascript
+var Connection = require('ssh2');
+
+var c = new Connection();
+c.on('connect', function() {
+  console.log('Connection :: connect');
+});
+c.on('ready', function() {
+  console.log('Connection :: ready');
+  c.sftp(function(err, sftp) {
+    if (err) throw err;
+    sftp.on('end', function() {
+      console.log('SFTP :: SFTP session closed');
+    });
+    sftp.opendir('foo', function readdir(err, handle) {
+      if (err) throw err;
+      sftp.readdir(handle, function(err, list) {
+        if (err) throw err;
+        if (list === false) {
+          sftp.close(handle, function(err) {
+            if (err) throw err;
+            console.log('SFTP :: Handle closed');
+            sftp.end();
+          });
+          return;
+        }
+        console.dir(list);
+        readdir(undefined, handle);
+      });
+    });
+  });
+});
+c.on('error', function(err) {
+  console.log('Connection :: error :: ' + err);
+});
+c.on('end', function() {
+  console.log('Connection :: end');
+});
+c.on('close', function(had_error) {
+  console.log('Connection :: close');
+});
+c.connect({
+  host: '192.168.100.100',
+  port: 22,
+  username: 'frylock',
+  password: 'nodejsrules'
+});
+
+// example output:
+// Connection :: connect
+// Connection :: ready
+// [ { filename: '.',
+//     longname: 'drwxr-xr-x    3 mscdex   mscdex       4096 Nov 18 15:03 .',
+//     attrs:
+//      { size: 1048576,
+//        uid: 1000,
+//        gid: 1000,
+//        permissions: 16877,
+//        atime: 1353269008,
+//        mtime: 1353269007 } },
+//   { filename: '..',
+//     longname: 'drwxr-xr-x   45 mscdex   mscdex       4096 Nov 18 11:03 ..',
+//     attrs:
+//      { size: 1048576,
+//        uid: 1000,
+//        gid: 1000,
+//        permissions: 16877,
+//        atime: 1353254582,
+//        mtime: 1353254581 } },
+//   { filename: 'test.txt',
+//     longname: '-rw-r--r--    1 mscdex   mscdex         12 Nov 18 11:05 test.txt',
+//     attrs:
+//      { size: 12,
+//        uid: 1000,
+//        gid: 1000,
+//        permissions: 33188,
+//        atime: 1353254750,
+//        mtime: 1353254744 } },
+//   { filename: 'mydir',
+//     longname: 'drwxr-xr-x    2 mscdex   mscdex       4096 Nov 18 15:03 mydir',
+//     attrs:
+//      { size: 1048576,
+//        uid: 1000,
+//        gid: 1000,
+//        permissions: 16877,
+//        atime: 1353269007,
+//        mtime: 1353269007 } } ]
+// SFTP :: Handle closed
+// SFTP :: SFTP session closed
+```
+
 
 API
 ===
@@ -305,8 +398,9 @@ Connection methods
 
 * **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
-* **end**() - _(void)_ - Disconnects the connection.
+* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP (protocol version 3) session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftpConnection.
 
+* **end**() - _(void)_ - Disconnects the connection.
 
 
 ChannelStream
@@ -325,3 +419,69 @@ This is a normal duplex Stream, with the following changes:
     * 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
 
     * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message."
+
+
+SFTP events
+-----------
+
+* **end**() - The SFTP session was ended.
+
+
+SFTP methods
+------------
+
+* **end**() - _(void)_ - Ends the SFTP session.
+
+* **open**(< _string_ >filename, < _string_ >mode, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Opens a file `filename` for `mode` with optional `attributes`. `mode` is any of the modes supported by fs.open (except sync mode). `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
+
+* **close**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Closes the resource associated with `handle` given by open() or opendir(). `callback` has 1 parameter: < _Error_ >err.
+
+* **read**(< _Buffer_ >handle, < _Buffer_ >buffer, < _integer_ >offset, < _integer_ >length, < _integer_ >position, < _function_ >callback) - _(void)_ - Reads `length` bytes from the resource associated with `handle` starting at `position` and stores the bytes in `buffer` starting at `offset`. `callback` has 3 parameters: < _Error_ >err, < _integer_ >bytesRead, < _Buffer_ >buffer (offset adjusted).
+
+* **write**(< _Buffer_ >handle, < _Buffer_ >buffer, < _integer_ >offset, < _integer_ >length, < _integer_ >position, < _function_ >callback) - _(void)_ - Writes `length` bytes from `buffer` starting at `offset` to the resource associated with `handle` starting at `position`. `callback` has 1 parameter: < _Error_ >err.
+
+* **fstat**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves attributes for the resource associated with `handle`. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
+
+* **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attrs, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attrs` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
+
+* **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
+
+* **readdir**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves directory entries from the directory associated with `handle`. This function may need to be called multiple times to receive the entire directory listing. `callback` has 2 parameters: < _Error_ >err, < _mixed_ >list. `list` is either an _Array_ of `{ filename: 'foo', longname: '....', attrs: {...} }` style objects (attrs is of type _ATTR_) OR boolean false to indicate no more directory entries are available for the given `handle`.
+
+* **unlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the file/symlink at `path`. `callback` has 1 parameter: < _Error_ >err.
+
+* **rename**(< _string_ >srcPath, < _string_ >destPath, < _function_ >callback) - _(void)_ - Renames/moves `srcPath` to `destPath`. `callback` has 1 parameter: < _Error_ >err.
+
+* **mkdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Creates a new directory `path`. `callback` has 1 parameter: < _Error_ >err.
+
+* **rmdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the directory at `path`. `callback` has 1 parameter: < _Error_ >err.
+
+* **stat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. `callback` has 2 parameter: < _Error_ >err, < _ATTRS_ >attributes.
+
+* **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
+
+* **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attrs` for `path`. `callback` has 1 parameter: < _Error_ >err.
+
+* **readlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves the target for a symlink at `path`. `callback` has 2 parameters: < _Error_ >err, < _string_ >target.
+
+* **symlink**(< _string_ >targetPath, < _string_ >linkPath, < _function_ >callback) - _(void)_ - Creates a symlink at `linkPath` to `targetPath`. `callback` has 1 parameter: < _Error_ >err.
+
+* **realpath**(< _string_ >path, < _function_ >callback) - _(void)_ - Resolves `path` to an absolute path. `callback` has 2 parameters: < _Error_ >err, < _string_ >absPath.
+
+
+ATTRS
+-----
+
+An object with the following valid properties:
+
+* **size** - < _integer_ > - Resource size in bytes.
+
+* **uid** - < _integer_ > - User ID of the resource.
+
+* **gid** - < _integer_ > - Group ID of the resource.
+
+* **permissions** - < _integer_ > - Permissions for the resource.
+
+* **atime** - < _integer_ > - UNIX timestamp of the access time of the resource.
+
+* **mtime** - < _integer_ > - UNIX timestamp of the modified time of the resource.
