@@ -400,7 +400,7 @@ Connection methods
 
 * **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP (protocol version 3) session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftpConnection.
 
-* **end**() - _(void)_ - Disconnects the connection.
+* **end**() - _(void)_ - Disconnects the socket.
 
 
 ChannelStream
