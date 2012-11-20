@@ -362,10 +362,6 @@ Connection methods
 
 * **connect**(< _object_ >config) - _(void)_ - Attempts a connection to a server using the information given in `config`:
 
-    * **user** - < _string_ > - Username for authentication. **Default:** (none)
-
-    * **password** - < _string_ > - Password for password-based user authentication. **Default:** (none)
-
     * **host** - < _string_ > - Hostname or IP address of the server. **Default:** ("127.0.0.1")
 
     * **port** - < _integer_ > - Port number of the server. **Default:** 22
@@ -373,6 +369,12 @@ Connection methods
     * **hostHash** - < _string_ > - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
 
     * **hostVerifier** - < _function_ > - Function that is passed a string hex hash of the host's key for verification purposes. Return true to continue with the connection, false to reject and disconnect. **Default:** (none)
+
+    * **user** - < _string_ > - Username for authentication. **Default:** (none)
+
+    * **password** - < _string_ > - Password for password-based user authentication. **Default:** (none)
+
+    * **agent** - < _string_ > - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Default:** (none)
 
     * **privateKey** - < _mixed_ > - Buffer or string that contains an **unencrypted** private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
