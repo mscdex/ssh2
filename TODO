@@ -5,8 +5,6 @@ TODO (in no particular order)
 
 * allow specifying of only the private key and derive the public key automatically from that
 
-* SSH agent authentication (including pageant?)
-
 * X11 forwarding
 
 * Diffie-Hellman group exchange (and other common variants) support
