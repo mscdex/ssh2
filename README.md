@@ -370,6 +370,10 @@ Connection methods
 
     * **port** - < _integer_ > - Port number of the server. **Default:** 22
 
+    * **hostHash** - < _string_ > - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
+
+    * **hostVerifier** - < _function_ > - Function that is passed a string hex hash of the host's key for verification purposes. Return true to continue with the connection, false to reject and disconnect. **Default:** (none)
+
     * **privateKey** - < _mixed_ > - Buffer or string that contains an **unencrypted** private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
     * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
