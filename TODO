@@ -10,3 +10,5 @@ TODO (in no particular order)
 * Diffie-Hellman group exchange (and other common variants) support
 
 * add support for AES-GCM ciphers (RFC5647, OpenSSL 1.0.1+)
+
+* protocol-level keepalive mechanism
