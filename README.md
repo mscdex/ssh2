@@ -386,7 +386,7 @@ Connection methods
     
     * **publicKey** - < _mixed_ > - Buffer or string that contains a public key for key-based user authentication (OpenSSH format). **Default:** (none)
 
-    * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** (false)
+    * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
 
 * **exec**(< _string_ >command[, < _object_ >environment], < _function_ >callback) - _(void)_ - Executes `command` on the server, with an optional `environment` set before execution. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream. For exec, the `stream` will also emit 'exit' when the process finishes. If the process finished normally, the process return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: < _null_ >code, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
