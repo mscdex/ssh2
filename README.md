@@ -334,6 +334,8 @@ Connection events
 
 * **connect**() - A connection to the server was successful.
 
+* **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
+
 * **ready**() - Authentication was successful.
 
 * **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `ChannelStream` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
@@ -347,6 +349,8 @@ Connection events
     * **dstPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
 
 * **keyboard-interactive**(< _string_ >name, < _string_ >instructions, < _string_ >instructionsLang, < _array_ >prompts, < _function_ >finish) - The server is asking for replies to the given `prompts` for keyboard-interactive user authentication. `name` is generally what you'd use as a window title (for GUI apps). `prompts` is an array of `{ prompt: 'Password: ', echo: false }` style objects (here `echo` indicates whether user input should be displayed on the screen). The answers for all prompts must be provided as an array of strings and passed to `finish` when you are ready to continue. Note: It's possible for the server to come back and ask more questions.
+
+* **change password**(< _string_ >message, < _string_ >language, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
 
 * **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'connection-socket' for socket-level errors and 'connection-ssh' for SSH disconnection messages. In the case of 'connection-ssh' messages, there may be a 'description' property that provides more detail.
 
