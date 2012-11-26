@@ -3,8 +3,6 @@ TODO (in no particular order)
 
 * 'hostbased' authentication
 
-* allow specifying of only the private key and derive the public key automatically from that
-
 * X11 forwarding
 
 * Diffie-Hellman group exchange support (RFC4419)
