@@ -64,8 +64,7 @@ c.connect({
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
-  privateKey: require('fs').readFileSync('/here/is/my/key'),
-  publicKey: require('fs').readFileSync('/here/is/my/key.pub')
+  privateKey: require('fs').readFileSync('/here/is/my/key')
 });
 
 // example output:
@@ -384,7 +383,7 @@ Connection methods
 
     * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
     
-    * **publicKey** - < _mixed_ > - Buffer or string that contains a public key for key-based user authentication (OpenSSH format). **Default:** (none)
+    * **publicKey** - < _mixed_ > - Optional Buffer or string that contains a public key for key-based user authentication (OpenSSH format). If `publicKey` is not set, it will be generated from the `privateKey`. **Default:** (none)
 
     * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
 
