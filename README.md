@@ -387,6 +387,8 @@ Connection methods
 
     * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
 
+    * **pingInterval** - < _integer_ > - How often to send SSH-level keepalive packets to the server. **Default:** (no keepalive)
+
 * **exec**(< _string_ >command[, < _object_ >environment], < _function_ >callback) - _(void)_ - Executes `command` on the server, with an optional `environment` set before execution. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream. For exec, the `stream` will also emit 'exit' when the process finishes. If the process finished normally, the process return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
 * **shell**([< _object_ >window,] < _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional terminal `window` settings. Valid `window` properties include: rows (defaults to 24), cols (defaults to 80), height (in pixels, defaults to 480), width (in pixels, defaults to 640), and term (value to use for $TERM, defaults to 'vt100'). Rows and cols overrides width and height when rows and cols are non-zero. Pixel dimensions refer to the drawable area of the window. Zero dimension parameters are ignored. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
