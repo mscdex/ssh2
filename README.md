@@ -365,7 +365,7 @@ Connection methods
 
 * **connect**(< _object_ >config) - _(void)_ - Attempts a connection to a server using the information given in `config`:
 
-    * **host** - < _string_ > - Hostname or IP address of the server. **Default:** ("127.0.0.1")
+    * **host** - < _string_ > - Hostname or IP address of the server. **Default:** 'localhost'
 
     * **port** - < _integer_ > - Port number of the server. **Default:** 22
 
