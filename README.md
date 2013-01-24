@@ -483,7 +483,7 @@ fs.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **fstat**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves attributes for the resource associated with `handle`. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
 
-* **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attrs, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attrs` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
+* **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
 
 * **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
@@ -493,7 +493,7 @@ fs.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **rename**(< _string_ >srcPath, < _string_ >destPath, < _function_ >callback) - _(void)_ - Renames/moves `srcPath` to `destPath`. `callback` has 1 parameter: < _Error_ >err.
 
-* **mkdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Creates a new directory `path`. `callback` has 1 parameter: < _Error_ >err.
+* **mkdir**(< _string_ >path, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Creates a new directory `path`. `callback` has 1 parameter: < _Error_ >err.
 
 * **rmdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the directory at `path`. `callback` has 1 parameter: < _Error_ >err.
 
@@ -501,7 +501,7 @@ fs.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
 
-* **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attrs` for `path`. `callback` has 1 parameter: < _Error_ >err.
+* **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for `path`. `callback` has 1 parameter: < _Error_ >err.
 
 * **readlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves the target for a symlink at `path`. `callback` has 2 parameters: < _Error_ >err, < _string_ >target.
 
