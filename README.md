@@ -485,6 +485,8 @@ fs.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
 
+* **futimes**(< _Buffer_ >handle, < _mixed_ >atime, < _mixed_ >mtime, < _function_ >callback) - _(void)_ - Sets the access time and modified time for the resource associated with `handle`. `atime` and `mtime` can be Date instances or UNIX timestamps. `callback` has 1 parameter: < _Error_ >err.
+
 * **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
 * **readdir**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves directory entries from the directory associated with `handle`. This function may need to be called multiple times to receive the entire directory listing. `callback` has 2 parameters: < _Error_ >err, < _mixed_ >list. `list` is either an _Array_ of `{ filename: 'foo', longname: '....', attrs: {...} }` style objects (attrs is of type _ATTR_) OR boolean false to indicate no more directory entries are available for the given `handle`.
@@ -502,6 +504,8 @@ fs.createReadStream('sample.txt', {start: 90, end: 99});
 * **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
 
 * **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for `path`. `callback` has 1 parameter: < _Error_ >err.
+
+* **utimes**(< _string_ >path, < _mixed_ >atime, < _mixed_ >mtime, < _function_ >callback) - _(void)_ - Sets the access time and modified time for `path`. `atime` and `mtime` can be Date instances or UNIX timestamps. `callback` has 1 parameter: < _Error_ >err.
 
 * **readlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves the target for a symlink at `path`. `callback` has 2 parameters: < _Error_ >err, < _string_ >target.
 
