@@ -526,3 +526,5 @@ An object with the following valid properties:
 * **atime** - < _integer_ > - UNIX timestamp of the access time of the resource.
 
 * **mtime** - < _integer_ > - UNIX timestamp of the modified time of the resource.
+
+When supplying an ATTRS object to one of the SFTP methods, atime and mtime can be either a Date instance or a UNIX timestamp. ATTRS objects with data from the server will always use UNIX timestamps for atime and mtime.
