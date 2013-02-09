@@ -379,7 +379,7 @@ Connection methods
 
     * **agent** - < _string_ > - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Default:** (none)
 
-    * **privateKey** - < _mixed_ > - Buffer or string that contains an **unencrypted** private key for key-based user authentication (OpenSSH format). **Default:** (none)
+    * **privateKey** - < _mixed_ > - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
     * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
     
