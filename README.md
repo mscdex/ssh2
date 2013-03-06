@@ -387,7 +387,7 @@ Connection methods
 
     * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
 
-    * **pingInterval** - < _integer_ > - How often to send SSH-level keepalive packets to the server. **Default:** (no keepalive)
+    * **pingInterval** - < _integer_ > - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** (60000)
 
 **Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true)
 
