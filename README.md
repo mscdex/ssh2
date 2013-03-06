@@ -460,7 +460,7 @@ SFTP methods
 An example to read the last 10 bytes of a file which is 100 bytes long:
 
 ```javascript
-fs.createReadStream('sample.txt', {start: 90, end: 99});
+sftp.createReadStream('sample.txt', {start: 90, end: 99});
 ```
 
 * **createWriteStream**(< _string_ >path[, < _object_ >options]) - _WriteStream_ - Returns a new writable stream for `path`. `options` has the following defaults:
