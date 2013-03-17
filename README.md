@@ -391,9 +391,15 @@ Connection methods
 
 **Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true)
 
-* **exec**(< _string_ >command[, < _object_ >environment], < _function_ >callback) - _(void)_ - Executes `command` on the server, with an optional `environment` set before execution. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream. For exec, the `stream` will also emit 'exit' when the process finishes. If the process finished normally, the process return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
+* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. Valid `options` properties are:
 
-* **shell**([< _object_ >window,] < _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional terminal `window` settings. Valid `window` properties include: rows (defaults to 24), cols (defaults to 80), height (in pixels, defaults to 480), width (in pixels, defaults to 640), and term (value to use for $TERM, defaults to 'vt100'). Rows and cols overrides width and height when rows and cols are non-zero. Pixel dimensions refer to the drawable area of the window. Zero dimension parameters are ignored. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+    * **env** - < _object_ > - An environment to use for the execution of the command.
+
+    * **pty** - < _mixed_ > - Set to true to allocate a pseudo-tty with defaults, or an object containg pseudo-tty settings (see 'Pseudo-TTY settings').
+
+    `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+
+* **shell**([< _object_ >window,] < _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
 * **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
@@ -425,7 +431,11 @@ This is a normal duplex Stream, with the following changes:
 
 * For shell():
 
-    * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The behavior of these arguments is the same as described for shell().
+    * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section.
+
+* For exec():
+
+    * An 'exit' event will be emitted when the process finishes. If the process finished normally, the process's return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
 * For shell() and exec():
 
@@ -544,3 +554,23 @@ When supplying an ATTRS object to one of the SFTP methods:
 * `atime` and `mtime` can be either a Date instance or a UNIX timestamp.
 
 * `permissions` can either be an integer or a string containing an octal number.
+
+
+Pseudo-TTY settings
+-------------------
+
+* **rows** - < _integer_ > - Number of rows (defaults to 24)
+
+* **cols** - < _integer_ > - Number of columns (defaults to 80)
+
+* **height** - < _integer_ > - Height in pixels (defaults to 480)
+
+* **width** - < _integer_ > - Width in pixels (defaults to 640)
+
+* **term** - < _string_ > - The value to use for $TERM (defaults to 'vt100')
+
+`rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
+
+Pixel dimensions refer to the drawable area of the window.
+
+Zero dimension parameters are ignored.
