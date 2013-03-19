@@ -1,4 +1,3 @@
-
 Description
 ===========
 
@@ -21,6 +20,52 @@ Install
 
 Examples
 ========
+
+* Invoke an arbitrary subsystem (netconf in this example):
+
+```javascript
+var Connection = require('ssh'),
+    xmlhello = '<?xml version="1.0" encoding="UTF-8"?>'+
+               '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">'+
+               '    <capabilities>'+
+               '		<capability>urn:ietf:params:netconf:base:1.0</capability>'+
+               '	</capabilities>'+
+               '</hello>]]>]]>';
+
+var c = new Connection();
+
+c.on('connect', function() {
+  console.log('Connection :: connect');
+});
+
+c.on('ready', function() {
+  console.log('Connection :: ready');
+  c.subsys('netconf', function(err, stream) {
+    stream.on('data', function(data, extended) {
+      console.log(data);
+      // would probably want to parse xml2js here
+    });
+    stream.write(xmlhello);
+  });
+});
+
+c.on('error', function(err) {
+  console.log('Connection :: error :: ' + err);
+});
+c.on('end', function() {
+  console.log('Connection :: end');
+});
+c.on('close', function(had_error) {
+  console.log('Connection :: close');
+});
+
+c.connect({
+  host: '1.2.3.4',
+  port: 22,
+  username: 'blargh',
+  password: 'honk'
+});
+```
 
 * Authenticate using keys, execute `uptime` on a server, and disconnect afterwards:
 
