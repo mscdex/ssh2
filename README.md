@@ -491,7 +491,7 @@ sftp.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **write**(< _Buffer_ >handle, < _Buffer_ >buffer, < _integer_ >offset, < _integer_ >length, < _integer_ >position, < _function_ >callback) - _(void)_ - Writes `length` bytes from `buffer` starting at `offset` to the resource associated with `handle` starting at `position`. `callback` has 1 parameter: < _Error_ >err.
 
-* **fstat**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves attributes for the resource associated with `handle`. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
+* **fstat**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves attributes for the resource associated with `handle`. `callback` has 2 parameters: < _Error_ >err, < _Stats_ >stats.
 
 * **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
 
@@ -513,9 +513,9 @@ sftp.createReadStream('sample.txt', {start: 90, end: 99});
 
 * **rmdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the directory at `path`. `callback` has 1 parameter: < _Error_ >err.
 
-* **stat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. `callback` has 2 parameter: < _Error_ >err, < _ATTRS_ >attributes.
+* **stat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. `callback` has 2 parameter: < _Error_ >err, < _Stats_ >stats.
 
-* **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _ATTRS_ >attributes.
+* **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _Stats_ >stats.
 
 * **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for `path`. `callback` has 1 parameter: < _Error_ >err.
 
@@ -555,6 +555,19 @@ When supplying an ATTRS object to one of the SFTP methods:
 
 * `permissions` can either be an integer or a string containing an octal number.
 
+
+Stats
+-----
+
+An object with the same attributes as an ATTRS object with the addition of the following methods:
+
+* `stats.isDirectory()`
+* `stats.isFile()`
+* `stats.isBlockDevice()`
+* `stats.isCharacterDevice()`
+* `stats.isSymbolicLink()`
+* `stats.isFIFO()`
+* `stats.isSocket()`
 
 Pseudo-TTY settings
 -------------------
