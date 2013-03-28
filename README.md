@@ -455,33 +455,41 @@ SFTP methods
 
 * **end**() - _(void)_ - Ends the SFTP session.
 
+* **fastGet**(< _string_ >remotePath, < _string_ >localPath[, < _object_ >options], < _function_ >callback) - _(void)_ - Downloads a file at `remotePath` to `localPath` using parallel reads for faster throughput. `options` has the following defaults:
+
+    * concurrency - _integer_ - Number of concurrent reads (default: 25)
+
+    * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
+
+    `callback` has 1 parameter: < _Error_ >err.
+
 * **createReadStream**(< _string_ >path[, < _object_ >options]) - _ReadStream_ - Returns a new readable stream for `path`. `options` has the following defaults:
 
-```javascript
-{ flags: 'r',
-  encoding: null,
-  mode: 0666,
-  bufferSize: 64 * 1024
-}
-```
+    ```javascript
+    { flags: 'r',
+      encoding: null,
+      mode: 0666,
+      bufferSize: 64 * 1024
+    }
+    ```
 
-`options` can include 'start' and 'end' values to read a range of bytes from the file instead of the entire file. Both 'start' and 'end' are inclusive and start at 0. The encoding can be 'utf8', 'ascii', or 'base64'.
+    `options` can include 'start' and 'end' values to read a range of bytes from the file instead of the entire file. Both 'start' and 'end' are inclusive and start at 0. The encoding can be 'utf8', 'ascii', or 'base64'.
 
-An example to read the last 10 bytes of a file which is 100 bytes long:
+    An example to read the last 10 bytes of a file which is 100 bytes long:
 
-```javascript
-sftp.createReadStream('sample.txt', {start: 90, end: 99});
-```
+    ```javascript
+    sftp.createReadStream('sample.txt', {start: 90, end: 99});
+    ```
 
 * **createWriteStream**(< _string_ >path[, < _object_ >options]) - _WriteStream_ - Returns a new writable stream for `path`. `options` has the following defaults:
 
-```javascript
-{ flags: 'w',
-  encoding: null,
-  mode: 0666 }
-```
+    ```javascript
+    { flags: 'w',
+      encoding: null,
+      mode: 0666 }
+    ```
 
-`options` may also include a 'start' option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
+    `options` may also include a 'start' option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
 
 * **open**(< _string_ >filename, < _string_ >mode, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Opens a file `filename` for `mode` with optional `attributes`. `mode` is any of the modes supported by fs.open (except sync mode). `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
