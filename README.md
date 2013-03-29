@@ -377,7 +377,7 @@ Connection methods
 
     * **password** - < _string_ > - Password for password-based user authentication. **Default:** (none)
 
-    * **agent** - < _string_ > - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Default:** (none)
+    * **agent** - < _string_ > - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant.** **Default:** (none)
 
     * **privateKey** - < _mixed_ > - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
