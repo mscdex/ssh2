@@ -463,6 +463,14 @@ SFTP methods
 
     `callback` has 1 parameter: < _Error_ >err.
 
+* **fastPut**(< _string_ >localPath, < _string_ >remotePath[, < _object_ >options], < _function_ >callback) - _(void)_ - Uploads a file from `localPath` to `remotePath` using parallel reads for faster throughput. `options` has the following defaults:
+
+    * concurrency - _integer_ - Number of concurrent reads (default: 25)
+
+    * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
+
+    `callback` has 1 parameter: < _Error_ >err.
+
 * **createReadStream**(< _string_ >path[, < _object_ >options]) - _ReadStream_ - Returns a new readable stream for `path`. `options` has the following defaults:
 
     ```javascript
