@@ -288,7 +288,7 @@ c.connect({
 //      { size: 1048576,
 //        uid: 1000,
 //        gid: 1000,
-//        permissions: 16877,
+//        mode: 16877,
 //        atime: 1353269008,
 //        mtime: 1353269007 } },
 //   { filename: '..',
@@ -297,7 +297,7 @@ c.connect({
 //      { size: 1048576,
 //        uid: 1000,
 //        gid: 1000,
-//        permissions: 16877,
+//        mode: 16877,
 //        atime: 1353254582,
 //        mtime: 1353254581 } },
 //   { filename: 'test.txt',
@@ -306,7 +306,7 @@ c.connect({
 //      { size: 12,
 //        uid: 1000,
 //        gid: 1000,
-//        permissions: 33188,
+//        mode: 33188,
 //        atime: 1353254750,
 //        mtime: 1353254744 } },
 //   { filename: 'mydir',
@@ -315,7 +315,7 @@ c.connect({
 //      { size: 1048576,
 //        uid: 1000,
 //        gid: 1000,
-//        permissions: 16877,
+//        mode: 16877,
 //        atime: 1353269007,
 //        mtime: 1353269007 } } ]
 // SFTP :: Handle closed
@@ -515,7 +515,7 @@ SFTP methods
 
 * **fchown**(< _Buffer_ >handle, < _integer_ >uid, < _integer_ >gid, < _function_ >callback) - _(void)_ - Sets the owner for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
 
-* **fchmod**(< _Buffer_ >handle, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the permissions for the resource associated with `handle`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
+* **fchmod**(< _Buffer_ >handle, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the mode for the resource associated with `handle`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
 
 * **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
@@ -539,7 +539,7 @@ SFTP methods
 
 * **chown**(< _string_ >path, < _integer_ >uid, < _integer_ >gid, < _function_ >callback) - _(void)_ - Sets the owner for `path`. `callback` has 1 parameter: < _Error_ >err.
 
-* **chmod**(< _string_ >path, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the permissions for `path`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
+* **chmod**(< _string_ >path, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the mode for `path`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
 
 * **readlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves the target for a symlink at `path`. `callback` has 2 parameters: < _Error_ >err, < _string_ >target.
 
@@ -553,13 +553,13 @@ ATTRS
 
 An object with the following valid properties:
 
-* **size** - < _integer_ > - Resource size in bytes.
+* **mode** - < _integer_ > - Mode/permissions for the resource.
 
 * **uid** - < _integer_ > - User ID of the resource.
 
 * **gid** - < _integer_ > - Group ID of the resource.
 
-* **permissions** - < _integer_ > - Permissions for the resource.
+* **size** - < _integer_ > - Resource size in bytes.
 
 * **atime** - < _integer_ > - UNIX timestamp of the access time of the resource.
 
@@ -569,7 +569,7 @@ When supplying an ATTRS object to one of the SFTP methods:
 
 * `atime` and `mtime` can be either a Date instance or a UNIX timestamp.
 
-* `permissions` can either be an integer or a string containing an octal number.
+* `mode` can either be an integer or a string containing an octal number.
 
 
 Stats
@@ -578,12 +578,19 @@ Stats
 An object with the same attributes as an ATTRS object with the addition of the following methods:
 
 * `stats.isDirectory()`
+
 * `stats.isFile()`
+
 * `stats.isBlockDevice()`
+
 * `stats.isCharacterDevice()`
+
 * `stats.isSymbolicLink()`
+
 * `stats.isFIFO()`
+
 * `stats.isSocket()`
+
 
 Pseudo-TTY settings
 -------------------
