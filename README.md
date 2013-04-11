@@ -494,10 +494,14 @@ SFTP methods
     ```javascript
     { flags: 'w',
       encoding: null,
-      mode: 0666 }
+      mode: 0666,
+      autoClose: true
+    }
     ```
 
     `options` may also include a 'start' option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
+
+    If 'autoClose' is set to false and you pipe to this stream, this stream will not automatically close after there is no more data upstream -- allowing future pipes and/or manual writes.
 
 * **open**(< _string_ >filename, < _string_ >mode, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Opens a file `filename` for `mode` with optional `attributes`. `mode` is any of the modes supported by fs.open (except sync mode). `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
