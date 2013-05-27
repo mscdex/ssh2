@@ -4,6 +4,9 @@
   "description": "An SSH2 client module written in pure JavaScript for node.js",
   "main": "./lib/Connection",
   "engines": { "node": ">=0.8.7" },
+  "dependencies": {
+    "streamsearch": "*"
+  },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "exec", "remote", "client" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
   "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
