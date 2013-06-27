@@ -4,7 +4,7 @@ Description
 
 An SSH2 client module written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (6.0 currently).
+Development/testing is done against OpenSSH (6.1 currently).
 
 
 Requirements
