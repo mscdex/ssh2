@@ -5,7 +5,8 @@
   "main": "./lib/Connection",
   "engines": { "node": ">=0.8.7" },
   "dependencies": {
-    "streamsearch": "0.1.2"
+    "streamsearch": "0.1.2",
+    "asn1": "0.1.11"
   },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "exec", "remote", "client" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
