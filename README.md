@@ -357,6 +357,8 @@ Connection events
 
 * **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to true if this was due to error.
 
+* **debug**(< _string_ >message) - If `debug` is set in the object passed to connect(), then this event will be emitted when the server sends debug messages. For OpenSSH, these usually are messages like "Pty allocation disabled.", "X11 forwarding disabled.", etc. when options are set for particular keys in `~/.ssh/authorized_keys`.
+
 
 Connection methods
 ------------------
