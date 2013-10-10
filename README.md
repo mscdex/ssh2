@@ -143,8 +143,8 @@ c.connect({
 // Vary: Accept-Encoding
 // Connection: close
 // Content-Type: text/html; charset=UTF-8
-// 
-// 
+//
+//
 // TCP :: EOF
 // TCP :: CLOSED
 // Connection :: end
@@ -384,7 +384,7 @@ Connection methods
     * **privateKey** - < _mixed_ > - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
     * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
-    
+
     * **publicKey** - < _mixed_ > - Optional Buffer or string that contains a public key for key-based user authentication (OpenSSH format). If `publicKey` is not set, it will be generated from the `privateKey`. **Default:** (none)
 
     * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
@@ -465,6 +465,8 @@ SFTP methods
 
     * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
 
+    * step - _function_(< _Number_ >total_transferred, < _Number_ >chunk, < _Number_ >total) - Called every time a part of a file was transferred
+
     `callback` has 1 parameter: < _Error_ >err.
 
 * **fastPut**(< _string_ >localPath, < _string_ >remotePath[, < _object_ >options], < _function_ >callback) - _(void)_ - Uploads a file from `localPath` to `remotePath` using parallel reads for faster throughput. `options` has the following defaults:
@@ -472,6 +474,8 @@ SFTP methods
     * concurrency - _integer_ - Number of concurrent reads (default: 25)
 
     * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
+
+    * step - _function_(< _Number_ >total_transferred, < _Number_ >chunk, < _Number_ >total) - Called every time a part of a file was transferred
 
     `callback` has 1 parameter: < _Error_ >err.
 
