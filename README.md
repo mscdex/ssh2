@@ -399,7 +399,7 @@ Connection methods
 
     * **env** - < _object_ > - An environment to use for the execution of the command.
 
-    * **pty** - < _mixed_ > - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings').
+    * **pty** - < _mixed_ > - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
 
     `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
