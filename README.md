@@ -511,7 +511,7 @@ SFTP methods
 
     * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
 
-    * step - _function_(< _Number_ >total_transferred, < _Number_ >chunk, < _Number_ >total) - Called every time a part of a file was transferred
+    * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
 
     `callback` has 1 parameter: < _Error_ >err.
 
@@ -521,7 +521,7 @@ SFTP methods
 
     * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
 
-    * step - _function_(< _Number_ >total_transferred, < _Number_ >chunk, < _Number_ >total) - Called every time a part of a file was transferred
+    * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
 
     `callback` has 1 parameter: < _Error_ >err.
 
