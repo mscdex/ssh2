@@ -491,7 +491,7 @@ This is a normal duplex Stream, with the following changes:
 
     * 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
 
-    * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message."
+    * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message." Note: If you are trying to send SIGINT and you find signal() doesn't work, try writing '\x03' to the exec/shell stream instead.
 
 
 SFTP events
