@@ -27,9 +27,6 @@ Examples
 var Connection = require('ssh2');
 
 var c = new Connection();
-c.on('connect', function() {
-  console.log('Connection :: connect');
-});
 c.on('ready', function() {
   console.log('Connection :: ready');
   c.exec('uptime', function(err, stream) {
@@ -82,9 +79,6 @@ c.connect({
 var Connection = require('ssh2');
 
 var c = new Connection();
-c.on('connect', function() {
-  console.log('Connection :: connect');
-});
 c.on('ready', function() {
   console.log('Connection :: ready');
   c.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
@@ -156,9 +150,6 @@ c.connect({
 var Connection = require('ssh2');
 
 var c = new Connection();
-c.on('connect', function() {
-  console.log('Connection :: connect');
-});
 c.on('tcp connection', function(info, accept, reject) {
   console.log('TCP :: INCOMING CONNECTION: ' + require('util').inspect(info));
 
@@ -234,9 +225,6 @@ c.connect({
 var Connection = require('ssh2');
 
 var c = new Connection();
-c.on('connect', function() {
-  console.log('Connection :: connect');
-});
 c.on('ready', function() {
   console.log('Connection :: ready');
   c.sftp(function(err, sftp) {
@@ -334,10 +322,6 @@ var Connection = require('ssh'),
 
 var c = new Connection();
 
-c.on('connect', function() {
-  console.log('Connection :: connect');
-});
-
 c.on('ready', function() {
   console.log('Connection :: ready');
   c.subsys('netconf', function(err, stream) {
@@ -374,8 +358,6 @@ API
 
 Connection events
 -----------------
-
-* **connect**() - A connection to the server was successful.
 
 * **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
 
