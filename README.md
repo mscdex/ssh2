@@ -457,7 +457,7 @@ Connection methods
 ChannelStream
 -------------
 
-This is a normal duplex Stream, with the following changes:
+This is a normal **streams1** duplex Stream, with the following changes:
 
 * A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is true, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `false`.
 
