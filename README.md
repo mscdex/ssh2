@@ -340,7 +340,8 @@ conn2.on('ready', function() {
     if (err) return console.log('SECOND :: exec error: ' + err);
     stream.on('data', function(data) {
       console.log(data.toString());
-    }).on('end', function() {
+    });
+    stream.on('end', function() {
       conn1.end(); // close parent (and this) connection
     });
   });
