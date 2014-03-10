@@ -348,6 +348,46 @@ conn2.on('ready', function() {
 });
 ```
 
+* Forward X11 connections (xeyes):
+
+```javascript
+var net = require('net'),
+    Connection = require('ssh2');
+
+var conn = new Connection();
+
+conn.on('x11', function(info, accept, reject) {
+  var xserversock = new net.Socket();
+  xserversock.on('connect', function() {
+    var xclientsock = accept();
+    xclientsock.pipe(xserversock).pipe(xclientsock);
+  });
+  // connects to localhost:0.0
+  xserversock.connect(6000, 'localhost');
+});
+
+conn.on('ready', function() {
+  conn.exec('xeyes', { x11: true }, function(err, stream) {
+    if (err) throw err;
+    var code = 0;
+    stream.on('end', function() {
+      if (code !== 0)
+        console.log('Do you have X11 forwarding enabled on your SSH server?');
+      conn.end();
+    });
+    stream.on('exit', function(exitcode) {
+      code = exitcode;
+    });
+  });
+});
+
+conn.connect({
+  host: '192.168.1.1',
+  username: 'foo',
+  password: 'bar'
+});
+```
+
 * Invoke an arbitrary subsystem (netconf in this example):
 
 ```javascript
@@ -413,6 +453,12 @@ Connection events
 
     * **dstPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
 
+* **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `ChannelStream` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+
+    * **srcIP** - _string_ - The originating IP of the connection.
+
+    * **srcPort** - _integer_ - The originating port of the connection.
+
 * **keyboard-interactive**(< _string_ >name, < _string_ >instructions, < _string_ >instructionsLang, < _array_ >prompts, < _function_ >finish) - The server is asking for replies to the given `prompts` for keyboard-interactive user authentication. `name` is generally what you'd use as a window title (for GUI apps). `prompts` is an array of `{ prompt: 'Password: ', echo: false }` style objects (here `echo` indicates whether user input should be displayed on the screen). The answers for all prompts must be provided as an array of strings and passed to `finish` when you are ready to continue. Note: It's possible for the server to come back and ask more questions.
 
 * **change password**(< _string_ >message, < _string_ >language, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
@@ -469,9 +515,15 @@ Connection methods
 
     * **pty** - < _mixed_ > - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
 
+    * **x11** - < _mixed_ > - Set to true to use defaults below, a number to specify a specific screen number, or an object with the following valid properties:
+
+        * **single** - < _boolean_ > - Allow just a single connection? **Default:** false
+
+        * **screen** - < _number_ > - Screen number to use **Default:** 0
+
     `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
-* **shell**([< _object_ >window,] < _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the 'x11' option as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
 * **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
