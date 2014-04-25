@@ -391,7 +391,7 @@ conn.connect({
 * Invoke an arbitrary subsystem (netconf in this example):
 
 ```javascript
-var Connection = require('ssh'),
+var Connection = require('ssh2'),
     xmlhello = '<?xml version="1.0" encoding="UTF-8"?>'+
                '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">'+
                '    <capabilities>'+
