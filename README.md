@@ -507,6 +507,8 @@ Connection methods
 
     * **sock** - < _ReadableStream_ > - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
+    * **agentForward** - < _boolean_ > - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** false
+
 **Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true)
 
 * **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. Valid `options` properties are:
