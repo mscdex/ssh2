@@ -503,7 +503,7 @@ Connection methods
 
     * **pingInterval** - < _integer_ > - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** (60000)
 
-    * **readyTimeout** - < _integer_ > - How often (in milliseconds) to wait for the SSH handshake to complete. **Default:** (10000)
+    * **readyTimeout** - < _integer_ > - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** (10000)
 
     * **sock** - < _ReadableStream_ > - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
