@@ -434,7 +434,7 @@ c.connect({
 API
 ===
 
-`require('ssh2')` returns a **_Connection_** object
+`require('ssh2')` returns a **_Connection_** constructor
 
 Connection events
 -----------------
