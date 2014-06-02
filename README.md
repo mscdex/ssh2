@@ -26,37 +26,31 @@ Examples
 ```javascript
 var Connection = require('ssh2');
 
-var c = new Connection();
-c.on('ready', function() {
+var conn = new Connection();
+conn.on('ready', function() {
   console.log('Connection :: ready');
-  c.exec('uptime', function(err, stream) {
+  conn.exec('uptime', function(err, stream) {
     if (err) throw err;
-    stream.on('data', function(data, extended) {
-      console.log((extended === 'stderr' ? 'STDERR: ' : 'STDOUT: ')
-                  + data);
-    });
     stream.on('end', function() {
       console.log('Stream :: EOF');
-    });
-    stream.on('close', function() {
-      console.log('Stream :: close');
-    });
-    stream.on('exit', function(code, signal) {
+    }).on('exit', function(code, signal) {
       console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-      c.end();
+    }).on('close', function() {
+      console.log('Stream :: close');
+      conn.end();
+    }).on('data', function(data) {
+      console.log('STDOUT: ' + data);
+    }).stderr.on('data', function(data) {
+      console.log('STDERR: ' + data);
     });
   });
-});
-c.on('error', function(err) {
+}).on('error', function(err) {
   console.log('Connection :: error :: ' + err);
-});
-c.on('end', function() {
+}).on('end', function() {
   console.log('Connection :: end');
-});
-c.on('close', function(had_error) {
+}).on('close', function(had_error) {
   console.log('Connection :: close');
-});
-c.connect({
+}).connect({
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
@@ -78,25 +72,19 @@ c.connect({
 ```javascript
 var Connection = require('ssh2');
 
-var c = new Connection();
-c.on('ready', function() {
+var conn = new Connection();
+conn.on('ready', function() {
   console.log('Connection :: ready');
-  c.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
+  conn.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
     if (err) throw err;
-    stream.on('data', function(data) {
-      console.log('TCP :: DATA: ' + data);
-    });
     stream.on('end', function() {
       console.log('TCP :: EOF');
-    });
-    stream.on('error', function(err) {
-      console.log('TCP :: ERROR: ' + err);
-    });
-    stream.on('close', function(had_err) {
+    }).on('close', function() {
       console.log('TCP :: CLOSED');
-      c.end();
-    });
-    var data = [
+      conn.end();
+    }).on('data', function(data) {
+      console.log('TCP :: DATA: ' + data);
+    }).end([
       'HEAD / HTTP/1.1',
       'User-Agent: curl/7.27.0',
       'Host: 127.0.0.1',
@@ -104,20 +92,15 @@ c.on('ready', function() {
       'Connection: close',
       '',
       ''
-    ];
-    stream.write(data.join('\r\n'));
+    ].join('\r\n'));
   });
-});
-c.on('error', function(err) {
+}).on('error', function(err) {
   console.log('Connection :: error :: ' + err);
-});
-c.on('end', function() {
+}).on('end', function() {
   console.log('Connection :: end');
-});
-c.on('close', function(had_error) {
+}).on('close', function(had_error) {
   console.log('Connection :: close');
-});
-c.connect({
+}).connect({
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
@@ -149,25 +132,24 @@ c.connect({
 ```javascript
 var Connection = require('ssh2');
 
-var c = new Connection();
-c.on('tcp connection', function(info, accept, reject) {
-  console.log('TCP :: INCOMING CONNECTION: ' + require('util').inspect(info));
-
-  var stream = accept();
-
-  stream.on('data', function(data) {
-    console.log('TCP :: DATA: ' + data);
+var conn = new Connection();
+conn.on('ready', function() {
+  console.log('Connection :: ready');
+  c.forwardIn('127.0.0.1', 8000, function(err) {
+    if (err) throw err;
+    console.log('Listening for connections on server on port 8000!');
   });
-  stream.on('end', function() {
+}).on('tcp connection', function(info, accept, reject) {
+  console.log('TCP :: INCOMING CONNECTION:');
+  console.dir(info);
+
+  accept().on('end', function() {
     console.log('TCP :: EOF');
-  });
-  stream.on('error', function(err) {
-    console.log('TCP :: ERROR: ' + err);
-  });
-  stream.on('close', function(had_err) {
+  }).on('close', function() {
     console.log('TCP :: CLOSED');
-  });
-  var response = [
+  }).on('data', function(data) {
+    console.log('TCP :: DATA: ' + data);
+  }).end([
     'HTTP/1.1 404 Not Found',
     'Date: Thu, 15 Nov 2012 02:07:58 GMT',
     'Server: ForwardedConnection',
@@ -175,26 +157,14 @@ c.on('tcp connection', function(info, accept, reject) {
     'Connection: close',
     '',
     ''
-  ];
-  stream.end(response.join('\r\n'));
-});
-c.on('ready', function() {
-  console.log('Connection :: ready');
-  c.forwardIn('127.0.0.1', 8000, function(err) {
-    if (err) throw err;
-    console.log('Listening for connections on server on port 8000!');
-  });
-});
-c.on('error', function(err) {
+  ].join('\r\n'));
+}).on('error', function(err) {
   console.log('Connection :: error :: ' + err);
-});
-c.on('end', function() {
+}).on('end', function() {
   console.log('Connection :: end');
-});
-c.on('close', function(had_error) {
+}).on('close', function(had_error) {
   console.log('Connection :: close');
-});
-c.connect({
+}).connect({
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
@@ -224,15 +194,14 @@ c.connect({
 ```javascript
 var Connection = require('ssh2');
 
-var c = new Connection();
-c.on('ready', function() {
+var conn = new Connection();
+conn.on('ready', function() {
   console.log('Connection :: ready');
-  c.sftp(function(err, sftp) {
+  conn.sftp(function(err, sftp) {
     if (err) throw err;
     sftp.on('end', function() {
       console.log('SFTP :: SFTP session closed');
-    });
-    sftp.opendir('foo', function readdir(err, handle) {
+    }).opendir('foo', function readdir(err, handle) {
       if (err) throw err;
       sftp.readdir(handle, function(err, list) {
         if (err) throw err;
@@ -240,7 +209,7 @@ c.on('ready', function() {
           sftp.close(handle, function(err) {
             if (err) throw err;
             console.log('SFTP :: Handle closed');
-            sftp.end();
+            conn.end();
           });
           return;
         }
@@ -249,17 +218,13 @@ c.on('ready', function() {
       });
     });
   });
-});
-c.on('error', function(err) {
+}).on('error', function(err) {
   console.log('Connection :: error :: ' + err);
-});
-c.on('end', function() {
+}).on('end', function() {
   console.log('Connection :: end');
-});
-c.on('close', function(had_error) {
+}).on('close', function(had_error) {
   console.log('Connection :: close');
-});
-c.connect({
+}).connect({
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
@@ -320,15 +285,17 @@ var conn1 = new Connection(),
 conn1.on('ready', function() {
   console.log('FIRST :: connection ready');
   conn1.exec('nc 192.168.1.2 22', function(err, stream) {
-    if (err) return console.log('FIRST :: exec error: ' + err);
+    if (err) {
+      console.log('FIRST :: exec error: ' + err);
+      return conn1.end();
+    }
     conn2.connect({
       sock: stream,
       username: 'user2',
       password: 'password2',
     });
   });
-});
-conn1.connect({
+}).connect({
   host: '192.168.1.1',
   username: 'user1',
   password: 'password1',
@@ -337,12 +304,14 @@ conn1.connect({
 conn2.on('ready', function() {
   console.log('SECOND :: connection ready');
   conn2.exec('uptime', function(err, stream) {
-    if (err) return console.log('SECOND :: exec error: ' + err);
-    stream.on('data', function(data) {
-      console.log(data.toString());
-    });
+    if (err) {
+      console.log('SECOND :: exec error: ' + err);
+      return conn1.end();
+    }
     stream.on('end', function() {
       conn1.end(); // close parent (and this) connection
+    }).on('data', function(data) {
+      console.log(data.toString());
     });
   });
 });
@@ -374,14 +343,11 @@ conn.on('ready', function() {
       if (code !== 0)
         console.log('Do you have X11 forwarding enabled on your SSH server?');
       conn.end();
-    });
-    stream.on('exit', function(exitcode) {
+    }).on('exit', function(exitcode) {
       code = exitcode;
     });
   });
-});
-
-conn.connect({
+}).connect({
   host: '192.168.1.1',
   username: 'foo',
   password: 'bar'
@@ -399,30 +365,23 @@ var Connection = require('ssh2'),
                '	</capabilities>'+
                '</hello>]]>]]>';
 
-var c = new Connection();
+var conn = new Connection();
 
-c.on('ready', function() {
+conn.on('ready', function() {
   console.log('Connection :: ready');
-  c.subsys('netconf', function(err, stream) {
-    stream.on('data', function(data, extended) {
+  conn.subsys('netconf', function(err, stream) {
+    if (err) throw err;
+    stream.on('data', function(data) {
       console.log(data);
-      // would probably want to parse xml2js here
-    });
-    stream.write(xmlhello);
+    }).write(xmlhello);
   });
-});
-
-c.on('error', function(err) {
+}).on('error', function(err) {
   console.log('Connection :: error :: ' + err);
-});
-c.on('end', function() {
+}).on('end', function() {
   console.log('Connection :: end');
-});
-c.on('close', function(had_error) {
+}).on('close', function(had_error) {
   console.log('Connection :: close');
-});
-
-c.connect({
+}).connect({
   host: '1.2.3.4',
   port: 22,
   username: 'blargh',
@@ -567,7 +526,7 @@ This is a normal **streams1** duplex Stream, with the following changes:
 
 * For shell() and exec():
 
-    * 'data' events are passed a second (string) argument to the callback, which indicates whether the data is a special type. So far the only defined type is 'stderr'.
+    * A `stderr` property exists that is what you expect: a stream of stderr output from the server.
 
     * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message." Note: If you are trying to send SIGINT and you find signal() doesn't work, try writing '\x03' to the exec/shell stream instead.
 

@@ -5,6 +5,7 @@
   "main": "./lib/Connection",
   "engines": { "node": ">=0.8.7" },
   "dependencies": {
+    "readable-stream": "1.0.27-1",
     "streamsearch": "0.1.2",
     "asn1": "0.1.11"
   },
