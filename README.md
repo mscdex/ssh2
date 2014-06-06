@@ -135,7 +135,7 @@ var Connection = require('ssh2');
 var conn = new Connection();
 conn.on('ready', function() {
   console.log('Connection :: ready');
-  c.forwardIn('127.0.0.1', 8000, function(err) {
+  conn.forwardIn('127.0.0.1', 8000, function(err) {
     if (err) throw err;
     console.log('Listening for connections on server on port 8000!');
   });
