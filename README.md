@@ -201,21 +201,10 @@ conn.on('ready', function() {
     if (err) throw err;
     sftp.on('end', function() {
       console.log('SFTP :: SFTP session closed');
-    }).opendir('foo', function readdir(err, handle) {
+    }).readdir('foo', function(err, list) {
       if (err) throw err;
-      sftp.readdir(handle, function(err, list) {
-        if (err) throw err;
-        if (list === false) {
-          sftp.close(handle, function(err) {
-            if (err) throw err;
-            console.log('SFTP :: Handle closed');
-            conn.end();
-          });
-          return;
-        }
-        console.dir(list);
-        readdir(undefined, handle);
-      });
+      console.dir(list);
+      conn.end();
     });
   });
 }).on('error', function(err) {
@@ -614,7 +603,7 @@ SFTP methods
 
 * **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
 
-* **readdir**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves directory entries from the directory associated with `handle`. This function may need to be called multiple times to receive the entire directory listing. `callback` has 2 parameters: < _Error_ >err, < _mixed_ >list. `list` is either an _Array_ of `{ filename: 'foo', longname: '....', attrs: {...} }` style objects (attrs is of type _ATTR_) OR boolean false to indicate no more directory entries are available for the given `handle`.
+* **readdir**(< _mixed_ >location, < _function_ >callback) - _(void)_ - Retrieves a directory listing. `location` can either be a _Buffer_ containing a valid directory handle from opendir() or a _string_ containing the path to a directory. `callback` has 2 parameters: < _Error_ >err, < _mixed_ >list. `list` is an _Array_ of `{ filename: 'foo', longname: '....', attrs: {...} }` style objects (attrs is of type _ATTR_). If `location` is a directory handle, this function may need to be called multiple times until `list` is boolean false, which indicates that no more directory entries are available for that directory handle.
 
 * **unlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the file/symlink at `path`. `callback` has 1 parameter: < _Error_ >err.
 
