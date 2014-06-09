@@ -556,12 +556,15 @@ SFTP methods
     ```javascript
     { flags: 'r',
       encoding: null,
+      handle: null,
       mode: 0666,
-      bufferSize: 64 * 1024
+      autoClose: true
     }
     ```
 
-    `options` can include 'start' and 'end' values to read a range of bytes from the file instead of the entire file. Both 'start' and 'end' are inclusive and start at 0. The encoding can be 'utf8', 'ascii', or 'base64'.
+    `options` can include `start` and `end` values to read a range of bytes from the file instead of the entire file. Both `start` and `end` are inclusive and start at 0. The `encoding` can be `'utf8'`, `'ascii'`, or `'base64'`.
+
+    If `autoClose` is false, then the file handle won't be closed, even if there's an error. It is your responsiblity to close it and make sure there's no file handle leak. If `autoClose` is set to true (default behavior), on `error` or `end` the file handle will be closed automatically.
 
     An example to read the last 10 bytes of a file which is 100 bytes long:
 
@@ -574,12 +577,10 @@ SFTP methods
     ```javascript
     { flags: 'w',
       encoding: null,
-      mode: 0666,
-      autoClose: true
-    }
+      mode: 0666 }
     ```
 
-    `options` may also include a 'start' option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
+    `options` may also include a `start` option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
 
     If 'autoClose' is set to false and you pipe to this stream, this stream will not automatically close after there is no more data upstream -- allowing future pipes and/or manual writes.
 
