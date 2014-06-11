@@ -53,6 +53,7 @@ var tests = [
           error = err;
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
         }).connect(self.config);
       });
     },
@@ -64,6 +65,7 @@ var tests = [
     what: 'Authenticate with a key'
   },
   { run: function() {
+      // use ssh-agent with a command (this test) to make agent cleanup easier
       if (!process.env.SSH_AUTH_SOCK) {
         var proc = cpspawn('ssh-agent',
                            [process.argv[0], process.argv[1], t],
@@ -91,6 +93,7 @@ var tests = [
             error = err;
           }).on('close', function() {
             assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+            assert(ready, makeMsg(what, 'Expected ready'));
           }).connect(self.config);
         });
       });
@@ -135,6 +138,7 @@ function startServer(opts, listencb, exitcb) {
 
   tests[t].config.port = SSHD_PORT;
 
+  stopWaiting = false;
   cpexec(cmd, function(err, stdout, stderr) {
     stopWaiting = true;
     //exitcb(err, stdout, stderr);
@@ -168,11 +172,15 @@ var stopWaiting = false;
 function waitForSshd(cb) {
   if (stopWaiting)
     return;
-  cpexec('lsof -i tcp@localhost:' + SSHD_PORT + ' &>/dev/null', function(err, stdout) {
+  cpexec('lsof -a -u '
+         + USER
+         + ' -c sshd -i tcp@localhost:'
+         + SSHD_PORT
+         + ' &>/dev/null', function(err, stdout) {
     if (err) {
       return setTimeout(function() {
         waitForSshd(cb);
-      }, 100);
+      }, 50);
     }
     cb();
   });
@@ -180,13 +188,15 @@ function waitForSshd(cb) {
 
 function cleanup(cb) {
   cleanupTemp();
-  cpexec('ps -U ' + USER + ' -C sshd --format "pid args" | grep "`which sshd` -p ' + SSHD_PORT + '" | grep -v grep',
-         function(err, stdout) {
-    var pid = parseInt(stdout.trim().split(/[ \t]+/)[0], 10);
-
-    if (typeof pid === 'number' && !isNaN(pid))
-      process.kill(pid);
-
+  cpexec('lsof -Fp -a -u '
+         + USER
+         + ' -c sshd -i tcp@localhost:'
+         + SSHD_PORT, function(err, stdout) {
+    if (!err) {
+      var pid = parseInt(stdout.trim().replace(/[^\d]/g, ''), 10);
+      if (typeof pid === 'number' && !isNaN(pid))
+        process.kill(pid);
+    }
     cb();
   });
 }
@@ -229,6 +239,8 @@ cpexec('netstat -nl --inet --inet6', function(err, stdout) {
   }
   assert(false, 'Unable to find a free port for starting sshd');
 });
+
+// check for forked process
 if (process.argv.length > 2) {
   var testnum = parseInt(process.argv[2], 10);
   if (!isNaN(testnum))
