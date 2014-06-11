@@ -14,6 +14,7 @@ var t = -1,
     fixturesdir = join(__dirname, 'fixtures');
 
 var SSHD_PORT,
+    HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64',
     PRIVATE_KEY = fs.readFileSync(join(fixturesdir, 'id_rsa')),
     USER = process.env.LOGNAME || process.env.USER || process.env.USERNAME;
     DEFAULT_SSHD_OPTS = {
@@ -104,6 +105,182 @@ var tests = [
       agent: process.env.SSH_AUTH_SOCK
     },
     what: 'Authenticate with an agent'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection(),
+          fingerprint;
+      this.config.hostVerifier = function(host) {
+        fingerprint = host;
+        return true; // perform actual verification at the end
+      };
+      startServer(function() {
+        var error,
+            ready;
+        conn.on('ready', function() {
+          ready = true;
+          this.end();
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(HOST_FINGERPRINT === fingerprint,
+                 makeMsg(what, 'Host fingerprint mismatch.\nSaw:\n'
+                               + fingerprint
+                               + '\nExpected:\n'
+                               + HOST_FINGERPRINT));
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY,
+      hostHash: 'md5'
+    },
+    what: 'Verify host fingerprint'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection(),
+          bannerPath = join(fixturesdir, 'banner'),
+          bannerSent = fs.readFileSync(bannerPath,
+                                       { encoding: 'utf8' });
+      startServer({ 'Banner': bannerPath }, function() {
+        var error,
+            ready,
+            bannerRecvd;
+        conn.on('banner', function(msg) {
+          bannerRecvd = msg;
+        }).on('ready', function() {
+          ready = true;
+          this.exec('uptime', function(err) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            conn.end();
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(bannerSent === bannerRecvd,
+                 makeMsg(what, 'Banner mismatch.\nSaw:\n'
+                               + inspect(bannerRecvd)
+                               + '\nExpected:\n'
+                               + inspect(bannerSent)));
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'Banner message'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready;
+        conn.on('ready', function() {
+          ready = true;
+          this.exec('uptime', function(err) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            conn.end();
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'Simple exec'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection(),
+          SSH2NODETEST = 'Hello from node.js!!!';
+      startServer({ 'AcceptEnv': 'SSH2NODETEST' }, function() {
+        var error,
+            ready,
+            envvar;
+        conn.on('ready', function() {
+          ready = true;
+          this.exec('echo $SSH2NODETEST',
+                    { env: { SSH2NODETEST: SSH2NODETEST } },
+                    function(err, stream) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            stream.stderr.resume();
+            stream.setEncoding('ascii');
+            stream.on('data', function(d) {
+              if (!envvar)
+                envvar = d;
+              else
+                envvar += d;
+            }).on('end', function() {
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(envvar === SSH2NODETEST,
+                 makeMsg(what, 'Environment variable mismatch.\nSaw:\n'
+                               + envvar
+                               + '\nExpected:\n'
+                               + SSH2NODETEST));
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'Exec with environment set'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready;
+        conn.on('ready', function() {
+          ready = true;
+          this.shell(function(err) {
+            assert(!err, makeMsg(what, 'Unexpected shell error: ' + err));
+            conn.end();
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'Simple shell'
   },
 ];
 
