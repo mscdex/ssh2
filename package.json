@@ -9,6 +9,9 @@
     "streamsearch": "0.1.2",
     "asn1": "0.1.11"
   },
+  "scripts": {
+    "test": "node test/test.js"
+  },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "exec", "remote", "client" ],
   "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
   "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
