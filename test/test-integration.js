@@ -53,6 +53,7 @@ var tests = [
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
+          next();
         }).connect(self.config);
       });
     },
@@ -93,6 +94,7 @@ var tests = [
           }).on('close', function() {
             assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
             assert(ready, makeMsg(what, 'Expected ready'));
+            next();
           }).connect(self.config);
         });
       });
@@ -129,6 +131,7 @@ var tests = [
                                + fingerprint
                                + '\nExpected:\n'
                                + HOST_FINGERPRINT));
+          next();
         }).connect(self.config);
       });
     },
@@ -169,6 +172,7 @@ var tests = [
                                + inspect(bannerRecvd)
                                + '\nExpected:\n'
                                + inspect(bannerSent)));
+          next();
         }).connect(self.config);
       });
     },
@@ -197,6 +201,7 @@ var tests = [
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
+          next();
         }).connect(self.config);
       });
     },
@@ -243,6 +248,7 @@ var tests = [
                                + envvar
                                + '\nExpected:\n'
                                + SSH2NODETEST));
+          next();
         }).connect(self.config);
       });
     },
@@ -270,6 +276,7 @@ var tests = [
           error = err;
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          next();
         }).connect(self.config);
       });
     },
@@ -317,8 +324,6 @@ function startServer(opts, listencb, exitcb) {
   cpexec(cmd, function(err, stdout, stderr) {
     stopWaiting = true;
     //exitcb(err, stdout, stderr);
-    if (process.argv.length === 2)
-      next();
   });
   waitForSshd(listencb);
 }
@@ -332,7 +337,7 @@ function cleanupTemp() {
 }
 
 function next() {
-  if (t === tests.length - 1)
+  if (process.argv.length > 2 || t === tests.length - 1)
     return;
   cleanupTemp();
   var v = tests[++t];
