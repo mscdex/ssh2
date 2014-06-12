@@ -307,6 +307,101 @@ var tests = [
     what: 'Exec with pty set'
   },
   { run: function() {
+      // use ssh-agent with a command (this test) to make agent cleanup easier
+      if (!process.env.SSH_AUTH_SOCK) {
+        var proc = cpspawn('ssh-agent',
+                           [process.argv[0], process.argv[1], t],
+                           { stdio: 'inherit' });
+        proc.on('exit', function(code, signal) {
+          if (code === 0 && !signal)
+            next();
+        });
+        return;
+      }
+
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+
+      // add key first
+      cpexec('ssh-add ' + join(fixturesdir, 'id_rsa'), function() {
+        startServer(function() {
+          var error,
+              ready,
+              out;
+          conn.on('ready', function() {
+            ready = true;
+            this.exec('echo -n $SSH_AUTH_SOCK', function(err, stream) {
+              assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+              stream.stderr.resume();
+              stream.on('data', function(d) {
+                if (!out)
+                  out = d;
+                else
+                  out += d;
+              }).on('end', function() {
+                conn.end();
+              }).setEncoding('ascii');
+            });
+          }).on('error', function(err) {
+            error = err;
+          }).on('close', function() {
+            assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+            assert(ready, makeMsg(what, 'Expected ready'));
+            assert(out && out.length,
+                   makeMsg(what, 'Expected SSH_AUTH_SOCK in exec environment'));
+          }).connect(self.config);
+        });
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      agent: process.env.SSH_AUTH_SOCK,
+      agentForward: true
+    },
+    what: 'Exec with OpenSSH agent forwarding'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer({
+        'X11DisplayOffset': '50',
+        'X11Forwarding': 'yes',
+        'X11UseLocalhost': 'yes'
+      }, function() {
+        var error,
+            ready,
+            sawX11 = false;
+        conn.on('ready', function() {
+          ready = true;
+          this.exec('xeyes', { x11: true }, function(err, stream) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            stream.resume();
+            stream.stderr.resume();
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(sawX11, makeMsg(what, 'Expected X11 request'));
+          next();
+        }).on('x11', function(details, accept, reject) {
+          sawX11 = true;
+          conn.end();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'Exec with X11 forwarding'
+  },
+  { run: function() {
       var self = this,
           what = this.what,
           conn = new Connection();
