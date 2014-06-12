@@ -10,7 +10,7 @@ var fs = require('fs'),
 
 var t = -1,
     group = path.basename(__filename, '.js') + '/',
-    chrootdir = join(__dirname, 'chroot'),
+    tempdir = join(__dirname, 'temp'),
     fixturesdir = join(__dirname, 'fixtures');
 
 var SSHD_PORT,
@@ -22,7 +22,6 @@ var SSHD_PORT,
       'AllowUsers': USER,
       'AuthorizedKeysFile': join(fixturesdir, 'authorized_keys'),
       'Banner': 'none',
-      'ChrootDirectory': __dirname + '/chroot',
       'Compression': 'no',
       'HostbasedAuthentication': 'no',
       'HostKey': join(fixturesdir, 'ssh_host_rsa_key'),
@@ -35,8 +34,7 @@ var SSHD_PORT,
       'Subsystem': 'sftp internal-sftp',
       'TCPKeepAlive': 'yes',
       'UseDNS': 'no',
-      'UsePrivilegeSeparation': 'no' // needed for ChrootDirectory to work as
-                                     // non-root user
+      //'UsePrivilegeSeparation': 'no'
     };
 
 var tests = [
@@ -327,9 +325,9 @@ function startServer(opts, listencb, exitcb) {
 
 function cleanupTemp() {
   // clean up any temporary files left over
-  fs.readdirSync(chrootdir).forEach(function(file) {
+  fs.readdirSync(tempdir).forEach(function(file) {
     if (file !== '.gitignore')
-      fs.unlinkSync(join(chrootdir, file));
+      fs.unlinkSync(join(tempdir, file));
   });
 }
 
