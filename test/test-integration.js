@@ -9,6 +9,7 @@ var fs = require('fs'),
     assert = require('assert');
 
 var t = -1,
+    forkedTest,
     group = path.basename(__filename, '.js') + '/',
     tempdir = join(__dirname, 'temp'),
     fixturesdir = join(__dirname, 'fixtures');
@@ -94,7 +95,6 @@ var tests = [
           }).on('close', function() {
             assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
             assert(ready, makeMsg(what, 'Expected ready'));
-            next();
           }).connect(self.config);
         });
       });
@@ -385,7 +385,7 @@ function cleanupTemp() {
 }
 
 function next() {
-  if (process.argv.length > 2 || t === tests.length - 1)
+  if (t === forkedTest || t === tests.length - 1)
     return;
   cleanupTemp();
   var v = tests[++t];
@@ -422,8 +422,11 @@ function cleanup(cb) {
          + SSHD_PORT, function(err, stdout) {
     if (!err) {
       var pid = parseInt(stdout.trim().replace(/[^\d]/g, ''), 10);
-      if (typeof pid === 'number' && !isNaN(pid))
-        process.kill(pid);
+      if (typeof pid === 'number' && !isNaN(pid)) {
+        try {
+          process.kill(pid);
+        } catch (ex) {}
+      }
     }
     cb();
   });
@@ -470,8 +473,10 @@ cpexec('netstat -nl --inet --inet6', function(err, stdout) {
 
 // check for forked process
 if (process.argv.length > 2) {
-  var testnum = parseInt(process.argv[2], 10);
-  if (!isNaN(testnum))
-    t = testnum - 1;
+  forkedTest = parseInt(process.argv[2], 10);
+  if (!isNaN(forkedTest))
+    t = forkedTest - 1;
+  else
+    process.exit(100);
 }
   
