@@ -128,9 +128,9 @@ var tests = [
           assert(ready, makeMsg(what, 'Expected ready'));
           assert(HOST_FINGERPRINT === fingerprint,
                  makeMsg(what, 'Host fingerprint mismatch.\nSaw:\n'
-                               + fingerprint
+                               + inspect(fingerprint)
                                + '\nExpected:\n'
-                               + HOST_FINGERPRINT));
+                               + inspect(HOST_FINGERPRINT)));
           next();
         }).connect(self.config);
       });
@@ -215,39 +215,37 @@ var tests = [
   { run: function() {
       var self = this,
           what = this.what,
-          conn = new Connection(),
-          SSH2NODETEST = 'Hello from node.js!!!';
+          conn = new Connection();
       startServer({ 'AcceptEnv': 'SSH2NODETEST' }, function() {
         var error,
             ready,
-            envvar;
+            out;
         conn.on('ready', function() {
           ready = true;
-          this.exec('echo $SSH2NODETEST',
-                    { env: { SSH2NODETEST: SSH2NODETEST } },
+          this.exec('echo -n $SSH2NODETEST',
+                    { env: { SSH2NODETEST: self.expected } },
                     function(err, stream) {
             assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
             stream.stderr.resume();
-            stream.setEncoding('ascii');
             stream.on('data', function(d) {
-              if (!envvar)
-                envvar = d;
+              if (!out)
+                out = d;
               else
-                envvar += d;
+                out += d;
             }).on('end', function() {
               conn.end();
-            });
+            }).setEncoding('ascii');
           });
         }).on('error', function(err) {
           error = err;
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
-          assert(envvar === SSH2NODETEST,
+          assert(out === self.expected,
                  makeMsg(what, 'Environment variable mismatch.\nSaw:\n'
-                               + envvar
+                               + inspect(out)
                                + '\nExpected:\n'
-                               + SSH2NODETEST));
+                               + inspect(self.expected)));
           next();
         }).connect(self.config);
       });
@@ -257,6 +255,7 @@ var tests = [
       username: USER,
       privateKey: PRIVATE_KEY
     },
+    expected: 'Hello from node.js!!!',
     what: 'Exec with environment set'
   },
   { run: function() {
@@ -276,6 +275,7 @@ var tests = [
           error = err;
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
           next();
         }).connect(self.config);
       });
