@@ -264,6 +264,54 @@ var tests = [
           conn = new Connection();
       startServer(function() {
         var error,
+            ready,
+            out;
+        conn.on('ready', function() {
+          ready = true;
+          this.exec('if [ -t 1 ] ; then echo -n terminal; fi',
+                    { pty: true },
+                    function(err, stream) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            stream.stderr.resume();
+            stream.on('data', function(d) {
+              if (!out)
+                out = d;
+              else
+                out += d;
+            }).on('end', function() {
+              conn.end();
+            }).setEncoding('ascii');
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          if (out)
+            out = out.split('\n').slice(-1)[0];
+          assert(out === self.expected,
+                 makeMsg(what, 'Exec output mismatch.\nSaw:\n'
+                               + inspect(out)
+                               + '\nExpected:\n'
+                               + inspect(self.expected)));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: 'terminal',
+    what: 'Exec with pty set'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
             ready;
         conn.on('ready', function() {
           ready = true;
