@@ -268,8 +268,15 @@ var tests = [
             out;
         conn.on('ready', function() {
           ready = true;
-          this.exec('if [ -t 1 ] ; then echo -n terminal; fi',
-                    { pty: true },
+          this.exec('(if [ -t 1 ] ; then echo terminal; fi); echo -e "lines\ncols"|tput -S && echo -n $TERM',
+                    { pty: {
+                        rows: 2,
+                        cols: 4,
+                        width: 0,
+                        height: 0,
+                        term: 'vt220'
+                      }
+                    },
                     function(err, stream) {
             assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
             stream.stderr.resume();
@@ -287,13 +294,18 @@ var tests = [
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
-          if (out)
-            out = out.split('\n').slice(-1)[0];
-          assert(out === self.expected,
-                 makeMsg(what, 'Exec output mismatch.\nSaw:\n'
-                               + inspect(out)
-                               + '\nExpected:\n'
-                               + inspect(self.expected)));
+          if (out) {
+            out = out.split('\n');
+            out.shift();
+            while (out[0][0] === ' ')
+              out.shift();
+          }
+          assert.deepEquals(out,
+                            self.expected,
+                            makeMsg(what, 'Exec output mismatch.\nSaw:\n'
+                                          + inspect(out)
+                                          + '\nExpected:\n'
+                                          + inspect(self.expected)));
           next();
         }).connect(self.config);
       });
@@ -303,7 +315,12 @@ var tests = [
       username: USER,
       privateKey: PRIVATE_KEY
     },
-    expected: 'terminal',
+    expected: [
+      'terminal',
+      '2',
+      '4',
+      'vt220'
+    ],
     what: 'Exec with pty set'
   },
   { run: function() {
