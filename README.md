@@ -501,7 +501,7 @@ Connection methods
 ChannelStream
 -------------
 
-This is a normal **streams1** duplex Stream, with the following changes:
+This is a normal **streams2** Duplex Stream, with the following changes:
 
 * A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is true, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `false`.
 
@@ -515,7 +515,7 @@ This is a normal **streams1** duplex Stream, with the following changes:
 
 * For shell() and exec():
 
-    * A `stderr` property exists that is what you expect: a stream of stderr output from the server.
+    * A `stderr` property that represents the stream of output from stderr.
 
     * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message." Note: If you are trying to send SIGINT and you find signal() doesn't work, try writing '\x03' to the exec/shell stream instead.
 
