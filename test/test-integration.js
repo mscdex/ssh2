@@ -593,4 +593,11 @@ if (process.argv.length > 2) {
   else
     process.exit(100);
 }
-  
+
+// ensure permissions are less permissive to appease sshd
+[ 'id_rsa', 'id_rsa.pub',
+  'ssh_host_rsa_key', 'ssh_host_rsa_key.pub',
+  'authorized_keys'
+].forEach(function(f) {
+  fs.chmodSync(join(fixturesdir, f), '0600');
+});
