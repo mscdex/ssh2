@@ -294,18 +294,20 @@ var tests = [
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
+          // strip out debug information that is displayed before the real
+          // output
           if (out) {
-            out = out.split('\n');
+            out = out.split(/\r?\n/);
             out.shift();
             while (out[0][0] === ' ')
               out.shift();
           }
-          assert.deepEquals(out,
-                            self.expected,
-                            makeMsg(what, 'Exec output mismatch.\nSaw:\n'
-                                          + inspect(out)
-                                          + '\nExpected:\n'
-                                          + inspect(self.expected)));
+          assert.deepEqual(out,
+                           self.expected,
+                           makeMsg(what, 'Exec output mismatch.\nSaw:\n'
+                                         + inspect(out)
+                                         + '\nExpected:\n'
+                                         + inspect(self.expected)));
           next();
         }).connect(self.config);
       });
