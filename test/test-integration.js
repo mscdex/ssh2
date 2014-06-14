@@ -1,6 +1,8 @@
 var Connection = require('../lib/Connection');
 
-var fs = require('fs'),
+var dns = require('dns'),
+    fs = require('fs'),
+    net = require('net'),
     cpspawn = require('child_process').spawn,
     cpexec = require('child_process').exec,
     path = require('path'),
@@ -15,6 +17,7 @@ var t = -1,
     fixturesdir = join(__dirname, 'fixtures');
 
 var SSHD_PORT,
+    LOCALHOST,
     HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64',
     PRIVATE_KEY = fs.readFileSync(join(fixturesdir, 'id_rsa')),
     USER = process.env.LOGNAME || process.env.USER || process.env.USERNAME;
@@ -449,6 +452,120 @@ var tests = [
     },
     what: 'Simple shell'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer({ 'AllowTcpForwarding': 'local' }, function() {
+        var error,
+            ready,
+            out;
+        conn.on('ready', function() {
+          ready = true;
+          net.createServer(function(sock) {
+            this.close();
+            sock.end(self.expected);
+          }).listen(0, 'localhost', function() {
+            conn.forwardOut(''+this.address().address,
+                            '0',
+                            ''+this.address().address,
+                            ''+this.address().port,
+                            function(err, stream) {
+              assert(!err, makeMsg(what, 'Unexpected forwardOut error: ' + err));
+              stream.on('data', function(d) {
+                if (!out)
+                  out = d;
+                else
+                  out += d;
+              }).on('close', function() {
+                conn.end();
+              }).setEncoding('ascii');
+              stream.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert.equal(out,
+                       self.expected,
+                       makeMsg(what, 'Connection output mismatch.\nSaw:\n'
+                                      + inspect(out)
+                                      + '\nExpected:\n'
+                                      + inspect(self.expected)));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: 'hello from node.js and ssh2!',
+    what: 'Local port forwarding'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      this.expected.srcIP = LOCALHOST;
+      startServer({ 'AllowTcpForwarding': 'remote' }, function() {
+        var error,
+            ready,
+            out;
+        conn.on('ready', function() {
+          ready = true;
+          this.forwardIn('localhost', 0, function(err, port) {
+            assert(!err, makeMsg(what, 'Unexpected forwardIn error: ' + err));
+            self.expected.destPort = port;
+            (new net.Socket({ allowHalfOpen: true }))
+              .on('connect', function() {
+                self.expected.srcPort = this.localPort;
+                this.end(self.expected.out);
+              }).connect(port, 'localhost');
+          });
+        }).on('tcp connection', function(info, accept, reject) {
+          out = info;
+          accept().on('close', function() {
+            conn.end();
+          }).on('data', function(d) {
+            if (!out.out)
+              out.out = d.toString('ascii');
+            else
+              out.out += d.toString('ascii');
+          }).end();
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert.deepEqual(out,
+                           self.expected,
+                           makeMsg(what, 'Connection output mismatch.\nSaw:\n'
+                                         + inspect(out)
+                                         + '\nExpected:\n'
+                                         + inspect(self.expected)));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY,
+      //debug: console.log
+    },
+    expected: {
+      destIP: 'localhost',
+      destPort: 0, // filled in during test
+      srcIP: undefined, // filled in during test
+      srcPort: 0, // filled in during test
+      out: 'hello from node.js and ssh2!'
+    },
+    what: 'Remote port forwarding (accepted)'
+  },
 ];
 
 function startServer(opts, listencb, exitcb) {
@@ -578,8 +695,17 @@ cpexec('netstat -nl --inet --inet6', function(err, stdout) {
   for (var port = 1025; port < 65535; ++port) {
     if (portsInUse.indexOf(port)) {
       SSHD_PORT = port;
-      // start tests
-      return next();
+      // get localhost address for reference
+      return dns.resolve('localhost', function(err, ips) {
+        if (err)
+          throw err;
+        else if (ips.length === 0)
+          throw new Error('Could not find localhost IP');
+        LOCALHOST = ips[0];
+
+        // start tests
+        next();
+      });
     }
   }
   assert(false, 'Unable to find a free port for starting sshd');
