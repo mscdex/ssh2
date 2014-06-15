@@ -21,7 +21,7 @@ Install
 Examples
 ========
 
-* Authenticate using keys, execute `uptime` on a server, and disconnect afterwards:
+* Authenticate using keys and execute `uptime` on a server:
 
 ```javascript
 var Connection = require('ssh2');
@@ -31,9 +31,7 @@ conn.on('ready', function() {
   console.log('Connection :: ready');
   conn.exec('uptime', function(err, stream) {
     if (err) throw err;
-    stream.on('end', function() {
-      console.log('Stream :: EOF');
-    }).on('exit', function(code, signal) {
+    stream.on('exit', function(code, signal) {
       console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
     }).on('close', function() {
       console.log('Stream :: close');
@@ -44,12 +42,6 @@ conn.on('ready', function() {
       console.log('STDERR: ' + data);
     });
   });
-}).on('error', function(err) {
-  console.log('Connection :: error :: ' + err);
-}).on('end', function() {
-  console.log('Connection :: end');
-}).on('close', function(had_error) {
-  console.log('Connection :: close');
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -58,13 +50,11 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: connect
 // Connection :: ready
 // STDOUT:  17:41:15 up 22 days, 18:09,  1 user,  load average: 0.00, 0.01, 0.05
 //
+// Stream :: close
 // Stream :: exit :: code: 0, signal: undefined
-// Connection :: end
-// Connection :: close
 ```
 
 * Authenticate using password, send a (raw) HTTP request to port 80 on the server, and disconnect afterwards:
@@ -77,9 +67,7 @@ conn.on('ready', function() {
   console.log('Connection :: ready');
   conn.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
     if (err) throw err;
-    stream.on('end', function() {
-      console.log('TCP :: EOF');
-    }).on('close', function() {
+    stream.on('close', function() {
       console.log('TCP :: CLOSED');
       conn.end();
     }).on('data', function(data) {
@@ -94,12 +82,6 @@ conn.on('ready', function() {
       ''
     ].join('\r\n'));
   });
-}).on('error', function(err) {
-  console.log('Connection :: error :: ' + err);
-}).on('end', function() {
-  console.log('Connection :: end');
-}).on('close', function(had_error) {
-  console.log('Connection :: close');
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -108,7 +90,6 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: connect
 // Connection :: ready
 // TCP :: DATA: HTTP/1.1 200 OK
 // Date: Thu, 15 Nov 2012 13:52:58 GMT
@@ -121,10 +102,7 @@ conn.on('ready', function() {
 // Content-Type: text/html; charset=UTF-8
 //
 //
-// TCP :: EOF
 // TCP :: CLOSED
-// Connection :: end
-// Connection :: close
 ```
 
 * Authenticate using password and forward remote connections on port 8000 to us:
@@ -142,10 +120,7 @@ conn.on('ready', function() {
 }).on('tcp connection', function(info, accept, reject) {
   console.log('TCP :: INCOMING CONNECTION:');
   console.dir(info);
-
-  accept().on('end', function() {
-    console.log('TCP :: EOF');
-  }).on('close', function() {
+  accept().on('close', function() {
     console.log('TCP :: CLOSED');
   }).on('data', function(data) {
     console.log('TCP :: DATA: ' + data);
@@ -158,12 +133,6 @@ conn.on('ready', function() {
     '',
     ''
   ].join('\r\n'));
-}).on('error', function(err) {
-  console.log('Connection :: error :: ' + err);
-}).on('end', function() {
-  console.log('Connection :: end');
-}).on('close', function(had_error) {
-  console.log('Connection :: close');
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -172,7 +141,6 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: connect
 // Connection :: ready
 // Listening for connections on server on port 8000!
 //  (.... then from another terminal on the server: `curl -I http://127.0.0.1:8000`)
@@ -189,7 +157,7 @@ conn.on('ready', function() {
 // TCP :: CLOSED
 ```
 
-* Authenticate using password, start an SFTP session, and get a directory listing:
+* Authenticate using password and get a directory listing via SFTP:
 
 ```javascript
 var Connection = require('ssh2');
@@ -199,20 +167,12 @@ conn.on('ready', function() {
   console.log('Connection :: ready');
   conn.sftp(function(err, sftp) {
     if (err) throw err;
-    sftp.on('end', function() {
-      console.log('SFTP :: SFTP session closed');
-    }).readdir('foo', function(err, list) {
+    sftp.readdir('foo', function(err, list) {
       if (err) throw err;
       console.dir(list);
       conn.end();
     });
   });
-}).on('error', function(err) {
-  console.log('Connection :: error :: ' + err);
-}).on('end', function() {
-  console.log('Connection :: end');
-}).on('close', function(had_error) {
-  console.log('Connection :: close');
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -221,10 +181,9 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: connect
 // Connection :: ready
 // [ { filename: '.',
-//     longname: 'drwxr-xr-x    3 mscdex   mscdex       4096 Nov 18 15:03 .',
+//     longname: 'drwxr-xr-x    3 frylock   frylock       4096 Nov 18 15:03 .',
 //     attrs:
 //      { size: 1048576,
 //        uid: 1000,
@@ -233,7 +192,7 @@ conn.on('ready', function() {
 //        atime: 1353269008,
 //        mtime: 1353269007 } },
 //   { filename: '..',
-//     longname: 'drwxr-xr-x   45 mscdex   mscdex       4096 Nov 18 11:03 ..',
+//     longname: 'drwxr-xr-x   45 frylock   frylock       4096 Nov 18 11:03 ..',
 //     attrs:
 //      { size: 1048576,
 //        uid: 1000,
@@ -242,7 +201,7 @@ conn.on('ready', function() {
 //        atime: 1353254582,
 //        mtime: 1353254581 } },
 //   { filename: 'test.txt',
-//     longname: '-rw-r--r--    1 mscdex   mscdex         12 Nov 18 11:05 test.txt',
+//     longname: '-rw-r--r--    1 frylock   frylock         12 Nov 18 11:05 test.txt',
 //     attrs:
 //      { size: 12,
 //        uid: 1000,
@@ -251,7 +210,7 @@ conn.on('ready', function() {
 //        atime: 1353254750,
 //        mtime: 1353254744 } },
 //   { filename: 'mydir',
-//     longname: 'drwxr-xr-x    2 mscdex   mscdex       4096 Nov 18 15:03 mydir',
+//     longname: 'drwxr-xr-x    2 frylock   frylock       4096 Nov 18 15:03 mydir',
 //     attrs:
 //      { size: 1048576,
 //        uid: 1000,
@@ -259,8 +218,6 @@ conn.on('ready', function() {
 //        mode: 16877,
 //        atime: 1353269007,
 //        mtime: 1353269007 } } ]
-// SFTP :: Handle closed
-// SFTP :: SFTP session closed
 ```
 
 * Connection hopping:
@@ -364,12 +321,6 @@ conn.on('ready', function() {
       console.log(data);
     }).write(xmlhello);
   });
-}).on('error', function(err) {
-  console.log('Connection :: error :: ' + err);
-}).on('end', function() {
-  console.log('Connection :: end');
-}).on('close', function(had_error) {
-  console.log('Connection :: close');
 }).connect({
   host: '1.2.3.4',
   port: 22,
