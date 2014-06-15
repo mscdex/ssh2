@@ -230,14 +230,10 @@ var tests = [
                     function(err, stream) {
             assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
             stream.stderr.resume();
-            stream.on('data', function(d) {
-              if (!out)
-                out = d;
-              else
-                out += d;
-            }).on('end', function() {
+            bufferStream(stream, 'ascii', function(data) {
+              out = data;
               conn.end();
-            }).setEncoding('ascii');
+            });
           });
         }).on('error', function(err) {
           error = err;
@@ -283,28 +279,16 @@ var tests = [
                     function(err, stream) {
             assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
             stream.stderr.resume();
-            stream.on('data', function(d) {
-              if (!out)
-                out = d;
-              else
-                out += d;
-            }).on('end', function() {
+            bufferStream(stream, 'ascii', function(data) {
+              out = (data ? stripDebug(data).split(/\r?\n/g) : data);
               conn.end();
-            }).setEncoding('ascii');
+            });
           });
         }).on('error', function(err) {
           error = err;
         }).on('close', function() {
           assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
           assert(ready, makeMsg(what, 'Expected ready'));
-          // strip out debug information that is displayed before the real
-          // output
-          if (out) {
-            out = out.split(/\r?\n/);
-            out.shift();
-            while (out[0][0] === ' ')
-              out.shift();
-          }
           assert.deepEqual(out,
                            self.expected,
                            makeMsg(what, 'Exec output mismatch.\nSaw:\n'
@@ -356,14 +340,10 @@ var tests = [
             this.exec('echo -n $SSH_AUTH_SOCK', function(err, stream) {
               assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
               stream.stderr.resume();
-              stream.on('data', function(d) {
-                if (!out)
-                  out = d;
-                else
-                  out += d;
-              }).on('end', function() {
+              bufferStream(stream, 'ascii', function(data) {
+                out = data;
                 conn.end();
-              }).setEncoding('ascii');
+              });
             });
           }).on('error', function(err) {
             error = err;
@@ -472,14 +452,10 @@ var tests = [
                             ''+this.address().port,
                             function(err, stream) {
               assert(!err, makeMsg(what, 'Unexpected forwardOut error: ' + err));
-              stream.on('data', function(d) {
-                if (!out)
-                  out = d;
-                else
-                  out += d;
-              }).on('close', function() {
+              bufferStream(stream, 'ascii', function(data) {
+                out = data;
                 conn.end();
-              }).setEncoding('ascii');
+              });
               stream.end();
             });
           });
@@ -567,6 +543,40 @@ var tests = [
     what: 'Remote port forwarding (accepted)'
   },
 ];
+
+function bufferStream(stream, encoding, cb) {
+  var buf;
+  if (typeof encoding === 'function') {
+    cb = encoding;
+    encoding = undefined;
+  }
+  if (!encoding) {
+    var nb = 0;
+    stream.on('data', function(d) {
+      if (nb === 0)
+        buf = [ d ];
+      else
+        buf.push(d);
+    }).on('close', function() {
+      cb(Buffer.concat(buf, nb));
+    });
+  } else {
+    stream.on('data', function(d) {
+      if (!buf)
+        buf = d;
+      else
+        buf += d;
+    }).on('close', function() {
+      cb(buf);
+    }).setEncoding(encoding);
+  }
+}
+
+function stripDebug(str) {
+  if (typeof str !== 'string')
+    return str;
+  return str.replace(/^(?:Environment:\r?\n(?:  [^=]+=[^\r\n]+\r?\n)+)?/, '');
+}
 
 function startServer(opts, listencb, exitcb) {
   var sshdOpts = {},
