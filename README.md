@@ -427,9 +427,9 @@ Connection methods
 
 * **connect**(< _object_ >config) - _(void)_ - Attempts a connection to a server using the information given in `config`:
 
-    * **host** - < _string_ > - Hostname or IP address of the server. **Default:** 'localhost'
+    * **host** - < _string_ > - Hostname or IP address of the server. **Default:** `'localhost'`
 
-    * **port** - < _integer_ > - Port number of the server. **Default:** 22
+    * **port** - < _integer_ > - Port number of the server. **Default:** `22`
 
     * **hostHash** - < _string_ > - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
 
@@ -447,15 +447,15 @@ Connection methods
 
     * **publicKey** - < _mixed_ > - Optional Buffer or string that contains a public key for key-based user authentication (OpenSSH format). If `publicKey` is not set, it will be generated from the `privateKey`. **Default:** (none)
 
-    * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** false
+    * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** `false`
 
-    * **pingInterval** - < _integer_ > - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** (60000)
+    * **pingInterval** - < _integer_ > - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** `60000`
 
-    * **readyTimeout** - < _integer_ > - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** (10000)
+    * **readyTimeout** - < _integer_ > - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `10000`
 
     * **sock** - < _ReadableStream_ > - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
-    * **agentForward** - < _boolean_ > - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** false
+    * **agentForward** - < _boolean_ > - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** `false`
 
 **Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true)
 
@@ -467,9 +467,9 @@ Connection methods
 
     * **x11** - < _mixed_ > - Set to true to use defaults below, a number to specify a specific screen number, or an object with the following valid properties:
 
-        * **single** - < _boolean_ > - Allow just a single connection? **Default:** false
+        * **single** - < _boolean_ > - Allow just a single connection? **Default:** `false`
 
-        * **screen** - < _number_ > - Screen number to use **Default:** 0
+        * **screen** - < _number_ > - Screen number to use **Default:** `0`
 
     `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
 
@@ -531,21 +531,21 @@ SFTP methods
 
 * **end**() - _(void)_ - Ends the SFTP session.
 
-* **fastGet**(< _string_ >remotePath, < _string_ >localPath[, < _object_ >options], < _function_ >callback) - _(void)_ - Downloads a file at `remotePath` to `localPath` using parallel reads for faster throughput. `options` has the following defaults:
+* **fastGet**(< _string_ >remotePath, < _string_ >localPath[, < _object_ >options], < _function_ >callback) - _(void)_ - Downloads a file at `remotePath` to `localPath` using parallel reads for faster throughput. `options` can have the following properties:
 
-    * concurrency - _integer_ - Number of concurrent reads (default: 25)
+    * concurrency - _integer_ - Number of concurrent reads **Default:** `25`
 
-    * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
+    * chunkSize - _integer_ - Size of each read in bytes **Default:** `32768`
 
     * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
 
     `callback` has 1 parameter: < _Error_ >err.
 
-* **fastPut**(< _string_ >localPath, < _string_ >remotePath[, < _object_ >options], < _function_ >callback) - _(void)_ - Uploads a file from `localPath` to `remotePath` using parallel reads for faster throughput. `options` has the following defaults:
+* **fastPut**(< _string_ >localPath, < _string_ >remotePath[, < _object_ >options], < _function_ >callback) - _(void)_ - Uploads a file from `localPath` to `remotePath` using parallel reads for faster throughput. `options` can have the following properties:
 
-    * concurrency - _integer_ - Number of concurrent reads (default: 25)
+    * concurrency - _integer_ - Number of concurrent reads **Default:** `25`
 
-    * chunkSize - _integer_ - Size of each read in bytes (default: 32768)
+    * chunkSize - _integer_ - Size of each read in bytes **Default:** `32768`
 
     * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
 
@@ -680,15 +680,15 @@ An object with the same attributes as an ATTRS object with the addition of the f
 Pseudo-TTY settings
 -------------------
 
-* **rows** - < _integer_ > - Number of rows (defaults to 24)
+* **rows** - < _integer_ > - Number of rows **Default:** `24`
 
-* **cols** - < _integer_ > - Number of columns (defaults to 80)
+* **cols** - < _integer_ > - Number of columns **Default:** `80`
 
-* **height** - < _integer_ > - Height in pixels (defaults to 480)
+* **height** - < _integer_ > - Height in pixels **Default:** `480`
 
-* **width** - < _integer_ > - Width in pixels (defaults to 640)
+* **width** - < _integer_ > - Width in pixels **Default:** `640`
 
-* **term** - < _string_ > - The value to use for $TERM (defaults to 'vt100')
+* **term** - < _string_ > - The value to use for $TERM **Default:** `'vt100'`
 
 `rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
 
