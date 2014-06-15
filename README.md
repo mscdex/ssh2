@@ -503,7 +503,7 @@ ChannelStream
 
 This is a normal **streams2** Duplex Stream, with the following changes:
 
-* A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is true, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `false`.
+* A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
 * For shell():
 
@@ -514,6 +514,8 @@ This is a normal **streams2** Duplex Stream, with the following changes:
     * An 'exit' event will be emitted when the process finishes. If the process finished normally, the process's return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
 * For shell() and exec():
+
+    * The readable side represents stdout and the writable side represents stdin.
 
     * A `stderr` property that represents the stream of output from stderr.
 
