@@ -409,6 +409,56 @@ var tests = [
           conn = new Connection();
       startServer(function() {
         var error,
+            ready,
+            out = {
+              stdout: undefined,
+              stderr: undefined
+            };
+        conn.on('ready', function() {
+          ready = true;
+          this.exec('echo -n "hello from stderr" 3>&1 1>&2 2>&3 3>&-',
+                    function(err, stream) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            bufferStream(stream, 'ascii', function(data) {
+              out.stdout = data;
+            });
+            bufferStream(stream.stderr, 'ascii', function(data) {
+              out.stderr = stripDebug(data);
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert.deepEqual(out,
+                           self.expected,
+                           makeMsg(what, 'Exec output mismatch.\nSaw:\n'
+                                         + inspect(out)
+                                         + '\nExpected:\n'
+                                         + inspect(self.expected)));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: {
+      stdout: undefined,
+      stderr: 'hello from stderr'
+    },
+    what: 'Exec with stderr output'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
             ready;
         conn.on('ready', function() {
           ready = true;
