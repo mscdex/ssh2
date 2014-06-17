@@ -38,7 +38,7 @@ var SSHD_PORT,
       'Subsystem': 'sftp internal-sftp',
       'TCPKeepAlive': 'yes',
       'UseDNS': 'no',
-      //'UsePrivilegeSeparation': 'no'
+      'UsePrivilegeSeparation': 'no'
     };
 
 var tests = [
