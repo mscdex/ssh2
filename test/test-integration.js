@@ -607,8 +607,9 @@ function bufferStream(stream, encoding, cb) {
         buf = [ d ];
       else
         buf.push(d);
-    }).on('close', function() {
-      cb(Buffer.concat(buf, nb));
+      nb += d.length;
+    }).on((stream.writable ? 'close' : 'end'), function() {
+      cb(nb ? Buffer.concat(buf, nb) : buf);
     });
   } else {
     stream.on('data', function(d) {
@@ -616,7 +617,7 @@ function bufferStream(stream, encoding, cb) {
         buf = d;
       else
         buf += d;
-    }).on('close', function() {
+    }).on((stream.writable ? 'close' : 'end'), function() {
       cb(buf);
     }).setEncoding(encoding);
   }
