@@ -739,36 +739,48 @@ process.once('exit', function() {
 
 
 
-// find an unused port for sshd to listen on ...
-cpexec('netstat -nl --inet --inet6', function(err, stdout) {
-  assert(!err, 'Unable to find a free port for starting sshd');
-  var portsInUse = stdout.trim()
-                         .split('\n')
-                         .slice(2) // skip two header lines
-                         .map(function(line) {
-                           var addr = line.split(/[ \t]+/g)[3];
-                           return parseInt(
-                            addr.substr(addr.lastIndexOf(':') + 1),
-                            10
-                           );
-                         });
-  for (var port = 1025; port < 65535; ++port) {
-    if (portsInUse.indexOf(port)) {
-      SSHD_PORT = port;
-      // get localhost address for reference
-      return dns.resolve('localhost', function(err, ips) {
-        if (err)
-          throw err;
-        else if (ips.length === 0)
-          throw new Error('Could not find localhost IP');
-        LOCALHOST = ips[0];
+function findFreePort() {
+  // find an unused port for sshd to listen on ...
+  cpexec('netstat -nl --inet --inet6', function(err, stdout) {
+    assert(!err, 'Unable to find a free port for starting sshd');
+    var portsInUse = stdout.trim()
+                           .split('\n')
+                           .slice(2) // skip two header lines
+                           .map(function(line) {
+                             var addr = line.split(/[ \t]+/g)[3];
+                             return parseInt(
+                              addr.substr(addr.lastIndexOf(':') + 1),
+                              10
+                             );
+                           });
+    for (var port = 9000; port < 65535; ++port) {
+      if (portsInUse.indexOf(port) === -1) {
+        SSHD_PORT = port;
+        // get localhost address for reference
+        return dns.resolve('localhost', function(err, ips) {
+          if (err)
+            throw err;
+          else if (ips.length === 0)
+            throw new Error('Could not find localhost IP');
+          LOCALHOST = ips[0];
 
-        // start tests
-        next();
-      });
+          // start tests
+          next();
+        });
+      }
     }
+    assert(false, 'Unable to find a free port for starting sshd');
+  });
+}
+
+// check for test prerequisites
+cpexec('which sshd', function(err) {
+  if (err) {
+    return console.error('['
+                         + path.basename(__filename, '.js')
+                         + ']: OpenSSH server is required for integration tests.');
   }
-  assert(false, 'Unable to find a free port for starting sshd');
+  findFreePort();
 });
 
 // check for forked process
