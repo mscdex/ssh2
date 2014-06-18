@@ -3,7 +3,9 @@ Description
 
 An SSH2 client module written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (6.1 currently).
+Development/testing is done against OpenSSH (6.6 currently).
+
+Upgrading from v0.2.x? See the [list of changes](https://github.com/mscdex/ssh2/wiki/Changes-from-0.2.x-to-0.3.x) (including backwards incompatibilities).
 
 
 Requirements
