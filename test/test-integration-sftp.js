@@ -884,6 +884,687 @@ var tests = [
     ],
     what: 'readdir(path)'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.unlink(join(tempdir, 'testfile-copy'), function(err) {
+              assert(!err, makeMsg(what, 'Unexpected unlink error: '
+                                         + (err && err.message)));
+              sftp.readdir(tempdir, function(err, list) {
+                assert(!err,
+                       makeMsg(what,
+                               'Unexpected readdir error: '
+                               + (err && err.message)));
+                assert(list !== false, makeMsg(what, 'Expected list'));
+                list = list.map(function(v) { return v.filename; });
+                assert(arraysEqual(list, self.expected),
+                       makeMsg(what,
+                               'Dir list mismatch.\nSaw:\n'
+                               + inspect(list)
+                               + '\nExpected:\n'
+                               + inspect(self.expected)));
+                success = true;
+                conn.end();
+              });
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected unlink'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: [
+      '.gitignore',
+      'createWriteStream',
+      'testfile',
+      'write'
+    ],
+    what: 'unlink'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.rename(join(tempdir, 'createWriteStream'),
+                        join(tempdir, 'writeStream'),
+                        function(err) {
+              assert(!err, makeMsg(what, 'Unexpected rename error: '
+                                         + (err && err.message)));
+              sftp.readdir(tempdir, function(err, list) {
+                assert(!err,
+                       makeMsg(what,
+                               'Unexpected readdir error: '
+                               + (err && err.message)));
+                assert(list !== false, makeMsg(what, 'Expected list'));
+                list = list.map(function(v) { return v.filename; });
+                assert(arraysEqual(list, self.expected),
+                       makeMsg(what,
+                               'Dir list mismatch.\nSaw:\n'
+                               + inspect(list)
+                               + '\nExpected:\n'
+                               + inspect(self.expected)));
+                success = true;
+                conn.end();
+              });
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected rename'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: [
+      '.gitignore',
+      'writeStream',
+      'testfile',
+      'write'
+    ],
+    what: 'rename'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.mkdir(join(tempdir, 'mydir'), function(err) {
+              assert(!err, makeMsg(what, 'Unexpected mkdir error: '
+                                         + (err && err.message)));
+              sftp.readdir(tempdir, function(err, list) {
+                assert(!err,
+                       makeMsg(what,
+                               'Unexpected readdir error: '
+                               + (err && err.message)));
+                assert(list !== false, makeMsg(what, 'Expected list'));
+                list = list.map(function(v) { return v.filename; });
+                assert(arraysEqual(list, self.expected),
+                       makeMsg(what,
+                               'Dir list mismatch.\nSaw:\n'
+                               + inspect(list)
+                               + '\nExpected:\n'
+                               + inspect(self.expected)));
+                success = true;
+                conn.end();
+              });
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected mkdir'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: [
+      '.gitignore',
+      'writeStream',
+      'testfile',
+      'write',
+      'mydir'
+    ],
+    what: 'mkdir'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.rmdir(join(tempdir, 'mydir'), function(err) {
+              assert(!err, makeMsg(what, 'Unexpected rmdir error: '
+                                         + (err && err.message)));
+              sftp.readdir(tempdir, function(err, list) {
+                assert(!err,
+                       makeMsg(what,
+                               'Unexpected readdir error: '
+                               + (err && err.message)));
+                assert(list !== false, makeMsg(what, 'Expected list'));
+                list = list.map(function(v) { return v.filename; });
+                assert(arraysEqual(list, self.expected),
+                       makeMsg(what,
+                               'Dir list mismatch.\nSaw:\n'
+                               + inspect(list)
+                               + '\nExpected:\n'
+                               + inspect(self.expected)));
+                success = true;
+                conn.end();
+              });
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected rmdir'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    expected: [
+      '.gitignore',
+      'writeStream',
+      'testfile',
+      'write'
+    ],
+    what: 'rmdir'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            var time = parseInt(Date.now() / 1000, 10);
+            sftp.utimes(join(tempdir, 'write'), time, time, function(err) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected utimes error: '
+                             + (err && err.message)));
+              var real = fs.statSync(join(tempdir, 'write'));
+              assert(time === parseInt(real.mtime.getTime() / 1000, 10),
+                     makeMsg(what, 'File mtime mismatch'));
+              assert(time === parseInt(real.atime.getTime() / 1000, 10),
+                     makeMsg(what, 'File atime mismatch'));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected utimes'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'utimes'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.chown(join(tempdir, 'write'),
+                       process.getuid(),
+                       process.getgid(),
+                       function(err) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected chown error: '
+                             + (err && err.message)));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected chown'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'chown'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.chmod(join(tempdir, 'write'), '0777', function(err) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected chmod error: '
+                             + (err && err.message)));
+              var real = fs.statSync(join(tempdir, 'write'));
+              assert(real.mode & 0x1FF === 511,
+                     makeMsg(what, 'File mode mismatch'));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected chmod'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'chmod'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.symlink(join(tempdir, 'write'),
+                         join(tempdir, 'write-link'),
+                         function(err) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected symlink error: '
+                             + (err && err.message)));
+              var real = fs.lstatSync(join(tempdir, 'write-link'));
+              assert(real.isSymbolicLink(), makeMsg(what, 'File type mismatch'));
+              var realTarget = fs.readlinkSync(join(tempdir, 'write-link'));
+              assert.equal(realTarget,
+                           join(tempdir, 'write'),
+                           makeMsg(what,
+                                   'Symlink target mismatch.Saw:\n'
+                                   + realTarget
+                                   + '\nExpected:\n'
+                                   + join(tempdir, 'write')));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected symlink'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'symlink'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.readlink(join(tempdir, 'write-link'), function(err, target) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected readlink error: '
+                             + (err && err.message)));
+              assert.equal(target,
+                           join(tempdir, 'write'),
+                           makeMsg(what,
+                                   'Symlink target mismatch.Saw:\n'
+                                   + target
+                                   + '\nExpected:\n'
+                                   + join(tempdir, 'write')));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected readlink'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'readlink'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.stat(join(tempdir, 'write-link'), function(err, stats) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected stat error: '
+                             + (err && err.message)));
+              var real = fs.statSync(join(tempdir, 'write-link'));
+              assert(stats.isFile()
+                     && !stats.isDirectory()
+                     && !stats.isBlockDevice()
+                     && !stats.isCharacterDevice()
+                     && !stats.isSymbolicLink()
+                     && !stats.isFIFO()
+                     && !stats.isSocket(),
+                     makeMsg(what, 'Unexpected file type'));
+              assert(stats.size === real.size,
+                     makeMsg(what, 'File size mismatch'));
+              assert(stats.uid === real.uid,
+                     makeMsg(what, 'File uid mismatch'));
+              assert(stats.gid === real.gid,
+                     makeMsg(what, 'File gid mismatch'));
+              assert(stats.mode === real.mode,
+                     makeMsg(what, 'File mode mismatch'));
+              assert(stats.atime === parseInt(real.atime.getTime() / 1000, 10),
+                     makeMsg(what, 'File atime mismatch'));
+              assert(stats.mtime === parseInt(real.mtime.getTime() / 1000, 10),
+                     makeMsg(what, 'File mtime mismatch'));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected stat'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'stat'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.lstat(join(tempdir, 'write-link'), function(err, stats) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected lstat error: '
+                             + (err && err.message)));
+              var real = fs.lstatSync(join(tempdir, 'write-link'));
+              assert(!stats.isFile()
+                     && !stats.isDirectory()
+                     && !stats.isBlockDevice()
+                     && !stats.isCharacterDevice()
+                     && stats.isSymbolicLink()
+                     && !stats.isFIFO()
+                     && !stats.isSocket(),
+                     makeMsg(what, 'Unexpected file type'));
+              assert(stats.size === real.size,
+                     makeMsg(what, 'File size mismatch'));
+              assert(stats.uid === real.uid,
+                     makeMsg(what, 'File uid mismatch'));
+              assert(stats.gid === real.gid,
+                     makeMsg(what, 'File gid mismatch'));
+              assert(stats.mode === real.mode,
+                     makeMsg(what, 'File mode mismatch'));
+              assert(stats.atime === parseInt(real.atime.getTime() / 1000, 10),
+                     makeMsg(what, 'File atime mismatch'));
+              assert(stats.mtime === parseInt(real.mtime.getTime() / 1000, 10),
+                     makeMsg(what, 'File mtime mismatch'));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected lstat'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'lstat'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            var time = parseInt(Date.now() / 1000, 10);
+            sftp.setstat(join(tempdir, 'write'),
+                         { atime: time, mtime: time },
+                         function(err) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected setstat error: '
+                             + (err && err.message)));
+              var real = fs.statSync(join(tempdir, 'write'));
+              assert(time === parseInt(real.atime.getTime() / 1000, 10),
+                     makeMsg(what, 'File atime mismatch'));
+              assert(time === parseInt(real.mtime.getTime() / 1000, 10),
+                     makeMsg(what, 'File mtime mismatch'));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected setstat'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'setstat'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready,
+            success;
+        conn.on('ready', function() {
+          ready = true;
+          this.sftp(function(err, sftp) {
+            assert(!err, makeMsg(what, 'Unexpected sftp start error: '
+                                       + (err && err.message)));
+            sftp.realpath(tempdir + '/..', function(err, abspath) {
+              assert(!err,
+                     makeMsg(what,
+                             'Unexpected realpath error: '
+                             + (err && err.message)));
+              assert(abspath === join(tempdir, '..'),
+                     makeMsg(what, 'Real path mismatch.Saw:\n'
+                                   + abspath
+                                   + '\nExpected:\n'
+                                   + join(tempdir, '..')));
+              success = true;
+              conn.end();
+            });
+          });
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: '
+                                       + (error && error.message)));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          assert(success, makeMsg(what, 'Expected realpath'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY
+    },
+    what: 'realpath'
+  },
 ];
 
 function arraysEqual(arr1, arr2) {
