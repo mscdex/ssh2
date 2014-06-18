@@ -994,8 +994,16 @@ function startServer(opts, listencb, exitcb) {
 function cleanupTemp() {
   // clean up any temporary files left over
   fs.readdirSync(tempdir).forEach(function(file) {
-    if (file !== '.gitignore')
-      fs.unlinkSync(join(tempdir, file));
+    if (file !== '.gitignore') {
+      try {
+        var filepath = join(tempdir, file),
+            stats = fs.lstatSync(filepath);
+        if (stats.isDirectory())
+          fs.rmdirSync(filepath);
+        else
+          fs.unlinkSync(filepath);
+      } catch (ex) {}
+    }
   });
 }
 
