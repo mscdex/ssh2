@@ -808,7 +808,7 @@ var tests = [
           assert(!error, makeMsg(what, 'Unexpected client error: '
                                        + (error && error.message)));
           assert(ready, makeMsg(what, 'Expected ready'));
-          assert(success, makeMsg(what, 'Expected fchmod'));
+          assert(success, makeMsg(what, 'Expected opendir/readdir'));
           next();
         }).connect(self.config);
       });
@@ -863,7 +863,7 @@ var tests = [
           assert(!error, makeMsg(what, 'Unexpected client error: '
                                        + (error && error.message)));
           assert(ready, makeMsg(what, 'Expected ready'));
-          assert(success, makeMsg(what, 'Expected fchmod'));
+          assert(success, makeMsg(what, 'Expected readdir'));
           next();
         }).connect(self.config);
       });
