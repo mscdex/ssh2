@@ -558,6 +558,8 @@ var tests = [
                                'Unexpected fsetstat error: '
                                + (err && err.message)));
                 var real = fs.statSync(join(tempdir, 'write'));
+                assert(time === parseInt(real.atime.getTime() / 1000, 10),
+                       makeMsg(what, 'File atime mismatch'));
                 assert(time === parseInt(real.mtime.getTime() / 1000, 10),
                        makeMsg(what, 'File mtime mismatch'));
                 sftp.close(handle, function(err) {
