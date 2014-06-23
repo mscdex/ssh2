@@ -233,25 +233,7 @@ conn.on('ready', function() {
 
 // example output:
 // Connection :: ready
-// [ { filename: '.',
-//     longname: 'drwxr-xr-x    3 frylock   frylock       4096 Nov 18 15:03 .',
-//     attrs:
-//      { size: 1048576,
-//        uid: 1000,
-//        gid: 1000,
-//        mode: 16877,
-//        atime: 1353269008,
-//        mtime: 1353269007 } },
-//   { filename: '..',
-//     longname: 'drwxr-xr-x   45 frylock   frylock       4096 Nov 18 11:03 ..',
-//     attrs:
-//      { size: 1048576,
-//        uid: 1000,
-//        gid: 1000,
-//        mode: 16877,
-//        atime: 1353254582,
-//        mtime: 1353254581 } },
-//   { filename: 'test.txt',
+// [ { filename: 'test.txt',
 //     longname: '-rw-r--r--    1 frylock   frylock         12 Nov 18 11:05 test.txt',
 //     attrs:
 //      { size: 12,
