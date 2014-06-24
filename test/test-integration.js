@@ -626,7 +626,7 @@ function bufferStream(stream, encoding, cb) {
 function stripDebug(str) {
   if (typeof str !== 'string')
     return str;
-  return str.replace(/^(?:Environment:\r?\n(?:  [^=]+=[^\r\n]+\r?\n)+)?/, '');
+  return str.replace(/^(?:(?:[\s\S]+)?Environment:\r?\n(?:  [^=]+=[^\r\n]+\r?\n)+)?/, '');
 }
 
 function startServer(opts, listencb, exitcb) {
