@@ -19,7 +19,8 @@ var t = -1,
 var SSHD_PORT,
     LOCALHOST,
     HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64',
-    PRIVATE_KEY = fs.readFileSync(join(fixturesdir, 'id_rsa')),
+    PRIVATE_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa')),
+    PRIVATE_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
     USER = process.env.LOGNAME || process.env.USER || process.env.USERNAME;
     DEFAULT_SSHD_OPTS = {
       'AddressFamily': 'any',
@@ -64,9 +65,35 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
-    what: 'Authenticate with a key'
+    what: 'Authenticate with a RSA key'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+      startServer(function() {
+        var error,
+            ready;
+        conn.on('ready', function() {
+          ready = true;
+          this.end();
+        }).on('error', function(err) {
+          error = err;
+        }).on('close', function() {
+          assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+          assert(ready, makeMsg(what, 'Expected ready'));
+          next();
+        }).connect(self.config);
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      privateKey: PRIVATE_KEY_RSA
+    },
+    what: 'Authenticate with a DSA key'
   },
   { run: function() {
       // use ssh-agent with a command (this test) to make agent cleanup easier
@@ -107,7 +134,48 @@ var tests = [
       username: USER,
       agent: process.env.SSH_AUTH_SOCK
     },
-    what: 'Authenticate with an agent'
+    what: 'Authenticate with an agent (RSA)'
+  },
+  { run: function() {
+      // use ssh-agent with a command (this test) to make agent cleanup easier
+      if (!process.env.SSH_AUTH_SOCK) {
+        var proc = cpspawn('ssh-agent',
+                           [process.argv[0], process.argv[1], t],
+                           { stdio: 'inherit' });
+        proc.on('exit', function(code, signal) {
+          if (code === 0 && !signal)
+            next();
+        });
+        return;
+      }
+
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+
+      // add key first
+      cpexec('ssh-add ' + join(fixturesdir, 'id_dsa'), function(err, stdout, stderr) {
+        startServer(function() {
+          var error,
+              ready;
+          conn.on('ready', function() {
+            ready = true;
+            this.end();
+          }).on('error', function(err) {
+            error = err;
+          }).on('close', function() {
+            assert(!error, makeMsg(what, 'Unexpected client error: ' + error));
+            assert(ready, makeMsg(what, 'Expected ready'));
+          }).connect(self.config);
+        });
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      agent: process.env.SSH_AUTH_SOCK
+    },
+    what: 'Authenticate with an agent (DSA)'
   },
   { run: function() {
       var self = this,
@@ -141,7 +209,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY,
+      privateKey: PRIVATE_KEY_RSA,
       hostHash: 'md5'
     },
     what: 'Verify host fingerprint'
@@ -182,7 +250,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     what: 'Banner message'
   },
@@ -211,7 +279,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     what: 'Simple exec'
   },
@@ -252,7 +320,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     expected: 'Hello from node.js!!!',
     what: 'Exec with environment set'
@@ -302,7 +370,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     expected: [
       'terminal',
@@ -399,7 +467,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     what: 'Exec with X11 forwarding'
   },
@@ -445,7 +513,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     expected: {
       stdout: undefined,
@@ -478,7 +546,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     what: 'Simple shell'
   },
@@ -527,7 +595,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY
+      privateKey: PRIVATE_KEY_RSA
     },
     expected: 'hello from node.js and ssh2!',
     what: 'Local port forwarding'
@@ -580,7 +648,7 @@ var tests = [
     config: {
       host: 'localhost',
       username: USER,
-      privateKey: PRIVATE_KEY,
+      privateKey: PRIVATE_KEY_RSA,
       //debug: console.log
     },
     expected: {
@@ -795,6 +863,7 @@ if (process.argv.length > 2) {
 
 // ensure permissions are less permissive to appease sshd
 [ 'id_rsa', 'id_rsa.pub',
+  'id_dsa', 'id_dsa.pub',
   'ssh_host_rsa_key', 'ssh_host_rsa_key.pub',
   'authorized_keys'
 ].forEach(function(f) {
