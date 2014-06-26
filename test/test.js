@@ -10,7 +10,7 @@ var files = require('fs').readdirSync(__dirname).filter(function(f) {
 
 function next() {
   if (++f < files.length) {
-    spawn('node', [ files[f] ], { stdio: 'inherit' })
+    spawn(process.argv[0], [ files[f] ], { stdio: 'inherit' })
       .on('exit', function(code) {
         if (code === 0)
           process.nextTick(next);
