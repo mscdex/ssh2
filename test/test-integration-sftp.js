@@ -86,6 +86,10 @@ var tests = [
           this.sftp(function(err, sftp) {
             assert(!err, makeMsg(what, 'Unexpected sftp start error: '
                                         + (err && err.message)));
+            if (!fs.existsSync(join(fixturesdir, 'testfile'))) {
+              fs.writeFileSync(join(fixturesdir, 'testfile'),
+                               crypto.pseudoRandomBytes(6 * 1024 * 1024));
+            }
             sftp.fastPut(join(fixturesdir, 'testfile'),
                          join(tempdir, 'testfile'),
                          function(err) {
