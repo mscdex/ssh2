@@ -1693,8 +1693,13 @@ function cleanupTemp() {
 }
 
 function next() {
-  if (t === tests.length - 1)
+  if (t === tests.length - 1) {
+    cleanup(function() {
+      if (fs.existsSync(join(fixturesdir, 'testfile')))
+        fs.unlinkSync(join(fixturesdir, 'testfile'));
+    });
     return;
+  }
   //cleanupTemp();
   var v = tests[++t];
   v.run.call(v);
@@ -1746,11 +1751,9 @@ process.once('uncaughtException', function(err) {
   });
 });
 process.once('exit', function() {
-  cleanup(function() {
-    assert(t === tests.length - 1,
-           makeMsg('_exit',
-                   'Only finished ' + (t + 1) + '/' + tests.length + ' tests'));
-  });
+  assert(t === tests.length - 1,
+         makeMsg('_exit',
+                 'Only finished ' + (t + 1) + '/' + tests.length + ' tests'));
 });
 
 
