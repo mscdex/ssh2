@@ -224,6 +224,54 @@ var tests = [
     what: 'Authenticate with empty (valid) agent and keyboard-interactive options (bad password)'
   },
   { run: function() {
+      // use ssh-agent with a command (this test) to make agent cleanup easier
+      if (!process.env.SSH_AUTH_SOCK) {
+        var proc = cpspawn('ssh-agent',
+                           [process.argv[0], process.argv[1], t],
+                           { stdio: 'inherit' });
+        proc.on('exit', function(code, signal) {
+          if (code === 0 && !signal)
+            next();
+        });
+        return;
+      }
+
+      var self = this,
+          what = this.what,
+          conn = new Connection();
+
+      // ssh-agent has a bad key
+      cpexec('ssh-add ' + join(fixturesdir, 'id_rsa.bad'), function(err, stdout, stderr) {
+        startServer({
+          'ChallengeResponseAuthentication': 'yes',
+          'UsePAM': 'yes'
+        }, function() {
+          var error,
+              ready;
+          conn.on('ready', function() {
+            ready = true;
+            this.end();
+          }).on('keyboard-interactive', function (name, instructions, lang, messages, callback) {
+            callback(['a']); // wrong password
+          }).on('error', function(err) {
+            error = err;
+          }).on('close', function() {
+            assert(error && /Authentication failure. Available authentication methods/.test(error.message),
+                   makeMsg(what, 'Expected authentication failure error'));
+            assert(!ready, makeMsg(what, 'Unexpected ready'));
+          }).connect(self.config);
+        });
+      });
+    },
+    config: {
+      host: 'localhost',
+      username: USER,
+      agent: process.env.SSH_AUTH_SOCK,
+      tryKeyboard: true
+    },
+    what: 'Authenticate with agent (1 bad key) and keyboard-interactive options (bad password)'
+  },
+  { run: function() {
       var self = this,
           what = this.what,
           conn = new Connection(),
