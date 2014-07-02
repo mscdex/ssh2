@@ -1693,13 +1693,8 @@ function cleanupTemp() {
 }
 
 function next() {
-  if (t === tests.length - 1) {
-    cleanup(function() {
-      if (fs.existsSync(join(fixturesdir, 'testfile')))
-        fs.unlinkSync(join(fixturesdir, 'testfile'));
-    });
-    return;
-  }
+  if (t === tests.length - 1)
+    return cleanup();
   //cleanupTemp();
   var v = tests[++t];
   v.run.call(v);
@@ -1723,12 +1718,14 @@ function waitForSshd(cb) {
         waitForSshd(cb);
       }, 50);
     }
-    cb();
+    cb && cb();
   });
 }
 
 function cleanup(cb) {
   cleanupTemp();
+  if (fs.existsSync(join(fixturesdir, 'testfile')))
+    fs.unlinkSync(join(fixturesdir, 'testfile'));
   cpexec('lsof -Fp -a -u '
          + USER
          + ' -c sshd -i tcp@localhost:'
@@ -1741,7 +1738,7 @@ function cleanup(cb) {
         } catch (ex) {}
       }
     }
-    cb();
+    cb && cb();
   });
 }
 
