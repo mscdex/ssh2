@@ -67,7 +67,7 @@ var Connection = require('ssh2');
 var conn = new Connection();
 conn.on('ready', function() {
   console.log('Connection :: ready');
-  conn.shell('uptime', function(err, stream) {
+  conn.shell(function(err, stream) {
     if (err) throw err;
     stream.on('close', function() {
       console.log('Stream :: close');
