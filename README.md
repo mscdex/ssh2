@@ -414,8 +414,9 @@ conn.on('ready', function() {
 API
 ===
 
-`require('ssh2').Client` returns a **_Client_** constructor
-`require('ssh2').Server` returns a **_Server_** constructor
+`require('ssh2').Client` returns a **_Client_** constructor.
+
+`require('ssh2').Server` returns a **_Server_** constructor.
 
 Client events
 -------------
@@ -695,7 +696,7 @@ Channel
 
 This is a normal **streams2** Duplex Stream, with the following changes:
 
-* A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
+* A boolean property `allowHalfOpen` exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
 * For shell():
 
