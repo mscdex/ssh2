@@ -1,11 +1,13 @@
 Description
 ===========
 
-An SSH2 client module written in pure JavaScript for [node.js](http://nodejs.org/).
+SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
 Development/testing is done against OpenSSH (6.6 currently).
 
-Upgrading from v0.2.x? See the [list of changes](https://github.com/mscdex/ssh2/wiki/Changes-from-0.2.x-to-0.3.x) (including backwards incompatibilities).
+[Changes from v0.2.x-v0.3.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.2.x-to-0.3.x) (including backwards incompatibilities).
+
+[Changes from v0.3.x-v0.4.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.3.x-to-0.4.x) (including backwards incompatibilities).
 
 
 Requirements
@@ -15,13 +17,13 @@ Requirements
 
 
 Install
-============
+=======
 
     npm install ssh2
 
 
-Examples
-========
+Client Examples
+===============
 
 * Authenticate using keys and execute `uptime` on a server:
 
@@ -347,6 +349,9 @@ var ssh_config = {
 };
 
 socks.createServer(function(info, accept, deny) {
+  // NOTE: you could just use one ssh2 client connection for all forwards, but
+  // you could run into server-imposed limits if you have too many forwards open
+  // at any given time
   var conn = new Connection();
   conn.on('ready', function() {
     conn.forwardOut(info.srcAddr,
@@ -409,16 +414,17 @@ conn.on('ready', function() {
 API
 ===
 
-`require('ssh2')` returns a **_Connection_** constructor
+`require('ssh2').Client` returns a **_Client_** constructor
+`require('ssh2').Server` returns a **_Server_** constructor
 
-Connection events
------------------
+Client events
+-------------
 
 * **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
 
 * **ready**() - Authentication was successful.
 
-* **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `ChannelStream` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+* **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
 
     * **srcIP** - _string_ - The originating IP of the connection.
 
@@ -428,7 +434,7 @@ Connection events
 
     * **dstPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
 
-* **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `ChannelStream` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+* **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
 
     * **srcIP** - _string_ - The originating IP of the connection.
 
@@ -438,67 +444,67 @@ Connection events
 
 * **change password**(< _string_ >message, < _string_ >language, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
 
-* **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'connection-socket' for socket-level errors and 'connection-ssh' for SSH disconnection messages. In the case of 'connection-ssh' messages, there may be a 'description' property that provides more detail.
+* **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'client-socket' for socket-level errors and 'client-ssh' for SSH disconnection messages. In the case of 'client-ssh' messages, there may be a 'description' property that provides more detail.
 
 * **end**() - The socket was disconnected.
 
 * **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to true if this was due to error.
 
-* **debug**(< _string_ >message) - If `debug` is set in the object passed to connect(), then this event will be emitted when the server sends debug messages. For OpenSSH, these usually are messages like "Pty allocation disabled.", "X11 forwarding disabled.", etc. when options are set for particular keys in `~/.ssh/authorized_keys`.
 
+Client methods
+--------------
 
-Connection methods
-------------------
-
-* **(constructor)**() - Creates and returns a new Connection instance.
+* **(constructor)**() - Creates and returns a new Client instance.
 
 * **connect**(< _object_ >config) - _(void)_ - Attempts a connection to a server using the information given in `config`:
 
-    * **host** - < _string_ > - Hostname or IP address of the server. **Default:** `'localhost'`
+    * **host** - _string_ - Hostname or IP address of the server. **Default:** `'localhost'`
 
-    * **port** - < _integer_ > - Port number of the server. **Default:** `22`
+    * **port** - _integer_ - Port number of the server. **Default:** `22`
 
-    * **hostHash** - < _string_ > - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
+    * **hostHash** - _string_ - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
 
-    * **hostVerifier** - < _function_ > - Function that is passed a string hex hash of the host's key for verification purposes. Return true to continue with the connection, false to reject and disconnect. **Default:** (none)
+    * **hostVerifier** - _function_ - Function that is passed a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect. **Default:** (auto-accept)
 
-    * **username** - < _string_ > - Username for authentication. **Default:** (none)
+    * **username** - _string_ - Username for authentication. **Default:** (none)
 
-    * **password** - < _string_ > - Password for password-based user authentication. **Default:** (none)
+    * **password** - _string_ - Password for password-based user authentication. **Default:** (none)
 
-    * **agent** - < _string_ > - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant or (actual) path to a cygwin "UNIX socket."** **Default:** (none)
+    * **agent** - _string_ - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant or (actual) path to a cygwin "UNIX socket."** **Default:** (none)
 
-    * **privateKey** - < _mixed_ > - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
+    * **privateKey** - _mixed_ - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
 
-    * **passphrase** - < _string_ > - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
+    * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
 
-    * **tryKeyboard** - < _boolean_ > - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** `false`
+    * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** `false`
 
-    * **pingInterval** - < _integer_ > - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** `60000`
+    * **pingInterval** - _integer_ - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** `60000`
 
-    * **readyTimeout** - < _integer_ > - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `10000`
+    * **readyTimeout** - _integer_ - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `10000`
 
-    * **sock** - < _ReadableStream_ > - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
+    * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
-    * **agentForward** - < _boolean_ > - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** `false`
+    * **agentForward** - _boolean_ - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** `false`
 
-**Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true) -> None
+    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+
+**Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true) -> None
 
 * **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. Valid `options` properties are:
 
-    * **env** - < _object_ > - An environment to use for the execution of the command.
+    * **env** - _object_ - An environment to use for the execution of the command.
 
-    * **pty** - < _mixed_ > - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
+    * **pty** - _mixed_ - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
 
-    * **x11** - < _mixed_ > - Set to true to use defaults below, a number to specify a specific screen number, or an object with the following valid properties:
+    * **x11** - _mixed_ - Set to true to use defaults below, a number to specify a specific screen number, or an object with the following valid properties:
 
-        * **single** - < _boolean_ > - Allow just a single connection? **Default:** `false`
+        * **single** - _boolean_ - Allow just a single connection? **Default:** `false`
 
-        * **screen** - < _number_ > - Screen number to use **Default:** `0`
+        * **screen** - _number_ - Screen number to use **Default:** `0`
 
-    `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+    `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the 'x11' option as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the 'x11' option as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 * **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
@@ -514,21 +520,182 @@ Connection methods
 
 * **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Unbind `remoteAddr` on `remotePort` on the server and stop forwarding incoming connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
 
-* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP (protocol version 3) session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftpConnection.
+* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTPStream_ >sftp. For methods available on `sftp`, see the [`SFTPStream` documentation](https://github.com/mscdex/ssh2-streams).
 
-* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _ChannelStream_ >stream.
+* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 * **end**() - _(void)_ - Disconnects the socket.
 
 
-ChannelStream
+Server events
 -------------
+
+* **connection**(< _Connection_ >client, < _object_ >info) - A new client has connected. `info` contains the following properties:
+
+    * **ip** - _string_ - The remoteAddress of the connection.
+
+    * **header** - _object_ - Information about the client's header:
+
+        * **identRaw** - _string_ - The raw client identification string.
+
+        * **versions** - _object_ - Various version information:
+
+            * **protocol** - _string_ - The SSH protocol version (always `1.99` or `2.0`).
+
+            * **software** - _string_ - The software name and version of the client.
+
+        * **comments** - _string_ - Any text that comes after the software name/version.
+
+    Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
+
+```javascript
+        { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
+          version: {
+            protocol: '2.0',
+            software: 'OpenSSH_6.6.1p1'
+          },
+          comments: 'Ubuntu-2ubuntu2' }
+```
+
+Server methods
+--------------
+
+* **(constructor)**(< _object_ >config[, < _function_ >connectionListener]) - Creates and returns a new Server instance. Server instances also have the same methods/properties/events as [`net.Server`](http://nodejs.org/docs/latest/api/net.html#net_class_net_server). `connectionListener` if supplied, is added as a `connection` listener. Valid `config` properties:
+
+    * **privateKey** - _mixed_ - Buffer or string that contains the host private key (OpenSSH format). (**Required**) **Default:** (none)
+
+    * **passphrase** - _string_ - For an encrypted host private key, this is the passphrase used to decrypt it. **Default:** (none)
+
+    * **banner** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Default:** (none)
+
+    * **ident** - _string_ - A custom server software name/version identifier. **Default:** `'ssh2js' + moduleVersion + 'srv'`
+
+    * **highWaterMark** - _integer_ - This is the `highWaterMark` to use for the parser stream. **Default:** `32 * 1024`
+
+    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+
+
+Connection events
+-----------------
+
+* **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject()` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
+
+    * `password`:
+
+        * **password** - _string_ - This is the password sent by the client.
+
+    * `publickey`:
+
+        * **key** - _object_ - Contains information about the public key sent by the client:
+
+            * **algo** - _string_ - The name of the key algorithm (e.g. `ssh-rsa`).
+
+            * **data** - _Buffer_ - The actual key data.
+
+        * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature that needs to be verified using [`crypto.createVerify()`](http://nodejs.org/docs/latest/api/crypto.html#crypto_crypto_createverify_algorithm).
+
+        * **blob** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains the data used to verify the `signature`.
+
+    * `keyboard-interactive`:
+
+        * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
+
+        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _boolean_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(err, responses)`, where `responses` is an array of string responses matching up to the `prompts`.
+
+* **ready**() - Emitted when the client has been successfully authenticated.
+
+* **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **tcpip**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **request**(< _mixed_ >accept, < _mixed_ >reject, < _string_ >name, < _object_ >info) - Emitted when the client has sent a global request for `name` (e.g. `tcpip-forward` or `cancel-tcpip-forward`). `accept` and `reject` are functions if the client requested a response. `info` contains additional details about the request:
+
+    * `tcpip-forward` and `cancel-tcpip-forward`:
+
+        * **bindAddr** - _string_ - The IP address to start/stop binding to.
+
+        * **bindPort** - _integer_ - The port to start/stop binding to.
+
+* **rekey**() - Emitted when the client has finished rekeying.
+
+* **drain**() - Emitted when more data can be sent to the client (after a Connection method return false).
+
+* **error**(< _Error_ >err) - An error occurred.
+
+* **end**() - The client socket disconnected.
+
+* **close**(< _boolean_ >hadError) - The client socket was closed. `hadError` is set to true if this was due to error.
+
+Connection methods
+------------------
+
+* **end**() - _boolean_ - Closes the client connection. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **x11**(< _string_ >originAddr, < _integer_ >originPort) - _boolean_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+
+Session events
+--------------
+
+* **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **cols** - _integer_ - The number of columns for the pseudo-TTY.
+
+    * **rows** - _integer_ - The number of rows for the pseudo-TTY.
+
+    * **width** - _integer_ - The width of the pseudo-TTY in pixels.
+
+    * **height** - _integer_ - The height of the pseudo-TTY in pixels.
+
+    * **modes** - _object_ - Contains the requested terminal modes of the pseudo-TTY keyed on the mode name with the value being the mode argument. (See the table at the end for valid names).
+
+* **window-change**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client reported a change in window dimensions during this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **cols** - _integer_ - The new number of columns for the client window.
+
+    * **rows** - _integer_ - The new number of rows for the client window.
+
+    * **width** - _integer_ - The new width of the client window in pixels.
+
+    * **height** - _integer_ - The new height of the client window in pixels.
+
+* **x11**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested X11 forwarding. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **single** - _boolean_ - `true` if only a single connection should be forwarded.
+
+    * **protocol** - _string_ - The name of the X11 authentication method used (e.g. `MIT-MAGIC-COOKIE-1`).
+
+    * **cookie** - _string_ - The X11 authentication cookie encoded in hexadecimal.
+
+    * **screen** - _integer_ - The screen number to forward X11 connections for.
+
+* **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
+
+* **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **exec**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested execution of a command string. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the command execution. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **command** - _string_ - The command line to be executed.
+
+* **sftp**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested the SFTP subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns an _SFTPStream_ (see the [`SFTPStream` documentation](https://github.com/mscdex/ssh2-streams) for details). `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+* **subsystem**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested an arbitrary subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the subsystem. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
+
+    * **name** - _string_ - The name of the subsystem.
+
+* **close**() - The session was closed.
+
+
+Channel
+-------
 
 This is a normal **streams2** Duplex Stream, with the following changes:
 
-* A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if 'allowHalfOpen' is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
+* A boolean property 'allowHalfOpen' exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
 * For shell():
 
@@ -536,7 +703,7 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
 * For exec():
 
-    * An 'exit' event will be emitted when the process finishes. If the process finished normally, the process's return value is passed to the 'exit' callback. If the process was interrupted by a signal, the following are passed to the 'exit' callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
+    * An `exit` event *may* (the SSH2 spec says it is optional) be emitted when the process finishes. If the process finished normally, the process's return value is passed to the `exit` callback. If the process was interrupted by a signal, the following are passed to the `exit` callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
 * For shell() and exec():
 
@@ -544,181 +711,87 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
     * A `stderr` property that represents the stream of output from stderr.
 
-    * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Also, from the RFC: "Some systems may not implement signals, in which case they SHOULD ignore this message." Note: If you are trying to send SIGINT and you find signal() doesn't work, try writing '\x03' to the exec/shell stream instead.
-
-
-SFTP events
------------
-
-* **end**() - The SFTP session was ended.
-
-
-SFTP methods
-------------
-
-* **end**() - _(void)_ - Ends the SFTP session.
-
-* **fastGet**(< _string_ >remotePath, < _string_ >localPath[, < _object_ >options], < _function_ >callback) - _(void)_ - Downloads a file at `remotePath` to `localPath` using parallel reads for faster throughput. `options` can have the following properties:
-
-    * concurrency - _integer_ - Number of concurrent reads **Default:** `25`
-
-    * chunkSize - _integer_ - Size of each read in bytes **Default:** `32768`
-
-    * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
-
-    `callback` has 1 parameter: < _Error_ >err.
-
-* **fastPut**(< _string_ >localPath, < _string_ >remotePath[, < _object_ >options], < _function_ >callback) - _(void)_ - Uploads a file from `localPath` to `remotePath` using parallel reads for faster throughput. `options` can have the following properties:
-
-    * concurrency - _integer_ - Number of concurrent reads **Default:** `25`
-
-    * chunkSize - _integer_ - Size of each read in bytes **Default:** `32768`
-
-    * step - _function_(< _integer_ >total_transferred, < _integer_ >chunk, < _integer_ >total) - Called every time a part of a file was transferred
-
-    `callback` has 1 parameter: < _Error_ >err.
-
-* **createReadStream**(< _string_ >path[, < _object_ >options]) - _ReadStream_ - Returns a new readable stream for `path`. `options` has the following defaults:
-
-    ```javascript
-    { flags: 'r',
-      encoding: null,
-      handle: null,
-      mode: 0666,
-      autoClose: true
-    }
-    ```
-
-    `options` can include `start` and `end` values to read a range of bytes from the file instead of the entire file. Both `start` and `end` are inclusive and start at 0. The `encoding` can be `'utf8'`, `'ascii'`, or `'base64'`.
-
-    If `autoClose` is false, then the file handle won't be closed, even if there's an error. It is your responsiblity to close it and make sure there's no file handle leak. If `autoClose` is set to true (default behavior), on `error` or `end` the file handle will be closed automatically.
-
-    An example to read the last 10 bytes of a file which is 100 bytes long:
-
-    ```javascript
-    sftp.createReadStream('sample.txt', {start: 90, end: 99});
-    ```
-
-* **createWriteStream**(< _string_ >path[, < _object_ >options]) - _WriteStream_ - Returns a new writable stream for `path`. `options` has the following defaults:
-
-    ```javascript
-    { flags: 'w',
-      encoding: null,
-      mode: 0666 }
-    ```
-
-    `options` may also include a `start` option to allow writing data at some position past the beginning of the file. Modifying a file rather than replacing it may require a flags mode of 'r+' rather than the default mode 'w'.
-
-    If 'autoClose' is set to false and you pipe to this stream, this stream will not automatically close after there is no more data upstream -- allowing future pipes and/or manual writes.
-
-* **open**(< _string_ >filename, < _string_ >mode, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Opens a file `filename` for `mode` with optional `attributes`. `mode` is any of the modes supported by fs.open (except sync mode). `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
-
-* **close**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Closes the resource associated with `handle` given by open() or opendir(). `callback` has 1 parameter: < _Error_ >err.
-
-* **read**(< _Buffer_ >handle, < _Buffer_ >buffer, < _integer_ >offset, < _integer_ >length, < _integer_ >position, < _function_ >callback) - _(void)_ - Reads `length` bytes from the resource associated with `handle` starting at `position` and stores the bytes in `buffer` starting at `offset`. `callback` has 4 parameters: < _Error_ >err, < _integer_ >bytesRead, < _Buffer_ >buffer (offset adjusted), < _integer_ >position.
-
-* **write**(< _Buffer_ >handle, < _Buffer_ >buffer, < _integer_ >offset, < _integer_ >length, < _integer_ >position, < _function_ >callback) - _(void)_ - Writes `length` bytes from `buffer` starting at `offset` to the resource associated with `handle` starting at `position`. `callback` has 1 parameter: < _Error_ >err.
-
-* **fstat**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - Retrieves attributes for the resource associated with `handle`. `callback` has 2 parameters: < _Error_ >err, < _Stats_ >stats.
-
-* **fsetstat**(< _Buffer_ >handle, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
-
-* **futimes**(< _Buffer_ >handle, < _mixed_ >atime, < _mixed_ >mtime, < _function_ >callback) - _(void)_ - Sets the access time and modified time for the resource associated with `handle`. `atime` and `mtime` can be Date instances or UNIX timestamps. `callback` has 1 parameter: < _Error_ >err.
-
-* **fchown**(< _Buffer_ >handle, < _integer_ >uid, < _integer_ >gid, < _function_ >callback) - _(void)_ - Sets the owner for the resource associated with `handle`. `callback` has 1 parameter: < _Error_ >err.
-
-* **fchmod**(< _Buffer_ >handle, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the mode for the resource associated with `handle`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
-
-* **opendir**(< _string_ >path, < _function_ >callback) - _(void)_ - Opens a directory `path`. `callback` has 2 parameters: < _Error_ >err, < _Buffer_ >handle.
-
-* **readdir**(< _mixed_ >location, < _function_ >callback) - _(void)_ - Retrieves a directory listing. `location` can either be a _Buffer_ containing a valid directory handle from opendir() or a _string_ containing the path to a directory. `callback` has 2 parameters: < _Error_ >err, < _mixed_ >list. `list` is an _Array_ of `{ filename: 'foo', longname: '....', attrs: {...} }` style objects (attrs is of type _ATTR_). If `location` is a directory handle, this function may need to be called multiple times until `list` is boolean false, which indicates that no more directory entries are available for that directory handle.
-
-* **unlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the file/symlink at `path`. `callback` has 1 parameter: < _Error_ >err.
-
-* **rename**(< _string_ >srcPath, < _string_ >destPath, < _function_ >callback) - _(void)_ - Renames/moves `srcPath` to `destPath`. `callback` has 1 parameter: < _Error_ >err.
-
-* **mkdir**(< _string_ >path, [< _ATTRS_ >attributes, ]< _function_ >callback) - _(void)_ - Creates a new directory `path`. `callback` has 1 parameter: < _Error_ >err.
-
-* **rmdir**(< _string_ >path, < _function_ >callback) - _(void)_ - Removes the directory at `path`. `callback` has 1 parameter: < _Error_ >err.
-
-* **stat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. `callback` has 2 parameter: < _Error_ >err, < _Stats_ >stats.
-
-* **lstat**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves attributes for `path`. If `path` is a symlink, the link itself is stat'ed instead of the resource it refers to. `callback` has 2 parameters: < _Error_ >err, < _Stats_ >stats.
-
-* **setstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - Sets the attributes defined in `attributes` for `path`. `callback` has 1 parameter: < _Error_ >err.
-
-* **utimes**(< _string_ >path, < _mixed_ >atime, < _mixed_ >mtime, < _function_ >callback) - _(void)_ - Sets the access time and modified time for `path`. `atime` and `mtime` can be Date instances or UNIX timestamps. `callback` has 1 parameter: < _Error_ >err.
-
-* **chown**(< _string_ >path, < _integer_ >uid, < _integer_ >gid, < _function_ >callback) - _(void)_ - Sets the owner for `path`. `callback` has 1 parameter: < _Error_ >err.
-
-* **chmod**(< _string_ >path, < _mixed_ >mode, < _function_ >callback) - _(void)_ - Sets the mode for `path`. `mode` can be an integer or a string containing an octal number. `callback` has 1 parameter: < _Error_ >err.
-
-* **readlink**(< _string_ >path, < _function_ >callback) - _(void)_ - Retrieves the target for a symlink at `path`. `callback` has 2 parameters: < _Error_ >err, < _string_ >target.
-
-* **symlink**(< _string_ >targetPath, < _string_ >linkPath, < _function_ >callback) - _(void)_ - Creates a symlink at `linkPath` to `targetPath`. `callback` has 1 parameter: < _Error_ >err.
-
-* **realpath**(< _string_ >path, < _function_ >callback) - _(void)_ - Resolves `path` to an absolute path. `callback` has 2 parameters: < _Error_ >err, < _string_ >absPath.
-
-
-ATTRS
------
-
-An object with the following valid properties:
-
-* **mode** - < _integer_ > - Mode/permissions for the resource.
-
-* **uid** - < _integer_ > - User ID of the resource.
-
-* **gid** - < _integer_ > - Group ID of the resource.
-
-* **size** - < _integer_ > - Resource size in bytes.
-
-* **atime** - < _integer_ > - UNIX timestamp of the access time of the resource.
-
-* **mtime** - < _integer_ > - UNIX timestamp of the modified time of the resource.
-
-When supplying an ATTRS object to one of the SFTP methods:
-
-* `atime` and `mtime` can be either a Date instance or a UNIX timestamp.
-
-* `mode` can either be an integer or a string containing an octal number.
-
-
-Stats
------
-
-An object with the same attributes as an ATTRS object with the addition of the following methods:
-
-* `stats.isDirectory()`
-
-* `stats.isFile()`
-
-* `stats.isBlockDevice()`
-
-* `stats.isCharacterDevice()`
-
-* `stats.isSymbolicLink()`
-
-* `stats.isFIFO()`
-
-* `stats.isSocket()`
-
-
-Pseudo-TTY settings
--------------------
-
-* **rows** - < _integer_ > - Number of rows **Default:** `24`
-
-* **cols** - < _integer_ > - Number of columns **Default:** `80`
-
-* **height** - < _integer_ > - Height in pixels **Default:** `480`
-
-* **width** - < _integer_ > - Width in pixels **Default:** `640`
-
-* **term** - < _string_ > - The value to use for $TERM **Default:** `'vt100'`
-
-`rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
-
-Pixel dimensions refer to the drawable area of the window.
-
-Zero dimension parameters are ignored.
+    * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead.
+
+
+
+Terminal modes
+--------------
+
+<pre>
+Name           Description
+------------------------------------------------------------
+VINTR          Interrupt character; 255 if none.  Similarly
+               for the other characters.  Not all of these
+               characters are supported on all systems.
+VQUIT          The quit character (sends SIGQUIT signal on
+               POSIX systems).
+VERASE         Erase the character to left of the cursor.
+VKILL          Kill the current input line.
+VEOF           End-of-file character (sends EOF from the
+               terminal).
+VEOL           End-of-line character in addition to
+               carriage return and/or linefeed.
+VEOL2          Additional end-of-line character.
+VSTART         Continues paused output (normally
+               control-Q).
+VSTOP          Pauses output (normally control-S).
+VSUSP          Suspends the current program.
+VDSUSP         Another suspend character.
+VREPRINT       Reprints the current input line.
+VWERASE        Erases a word left of cursor.
+VLNEXT         Enter the next character typed literally,
+               even if it is a special character
+VFLUSH         Character to flush output.
+VSWTCH         Switch to a different shell layer.
+VSTATUS        Prints system status line (load, command,
+               pid, etc).
+VDISCARD       Toggles the flushing of terminal output.
+IGNPAR         The ignore parity flag.  The parameter
+               SHOULD be 0 if this flag is FALSE,
+               and 1 if it is TRUE.
+PARMRK         Mark parity and framing errors.
+INPCK          Enable checking of parity errors.
+ISTRIP         Strip 8th bit off characters.
+INLCR          Map NL into CR on input.
+IGNCR          Ignore CR on input.
+ICRNL          Map CR to NL on input.
+IUCLC          Translate uppercase characters to
+               lowercase.
+IXON           Enable output flow control.
+IXANY          Any char will restart after stop.
+IXOFF          Enable input flow control.
+IMAXBEL        Ring bell on input queue full.
+ISIG           Enable signals INTR, QUIT, [D]SUSP.
+ICANON         Canonicalize input lines.
+XCASE          Enable input and output of uppercase
+               characters by preceding their lowercase
+               equivalents with "\".
+ECHO           Enable echoing.
+ECHOE          Visually erase chars.
+ECHOK          Kill character discards current line.
+ECHONL         Echo NL even if ECHO is off.
+NOFLSH         Don't flush after interrupt.
+TOSTOP         Stop background jobs from output.
+IEXTEN         Enable extensions.
+ECHOCTL        Echo control characters as ^(Char).
+ECHOKE         Visual erase for line kill.
+PENDIN         Retype pending input.
+OPOST          Enable output processing.
+OLCUC          Convert lowercase to uppercase.
+ONLCR          Map NL to CR-NL.
+OCRNL          Translate carriage return to newline
+               (output).
+ONOCR          Translate newline to carriage
+               return-newline (output).
+ONLRET         Newline performs a carriage return
+               (output).
+CS7            7 bit mode.
+CS8            8 bit mode.
+PARENB         Parity enable.
+PARODD         Odd parity, else even.
+TTY_OP_ISPEED  Specifies the input baud rate in
+               bits per second.
+TTY_OP_OSPEED  Specifies the output baud rate in
+               bits per second.
+</pre>
