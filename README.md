@@ -696,24 +696,35 @@ Channel
 
 This is a normal **streams2** Duplex Stream, with the following changes:
 
-* A boolean property `allowHalfOpen` exists and behaves similarly to the property of the same name for net.Socket. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
+* A boolean property `allowHalfOpen` exists and behaves similarly to the property of the same name for `net.Socket`. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
-* For shell():
+* Client-only:
 
-    * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section.
+    * For shell():
 
-* For exec():
+        * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _boolean_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-    * An `exit` event *may* (the SSH2 spec says it is optional) be emitted when the process finishes. If the process finished normally, the process's return value is passed to the `exit` callback. If the process was interrupted by a signal, the following are passed to the `exit` callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
+    * For exec():
 
-* For shell() and exec():
+        * An `exit` event *may* (the SSH2 spec says it is optional) be emitted when the process finishes. If the process finished normally, the process's return value is passed to the `exit` callback. If the process was interrupted by a signal, the following are passed to the `exit` callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
-    * The readable side represents stdout and the writable side represents stdin.
+    * For shell() and exec():
 
-    * A `stderr` property that represents the stream of output from stderr.
+        * The readable side represents stdout and the writable side represents stdin.
 
-    * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead.
+        * A `stderr` property that represents the stream of output from stderr.
 
+        * **signal**(< _string_ >signalName) - _boolean_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* Server-only:
+
+    * For exec-enabled channel instances there is an additional method available that may be called right before you close the channel. It has two different signatures:
+
+        * **exit**(< _integer_ >exitCode) - _boolean_ - Sends an exit status code to the client. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+        * **exit**(< _string_ >signalName[, < _boolean_ >coreDumped[, < _string_ >errorMsg]]) - _boolean_ - Sends an exit status code to the client. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+    * For exec and shell-enabled channel instances, `channel.stderr` is a writable stream.
 
 
 Terminal modes
