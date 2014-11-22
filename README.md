@@ -525,13 +525,15 @@ Client methods
 
     * **readyTimeout** - _integer_ - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `10000`
 
+    * **strictVendor** - _boolean_ - Performs a strict server vendor (version) check before engaging in vendor-specific extensions, etc. (e.g. check for OpenSSH server when using `noMoreSessions()`) **Default:** `true`
+
     * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
 **Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true) -> None
 
-* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. Valid `options` properties are:
+* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _boolean_ - Executes `command` on the server. Returns `false` if you should wait for the `drain` event before sending any more traffic. Valid `options` properties are:
 
     * **env** - _object_ - An environment to use for the execution of the command.
 
@@ -547,9 +549,9 @@ Client methods
 
     `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the `x11` and `agentForward` options as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _boolean_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the `x11` and `agentForward` options as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
+* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Returns `false` if you should wait for the `drain` event before sending any more traffic. Here are some special values for `remoteAddr` and their associated binding behaviors:
 
     * '' - Connections are to be accepted on all protocol families supported by the server.
 
@@ -561,13 +563,15 @@ Client methods
 
     * '127.0.0.1' and '::1' - Listen on the loopback interfaces for IPv4 and IPv6, respectively.
 
-* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Unbind `remoteAddr` on `remotePort` on the server and stop forwarding incoming connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
+* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Unbind `remoteAddr` on `remotePort` on the server and stop forwarding incoming connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _boolean_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTPStream_ >sftp. For methods available on `sftp`, see the [`SFTPStream` documentation](https://github.com/mscdex/ssh2-streams).
+* **sftp**(< _function_ >callback) - _boolean_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTPStream_ >sftp. For methods available on `sftp`, see the [`SFTPStream` documentation](https://github.com/mscdex/ssh2-streams). Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+* **subsys**(< _string_ >subsystem, < _function_ >callback) - _boolean_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **noMoreSessions**(< _function_ >callback) - _boolean_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys). Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 * **end**() - _(void)_ - Disconnects the socket.
 
