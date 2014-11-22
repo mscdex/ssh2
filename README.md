@@ -527,8 +527,6 @@ Client methods
 
     * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
-    * **agentForward** - _boolean_ - Set to true to use OpenSSH agent forwarding ('auth-agent@openssh.com'). **Default:** `false`
-
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
 **Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true) -> None
@@ -545,9 +543,11 @@ Client methods
 
         * **screen** - _number_ - Screen number to use **Default:** `0`
 
+    * **agentForward** - _boolean_ - Set to true to use OpenSSH agent forwarding (`auth-agent@openssh.com`). **Default:** `false`
+
     `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the 'x11' option as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+* **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the `x11` and `agentForward` options as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 * **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
@@ -717,6 +717,8 @@ Session events
 * **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic. `info` has these properties:
 
     * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
+
+* **auth-agent**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested incoming ssh-agent requests be forwarded to them. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `drain` event before sending any more traffic.
 
 * **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
 
