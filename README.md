@@ -28,11 +28,11 @@ Client Examples
 * Authenticate using keys and execute `uptime` on a server:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.exec('uptime', function(err, stream) {
     if (err) throw err;
     stream.on('exit', function(code, signal) {
@@ -54,7 +54,7 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: ready
+// Client :: ready
 // STDOUT:  17:41:15 up 22 days, 18:09,  1 user,  load average: 0.00, 0.01, 0.05
 //
 // Stream :: close
@@ -64,11 +64,11 @@ conn.on('ready', function() {
 * Authenticate using keys and start an interactive shell session:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.shell(function(err, stream) {
     if (err) throw err;
     stream.on('close', function() {
@@ -89,7 +89,7 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: ready
+// Client :: ready
 // STDOUT: Last login: Sun Jun 15 09:37:21 2014 from 192.168.100.100
 //
 // STDOUT: ls -l
@@ -113,11 +113,11 @@ conn.on('ready', function() {
 * Authenticate using password and send an HTTP request to port 80 on the server:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
     if (err) throw err;
     stream.on('close', function() {
@@ -143,7 +143,7 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: ready
+// Client :: ready
 // TCP :: DATA: HTTP/1.1 200 OK
 // Date: Thu, 15 Nov 2012 13:52:58 GMT
 // Server: Apache/2.2.22 (Ubuntu)
@@ -161,11 +161,11 @@ conn.on('ready', function() {
 * Authenticate using password and forward remote connections on port 8000 to us:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.forwardIn('127.0.0.1', 8000, function(err) {
     if (err) throw err;
     console.log('Listening for connections on server on port 8000!');
@@ -194,7 +194,7 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: ready
+// Client :: ready
 // Listening for connections on server on port 8000!
 //  (.... then from another terminal on the server: `curl -I http://127.0.0.1:8000`)
 // TCP :: INCOMING CONNECTION: { destIP: '127.0.0.1',
@@ -213,11 +213,11 @@ conn.on('ready', function() {
 * Authenticate using password and get a directory listing via SFTP:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.sftp(function(err, sftp) {
     if (err) throw err;
     sftp.readdir('foo', function(err, list) {
@@ -234,7 +234,7 @@ conn.on('ready', function() {
 });
 
 // example output:
-// Connection :: ready
+// Client :: ready
 // [ { filename: 'test.txt',
 //     longname: '-rw-r--r--    1 frylock   frylock         12 Nov 18 11:05 test.txt',
 //     attrs:
@@ -258,10 +258,10 @@ conn.on('ready', function() {
 * Connection hopping:
 
 ```javascript
-var Connection = require('ssh2');
+var Client = require('ssh2').Client;
 
-var conn1 = new Connection(),
-    conn2 = new Connection();
+var conn1 = new Client(),
+    conn2 = new Client();
 
 conn1.on('ready', function() {
   console.log('FIRST :: connection ready');
@@ -302,9 +302,9 @@ conn2.on('ready', function() {
 
 ```javascript
 var net = require('net'),
-    Connection = require('ssh2');
+    Client = require('ssh2').Client;
 
-var conn = new Connection();
+var conn = new Client();
 
 conn.on('x11', function(info, accept, reject) {
   var xserversock = new net.Socket();
@@ -339,7 +339,7 @@ conn.on('ready', function() {
 
 ```javascript
 var socks = require('socksv5'),
-    Connection = require('ssh2');
+    Client = require('ssh2').Client;
 
 var ssh_config = {
   host: '192.168.100.1',
@@ -352,7 +352,7 @@ socks.createServer(function(info, accept, deny) {
   // NOTE: you could just use one ssh2 client connection for all forwards, but
   // you could run into server-imposed limits if you have too many forwards open
   // at any given time
-  var conn = new Connection();
+  var conn = new Client();
   conn.on('ready', function() {
     conn.forwardOut(info.srcAddr,
                     info.srcPort,
@@ -384,7 +384,7 @@ socks.createServer(function(info, accept, deny) {
 * Invoke an arbitrary subsystem (netconf in this example):
 
 ```javascript
-var Connection = require('ssh2'),
+var Client = require('ssh2').Client,
     xmlhello = '<?xml version="1.0" encoding="UTF-8"?>'+
                '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">'+
                '    <capabilities>'+
@@ -392,10 +392,10 @@ var Connection = require('ssh2'),
                '	</capabilities>'+
                '</hello>]]>]]>';
 
-var conn = new Connection();
+var conn = new Client();
 
 conn.on('ready', function() {
-  console.log('Connection :: ready');
+  console.log('Client :: ready');
   conn.subsys('netconf', function(err, stream) {
     if (err) throw err;
     stream.on('data', function(data) {
