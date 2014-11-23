@@ -487,12 +487,14 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept();
+            var session = accept(),
+                sawPty = false;
             session.once('pty', function(accept, reject, info) {
+              sawPty = true;
               accept && accept();
             }).once('shell', function(accept, reject) {
               var stream = accept();
-              stream.write('Cowabunga dude!');
+              stream.write('Cowabunga dude! ' + inspect(sawPty));
               stream.end();
               conn.end();
             });
@@ -507,7 +509,7 @@ var tests = [
           });
         });
       }).on('end', function() {
-        assert(out === 'Cowabunga dude!',
+        assert(out === 'Cowabunga dude! true',
                makeMsg(what, 'Wrong stdout data: ' + inspect(out)));
       });
     },
