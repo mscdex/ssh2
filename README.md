@@ -413,13 +413,20 @@ conn.on('ready', function() {
 Server Examples
 ===============
 
-* Only allow password authentication and command execution:
+* Only allow password and public key authentication and command execution:
 
 ```javascript
-var Server = require('ssh2').Server;
+var fs = require('fs'),
+    crypto = require('crypto');
+var buffersEqual = require('buffer-equal-constant-time'),
+    ssh2 = require('ssh2'),
+    utils = ssh2.utils,
+    Server = ssh2.Server;
+
+var pubKey = utils.genPublicKey(utils.parseKey(fs.readFileSync('user.pub')));
 
 new Server({
-  privateKey: require('fs').readFileSync('host.key')
+  privateKey: fs.readFileSync('host.key')
 }, function(client) {
   console.log('Client connected!');
 
@@ -428,7 +435,22 @@ new Server({
         && ctx.username === 'foo'
         && ctx.password === 'bar')
       ctx.accept();
-    else
+    else if (ctx.method === 'publickey'
+             && ctx.key.algo === pubKey.fulltype
+             && buffersEqual(ctx.key.data, pubKey.public)) {
+      if (ctx.signature) {
+        var verifier = crypto.createVerify(ctx.sigAlgo);
+        verifier.update(ctx.blob);
+        if (verifier.verify(pubKey.publicOrig, ctx.signature, 'binary'))
+          ctx.accept();
+        else
+          ctx.reject();
+      } else {
+        // if no signature present, that means the client is just checking
+        // the validity of the given public key
+        ctx.accept();
+      }
+    } else
       ctx.reject();
   }).on('ready', function() {
     console.log('Client authenticated!');
@@ -459,6 +481,8 @@ API
 `require('ssh2').Client` returns a **_Client_** constructor.
 
 `require('ssh2').Server` returns a **_Server_** constructor.
+
+`require('ssh2').utils` returns the [utility methods from `ssh2-streams`](https://github.com/mscdex/ssh2-streams#utility-methods).
 
 Client events
 -------------
