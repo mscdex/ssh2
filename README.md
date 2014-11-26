@@ -515,7 +515,7 @@ Client events
 
 * **end**() - The socket was disconnected.
 
-* **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to true if this was due to error.
+* **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to `true` if this was due to error.
 
 
 Client methods
@@ -549,33 +549,31 @@ Client methods
 
     * **readyTimeout** - _integer_ - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `10000`
 
-    * **strictVendor** - _boolean_ - Performs a strict server vendor (version) check before engaging in vendor-specific extensions, etc. (e.g. check for OpenSSH server when using `noMoreSessions()`) **Default:** `true`
+    * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
 
     * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
-**Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is true) -> None
+**Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> None
 
-* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _boolean_ - Executes `command` on the server. Returns `false` if you should wait for the `drain` event before sending any more traffic. Valid `options` properties are:
+* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _boolean_ - Executes `command` on the server. Returns `false` if you should wait for the `drain` event before sending any more traffic. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Valid `options` properties are:
 
     * **env** - _object_ - An environment to use for the execution of the command.
 
-    * **pty** - _mixed_ - Set to true to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
+    * **pty** - _mixed_ - Set to `true` to allocate a pseudo-tty with defaults, or an object containing specific pseudo-tty settings (see 'Pseudo-TTY settings'). Setting up a pseudo-tty can be useful when working with remote processes that expect input from an actual terminal (e.g. sudo's password prompt).
 
-    * **x11** - _mixed_ - Set to true to use defaults below, a number to specify a specific screen number, or an object with the following valid properties:
+    * **x11** - _mixed_ - Set to `true` to use defaults below, set to a number to specify a specific screen number, or an object with the following valid properties:
 
         * **single** - _boolean_ - Allow just a single connection? **Default:** `false`
 
         * **screen** - _number_ - Screen number to use **Default:** `0`
 
-    * **agentForward** - _boolean_ - Set to true to use OpenSSH agent forwarding (`auth-agent@openssh.com`). **Default:** `false`
-
-    `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`). **Default:** `false`
 
 * **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _boolean_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the `x11` and `agentForward` options as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Returns `false` if you should wait for the `drain` event before sending any more traffic. Here are some special values for `remoteAddr` and their associated binding behaviors:
+* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming TCP connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Returns `false` if you should wait for the `drain` event before sending any more traffic. Here are some special values for `remoteAddr` and their associated binding behaviors:
 
     * '' - Connections are to be accepted on all protocol families supported by the server.
 
@@ -587,7 +585,7 @@ Client methods
 
     * '127.0.0.1' and '::1' - Listen on the loopback interfaces for IPv4 and IPv6, respectively.
 
-* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Unbind `remoteAddr` on `remotePort` on the server and stop forwarding incoming connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Unbind from `remoteAddr` on `remotePort` on the server and stop forwarding incoming TCP connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 * **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _boolean_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
@@ -595,9 +593,15 @@ Client methods
 
 * **subsys**(< _string_ >subsystem, < _function_ >callback) - _boolean_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **noMoreSessions**(< _function_ >callback) - _boolean_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys). Returns `false` if you should wait for the `drain` event before sending any more traffic.
-
 * **end**() - _(void)_ - Disconnects the socket.
+
+* **openssh_noMoreSessions**(< _function_ >callback) - _boolean_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **openssh_forwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that binds to a UNIX domain socket at `socketPath` on the server and forwards incoming connections. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **openssh_unforwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that unbinds from a UNIX domain socket at `socketPath` on the server and stops forwarding incoming connections. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 
 Server events
@@ -681,7 +685,19 @@ Connection events
 
 * **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **tcpip**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic.
+* **tcpip**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic. `info` contains:
+
+    * **srcIP** - _string_ - Source IP address of outgoing connection.
+
+    * **srcPort** - _string_ - Source port of outgoing connection.
+
+    * **destIP** - _string_ - Destination IP address of outgoing connection.
+
+    * **destPort** - _string_ - Destination port of outgoing connection.
+
+* **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `reject()` returns `false` if you should wait for the `drain` event before sending any more traffic. `info` contains:
+
+    * **socketPath** - _string_ - Destination socket path of outgoing connection.
 
 * **request**(< _mixed_ >accept, < _mixed_ >reject, < _string_ >name, < _object_ >info) - Emitted when the client has sent a global request for `name` (e.g. `tcpip-forward` or `cancel-tcpip-forward`). `accept` and `reject` are functions if the client requested a response. If `bindPort === 0`, you should pass the chosen port to `accept()` so that the client will know what port was bound. `info` contains additional details about the request:
 
@@ -691,22 +707,30 @@ Connection events
 
         * **bindPort** - _integer_ - The port to start/stop binding to.
 
+    * `streamlocal-forward@openssh.com` and `cancel-streamlocal-forward@openssh.com`:
+
+        * **socketPath** - _string_ - The socket path to start/stop binding to.
+
 * **rekey**() - Emitted when the client has finished rekeying.
 
-* **drain**() - Emitted when more data can be sent to the client (after a Connection method return false).
+* **drain**() - Emitted when more data can be sent to the client (after a `Connection` method returned `false`).
 
 * **error**(< _Error_ >err) - An error occurred.
 
 * **end**() - The client socket disconnected.
 
-* **close**(< _boolean_ >hadError) - The client socket was closed. `hadError` is set to true if this was due to error.
+* **close**(< _boolean_ >hadError) - The client socket was closed. `hadError` is set to `true` if this was due to error.
 
 Connection methods
 ------------------
 
 * **end**() - _boolean_ - Closes the client connection. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
-* **x11**(< _string_ >originAddr, < _integer_ >originPort) - _boolean_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+* **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _boolean_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - Alert the client of an incoming UNIX domain socket connection on `socketPath`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 
 Session events
