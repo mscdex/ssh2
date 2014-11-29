@@ -539,13 +539,13 @@ Client methods
 
     * **agent** - _string_ - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant or (actual) path to a cygwin "UNIX socket."** **Default:** (none)
 
-    * **privateKey** - _mixed_ - Buffer or string that contains a private key for key-based user authentication (OpenSSH format). **Default:** (none)
+    * **privateKey** - _mixed_ - _Buffer_ or _string_ that contains a private key for either key-based or hostbased user authentication (OpenSSH format). **Default:** (none)
 
     * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
 
-    * **localHostname** - _string_ - Along with **localUsername**, set to a non-empty string for hostbased user authentication. **Default:** (none)
+    * **localHostname** - _string_ - Along with **localUsername** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
 
-    * **localUsername** - _string_ - Along with **localHostname**, set to a non-empty string for hostbased user authentication. **Default:** (none)
+    * **localUsername** - _string_ - Along with **localHostname** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
 
     * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** `false`
 
