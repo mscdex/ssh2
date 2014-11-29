@@ -543,6 +543,10 @@ Client methods
 
     * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
 
+    * **localHostname** - _string_ - Along with **localUsername**, set to a non-empty string for hostbased user authentication. **Default:** (none)
+
+    * **localUsername** - _string_ - Along with **localHostname**, set to a non-empty string for hostbased user authentication. **Default:** (none)
+
     * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. **Default:** `false`
 
     * **pingInterval** - _integer_ - How often (in milliseconds) to send SSH-level keepalive packets to the server. **Default:** `60000`
@@ -555,7 +559,7 @@ Client methods
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
-**Authentication method priorities:** Password -> `Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> None
+**Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased -> None
 
 * **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _boolean_ - Executes `command` on the server. Returns `false` if you should wait for the `drain` event before sending any more traffic. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Valid `options` properties are:
 

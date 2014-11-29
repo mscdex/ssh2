@@ -113,6 +113,57 @@ var tests = [
   { run: function() {
       var self = this,
           what = this.what,
+          hostname = 'foo',
+          username = 'bar',
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  privateKey: CLIENT_KEY_RSA,
+                  localHostname: hostname,
+                  localUsername: username
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          if (ctx.method === 'hostbased') {
+            assert(ctx.username === USER,
+                   makeMsg(what, 'Unexpected username: ' + ctx.username));
+            assert(ctx.key.algo === 'ssh-rsa',
+                   makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
+            assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
+                             ctx.key.data,
+                             makeMsg(what, 'Public key mismatch'));
+            assert(ctx.signature,
+                   makeMsg(what, 'Expected signature'));
+            assert(ctx.localHostname === hostname,
+                   makeMsg(what, 'Wrong local hostname'));
+            assert(ctx.localUsername === username,
+                   makeMsg(what, 'Wrong local username'));
+            var verifier = crypto.createVerify('RSA-SHA1'),
+                pem = CLIENT_KEY_RSA_PUB.publicOrig;
+            verifier.update(ctx.blob);
+            assert(verifier.verify(pem, ctx.signature, 'binary'),
+                   makeMsg(what, 'Could not verify hostbased signature'));
+            ctx.accept();
+          } else
+            ctx.reject();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Authenticate with hostbased'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
           client,
           server,
           r;
