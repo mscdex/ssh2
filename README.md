@@ -354,8 +354,10 @@ socks.createServer(function(info, accept, deny) {
                     info.dstAddr,
                     info.dstPort,
                     function(err, stream) {
-      if (err)
+      if (err) {
+        conn.end();
         return deny();
+      }
 
       var clientSocket;
       if (clientSocket = accept(true)) {
