@@ -55,8 +55,8 @@ conn.on('ready', function() {
 // Connection :: ready
 // STDOUT:  17:41:15 up 22 days, 18:09,  1 user,  load average: 0.00, 0.01, 0.05
 //
-// Stream :: close
 // Stream :: exit :: code: 0, signal: undefined
+// Stream :: close
 ```
 
 * Authenticate using keys and start an interactive shell session:
