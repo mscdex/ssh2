@@ -1,5 +1,7 @@
 var Client = require('../lib/client'),
     Server = require('../lib/server'),
+    OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE,
+    STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE,
     utils = require('ssh2-streams').utils;
 
 var fs = require('fs'),
@@ -565,6 +567,89 @@ var tests = [
       });
     },
     what: 'Simple shell'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          expHandle = new Buffer([1, 2, 3, 4]),
+          sawOpenS = false,
+          sawCloseS = false,
+          sawOpenC = false,
+          sawCloseC = false,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.once('session', function(accept, reject) {
+            var session = accept();
+            session.once('sftp', function(accept, reject) {
+              if (accept) {
+                var sftp = accept();
+                sftp.once('OPEN', function(id, filename, flags, attrs) {
+                  assert(id === 0,
+                         makeMsg(what, 'Unexpected sftp request ID: ' + id));
+                  assert(filename === 'node.js',
+                         makeMsg(what, 'Unexpected filename: ' + filename));
+                  assert(flags === OPEN_MODE.READ,
+                         makeMsg(what, 'Unexpected flags: ' + flags));
+                  sawOpenS = true;
+                  sftp.handle(id, expHandle);
+                  sftp.once('CLOSE', function(id, handle) {
+                    assert(id === 1,
+                           makeMsg(what, 'Unexpected sftp request ID: ' + id));
+                    assert.deepEqual(handle,
+                                     expHandle,
+                                     makeMsg(what,
+                                             'Wrong sftp file handle: '
+                                             + inspect(handle)));
+                    sawCloseS = true;
+                    sftp.status(id, STATUS_CODE.OK);
+                    conn.end();
+                  });
+                });
+              }
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.sftp(function(err, sftp) {
+          assert(!err, makeMsg(what, 'Unexpected sftp error: ' + err));
+          sftp.open('node.js', 'r', function(err, handle) {
+            assert(!err, makeMsg(what, 'Unexpected sftp error: ' + err));
+            assert.deepEqual(handle,
+                             expHandle,
+                             makeMsg(what,
+                                     'Wrong sftp file handle: '
+                                     + inspect(handle)));
+            sawOpenC = true;
+            sftp.close(handle, function(err) {
+              assert(!err, makeMsg(what, 'Unexpected sftp error: ' + err));
+              sawCloseC = true;
+            });
+          });
+        });
+      }).on('end', function() {
+        assert(sawOpenS, makeMsg(what, 'Expected sftp open()'));
+        assert(sawOpenC, makeMsg(what, 'Expected sftp open() callback'));
+        assert(sawCloseS, makeMsg(what, 'Expected sftp open()'));
+        assert(sawOpenC, makeMsg(what, 'Expected sftp close() callback'));
+      });
+    },
+    what: 'Simple sftp'
   },
 ];
 
