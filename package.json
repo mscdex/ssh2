@@ -6,7 +6,7 @@
   "engines": { "node": ">=0.8.7" },
   "dependencies": {
     "readable-stream": "~1.0.0",
-    "ssh2-streams": "https://github.com/mscdex/ssh2-streams/tarball/master"
+    "ssh2-streams": "git+https://github.com/mscdex/ssh2-streams.git#24a1c630a5e15cf20476c67123574fd3c3605737"
   },
   "scripts": {
     "test": "node test/test.js"
