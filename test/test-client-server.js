@@ -235,7 +235,8 @@ var tests = [
           what = this.what,
           out = '',
           outErr = '',
-          exitCode,
+          exitArgs,
+          closeArgs,
           client,
           server,
           r;
@@ -274,13 +275,25 @@ var tests = [
           stream.on('data', function(d) {
             out += d;
           }).on('exit', function(code) {
-            exitCode = code;
+            exitArgs = new Array(arguments.length);
+            for (var i = 0; i < exitArgs.length; ++i)
+              exitArgs[i] = arguments[i];
+          }).on('close', function(code) {
+            closeArgs = new Array(arguments.length);
+            for (var i = 0; i < closeArgs.length; ++i)
+              closeArgs[i] = arguments[i];
           }).stderr.on('data', function(d) {
             outErr += d;
           });
         });
       }).on('end', function() {
-        assert(exitCode === 100, makeMsg(what, 'Wrong exit code: ' + exitCode));
+        assert.deepEqual(exitArgs,
+                         [100],
+                         makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
+        assert.deepEqual(closeArgs,
+                         [100],
+                         makeMsg(what,
+                                 'Wrong close args: ' + inspect(closeArgs)));
         assert(out === 'stdout data!\n',
                makeMsg(what, 'Wrong stdout data: ' + inspect(out)));
         assert(outErr === 'stderr data!\n',

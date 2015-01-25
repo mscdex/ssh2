@@ -35,10 +35,8 @@ conn.on('ready', function() {
   console.log('Client :: ready');
   conn.exec('uptime', function(err, stream) {
     if (err) throw err;
-    stream.on('exit', function(code, signal) {
-      console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-    }).on('close', function() {
-      console.log('Stream :: close');
+    stream.on('close', function(code, signal) {
+      console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
       conn.end();
     }).on('data', function(data) {
       console.log('STDOUT: ' + data);
@@ -804,6 +802,8 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
 * A boolean property `allowHalfOpen` exists and behaves similarly to the property of the same name for `net.Socket`. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
+* A `close` event is emitted once the channel is completely closed on both the client and server.
+
 * Client-only:
 
     * For shell():
@@ -814,11 +814,13 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
         * An `exit` event *may* (the SSH2 spec says it is optional) be emitted when the process finishes. If the process finished normally, the process's return value is passed to the `exit` callback. If the process was interrupted by a signal, the following are passed to the `exit` callback: null, < _string_ >signalName, < _boolean_ >didCoreDump, < _string_ >description.
 
+        * If there was an `exit` event, the `close` event will be passed the same arguments for convenience.
+
     * For shell() and exec():
 
         * The readable side represents stdout and the writable side represents stdin.
 
-        * A `stderr` property that represents the stream of output from stderr.
+        * A `stderr` property contains a Readable stream that represents output from stderr.
 
         * **signal**(< _string_ >signalName) - _boolean_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
