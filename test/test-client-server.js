@@ -787,35 +787,6 @@ function setup(self, clientcfg, servercfg) {
   return { client: client, server: server };
 }
 
-function bufferStream(stream, encoding, cb) {
-  var buf;
-  if (typeof encoding === 'function') {
-    cb = encoding;
-    encoding = undefined;
-  }
-  if (!encoding) {
-    var nb = 0;
-    stream.on('data', function(d) {
-      if (nb === 0)
-        buf = [ d ];
-      else
-        buf.push(d);
-      nb += d.length;
-    }).on((stream._writableState ? 'close' : 'end'), function() {
-      cb(nb ? Buffer.concat(buf, nb) : buf);
-    });
-  } else {
-    stream.on('data', function(d) {
-      if (!buf)
-        buf = d;
-      else
-        buf += d;
-    }).on((stream._writableState ? 'close' : 'end'), function() {
-      cb(buf);
-    }).setEncoding(encoding);
-  }
-}
-
 function next() {
   if (Array.isArray(process._events.exit))
     process._events.exit = process._events.exit[1];
