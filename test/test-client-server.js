@@ -664,6 +664,65 @@ var tests = [
     },
     what: 'Simple sftp'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          state = {
+            readies: 0,
+            closes: 0
+          },
+          clientcfg = {
+            username: USER,
+            password: PASSWORD
+          },
+          servercfg = {
+            privateKey: HOST_KEY_RSA
+          },
+          reconnect = false,
+          client,
+          server,
+          r;
+
+      client = new Client(),
+      server = new Server(servercfg);
+
+      function onReady() {
+        assert(++state.readies <= 4,
+               makeMsg(what, 'Wrong ready count: ' + state.readies));
+      }
+      function onClose() {
+        assert(++state.closes <= 3,
+               makeMsg(what, 'Wrong close count: ' + state.closes));
+        if (state.closes === 2)
+          server.close();
+        else if (state.closes === 3)
+          next();
+      }
+
+      server.listen(0, 'localhost', function() {
+        clientcfg.host = 'localhost';
+        clientcfg.port = server.address().port;
+        client.connect(clientcfg);
+      });
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', onReady);
+      }).on('close', onClose);
+      client.on('ready', function() {
+        onReady();
+        if (reconnect)
+          client.end();
+        else {
+          reconnect = true;
+          client.connect(clientcfg);
+        }
+      }).on('close', onClose);
+    },
+    what: 'connect() on connected client'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
