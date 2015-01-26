@@ -742,6 +742,52 @@ var tests = [
     },
     what: 'Throw when not connected'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          calledBack = 0,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+      });
+      client.on('ready', function() {
+        function callback(err, stream) {
+          assert(err, makeMsg(what, 'Expected error'));
+          assert(err.message === 'No response from server',
+                 makeMsg(what, 'Wrong error message: ' + err.message));
+          ++calledBack;
+        }
+        client.exec('uptime', callback);
+        client.shell(callback);
+        client.sftp(callback);
+        client.end();
+      }).on('close', function() {
+        // give the callbacks a chance to execute
+        process.nextTick(function() {
+          assert(calledBack === 3,
+                 makeMsg(what, 'Only '
+                               + calledBack
+                               + '/3 outstanding callbacks called'));
+        });
+      });
+    },
+    what: 'Outstanding callbacks called on disconnect'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
