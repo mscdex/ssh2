@@ -723,6 +723,25 @@ var tests = [
     },
     what: 'connect() on connected client'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          calledBack = 0,
+          client = new Client({
+            username: USER,
+            password: PASSWORD
+          });
+
+      assert.throws(function() {
+        client.exec('uptime', function(err, stream) {
+          assert(false, makeMsg(what, 'Callback unexpectedly called'));
+        });
+      });
+      next();
+    },
+    what: 'Throw when not connected'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
