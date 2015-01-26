@@ -778,8 +778,8 @@ function setup(self, clientcfg, servercfg) {
   }
 
   process.nextTick(function() {
-    server.listen(0, '127.0.0.1', function() {
-      clientcfg.host = '127.0.0.1';
+    server.listen(0, 'localhost', function() {
+      clientcfg.host = 'localhost';
       clientcfg.port = server.address().port;
       client.connect(clientcfg);
     });
