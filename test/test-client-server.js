@@ -820,6 +820,11 @@ function makeMsg(what, msg) {
   return '[' + group + what + ']: ' + msg;
 }
 
+process.once('uncaughtException', function(err) {
+  if (t > -1 && !/(?:^|\n)AssertionError: /i.test(''+err))
+    console.log(makeMsg(tests[t].what, 'Unexpected Exception:'));
+  throw err;
+});
 process.once('exit', function() {
   assert(t === tests.length,
          makeMsg('_exit',
