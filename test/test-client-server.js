@@ -858,6 +858,67 @@ var tests = [
     },
     what: 'Pipelined requests'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          calledBack = 0,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD,
+                  debug: console.log
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          var reqs = [];
+          conn.on('session', function(accept, reject) {
+            if (reqs.length === 0) {
+              conn.rekey(function(err) {
+                assert(!err, makeMsg(what, 'Unexpected rekey error: ' + err));
+                reqs.forEach(function(accept) {
+                  var session = accept();
+                  session.once('exec', function(accept, reject, info) {
+                    var stream = accept();
+                    stream.exit(0);
+                    stream.end();
+                  });
+                });
+              });
+            }
+            reqs.push(accept);
+          });
+        });
+      });
+      client.on('ready', function() {
+        function callback(err, stream) {
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          stream.resume();
+          if (++calledBack === 3)
+            client.end();
+        }
+        client.exec('foo', callback);
+        client.exec('bar', callback);
+        client.exec('baz', callback);
+      }).on('end', function() {
+        assert(calledBack === 3,
+               makeMsg(what, 'Only '
+                             + calledBack
+                             + '/3 callbacks called'));
+      });
+    },
+    what: 'Pipelined requests with intermediate rekeying'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
