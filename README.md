@@ -717,7 +717,7 @@ Connection events
 
         * **socketPath** - _string_ - The socket path to start/stop binding to.
 
-* **rekey**() - Emitted when the client has finished rekeying.
+* **rekey**() - Emitted when the client has finished rekeying (either client or server initiated).
 
 * **drain**() - Emitted when more data can be sent to the client (after a `Connection` method returned `false`).
 
@@ -737,6 +737,8 @@ Connection methods
 * **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 * **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - Alert the client of an incoming UNIX domain socket connection on `socketPath`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `drain` event before sending any more traffic.
+
+* **rekey**([< _function_ >callback]) - _boolean_ - Initiates a rekeying with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event. Returns `false` if you should wait for the `drain` event before sending any more traffic.
 
 
 Session events
