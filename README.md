@@ -5,9 +5,7 @@ SSH2 client and server modules written in pure JavaScript for [node.js](http://n
 
 Development/testing is done against OpenSSH (6.6 currently).
 
-[Changes from v0.2.x-v0.3.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.2.x-to-0.3.x) (including backwards incompatibilities).
-
-[Changes from v0.3.x-v0.4.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.3.x-to-0.4.x) (including backwards incompatibilities).
+[Changes from v0.3.x-v0.4.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.3.x-to-0.4.x)
 
 
 Requirements
