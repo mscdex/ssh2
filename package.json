@@ -6,7 +6,7 @@
   "engines": { "node": ">=0.8.7" },
   "dependencies": {
     "readable-stream": "~1.0.0",
-    "ssh2-streams": "~0.0.2"
+    "ssh2-streams": "~0.0.4"
   },
   "scripts": {
     "test": "node test/test.js"
