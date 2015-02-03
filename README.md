@@ -559,6 +559,8 @@ Client methods
 
     * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
+    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`) for the life of the connection. `agent` must also be set to use this feature. **Default:** `false`
+
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
 **Authentication method priorities:** Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased -> None
@@ -575,7 +577,7 @@ Client methods
 
         * **screen** - _number_ - Screen number to use **Default:** `0`
 
-    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`). **Default:** `false`
+    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`) during *this* request. `agent` must also have been set in the connection config to use this feature. **Default:** `false`
 
 * **shell**([[< _object_ >window,] < _object_ >options]< _function_ >callback) - _boolean_ - Starts an interactive shell session on the server, with optional `window` pseudo-tty settings (see 'Pseudo-TTY settings'). `options` supports the `x11` and `agentForward` options as described in exec(). `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
