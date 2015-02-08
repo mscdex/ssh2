@@ -431,7 +431,8 @@ var tests = [
 
       r = setup(this,
                 { username: USER,
-                  password: PASSWORD
+                  password: PASSWORD,
+                  agent: '/foo/bar/baz'
                 },
                 { privateKey: HOST_KEY_RSA
                 });
