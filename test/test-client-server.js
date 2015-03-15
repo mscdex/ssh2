@@ -922,8 +922,6 @@ var tests = [
   { run: function() {
       var self = this,
           what = this.what,
-          out = '',
-          calledBack = 0,
           client,
           server,
           r;
@@ -961,6 +959,57 @@ var tests = [
       });
     },
     what: 'ignore outgoing after stream close'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD,
+                  debug: console.log
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.on('session', function(accept, reject) {
+            accept().on('sftp', function(accept, reject) {
+              var sftp = accept();
+              // XXX: hack to get channel ...
+              var channel = sftp._readableState.pipes;
+
+              channel.unpipe(sftp);
+              sftp.unpipe(channel);
+
+              channel.exit(127);
+              channel.close();
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        var timeout = setTimeout(function() {
+          assert(false, makeMsg(what, 'Unexpected SFTP timeout'));
+        }, 50);
+        client.sftp(function(err, sftp) {
+          clearTimeout(timeout);
+          assert(err, makeMsg(what, 'Expected error'));
+          assert(err.code === 127,
+                 makeMsg(what, 'Expected exit code 127, saw: ' + err.code));
+          client.end();
+        });
+      });
+    },
+    what: 'sftp server aborts with exit-status'
   },
 ];
 
