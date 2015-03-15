@@ -919,6 +919,49 @@ var tests = [
     },
     what: 'Pipelined requests with intermediate rekeying'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          calledBack = 0,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.on('session', function(accept, reject) {
+            var session = accept();
+            session.once('exec', function(accept, reject, info) {
+              var stream = accept();
+              stream.exit(0);
+              stream.end();
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.exec('foo', function(err, stream) {
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          stream.on('exit', function(code, signal) {
+            client.end();
+          });
+        });
+      });
+    },
+    what: 'ignore outgoing after stream close'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
