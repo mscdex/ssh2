@@ -969,8 +969,7 @@ var tests = [
 
       r = setup(this,
                 { username: USER,
-                  password: PASSWORD,
-                  debug: console.log
+                  password: PASSWORD
                 },
                 { privateKey: HOST_KEY_RSA
                 });
