@@ -529,6 +529,10 @@ Client methods
 
     * **port** - _integer_ - Port number of the server. **Default:** `22`
 
+    * **forceIPv4** - _boolean_ - Only connect via resolved IPv4 address for `host`. **Default:** `false`
+
+    * **forceIPv6** - _boolean_ - Only connect via resolved IPv6 address for `host`. **Default:** `false`
+
     * **hostHash** - _string_ - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
 
     * **hostVerifier** - _function_ - Function that is passed a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect. **Default:** (auto-accept)
