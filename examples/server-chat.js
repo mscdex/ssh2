@@ -1,5 +1,5 @@
 // **BEFORE RUNNING THIS SCRIPT:**
-//   1. Install `blessed`: `npm install blessed`
+//   1. Install `blessed`: `npm install chjj/blessed#b34c90ee2b`
 //   2. Create a server host key in this same directory and name it `host.key`
 
 var blessed = require('blessed'),
