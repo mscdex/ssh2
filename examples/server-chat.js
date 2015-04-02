@@ -2,6 +2,8 @@
 //   1. Install `blessed`: `npm install chjj/blessed#b34c90ee2b`
 //   2. Create a server host key in this same directory and name it `host.key`
 
+// Type /quit or /exit to exit the chat
+
 var blessed = require('blessed'),
     Server = require('ssh2').Server;
 
@@ -135,7 +137,7 @@ new Server({
           terminal: term || 'ansi'
         });
 
-        screen.title = 'SSH Chat';
+        screen.title = 'SSH Chatting as ' + name;
         // disable local echo
         screen.program.attr('invisible', true);
         // hide cursor
@@ -223,6 +225,8 @@ new Server({
                    + formatMessage('{/bold} has left the chat{/}', output));
       }
     }
+  }).on('error', function(err) {
+    // ignore errors
   });
 }).listen(0, function() {
   console.log('Listening on port ' + this.address().port);
