@@ -1,6 +1,9 @@
 // **BEFORE RUNNING THIS SCRIPT:**
-//   1. Install `blessed`: `npm install chjj/blessed#b34c90ee2b`
-//   2. Create a server host key in this same directory and name it `host.key`
+//   1. The server portion is best run on non-Windows systems because they have
+//      terminfo databases which are needed to properly work with different
+//      terminal types of client connections
+//   2. Install `blessed`: `npm install chjj/blessed#b34c90ee2b`
+//   3. Create a server host key in this same directory and name it `host.key`
 
 var blessed = require('blessed'),
     Server = require('ssh2').Server;
@@ -138,11 +141,6 @@ new Server({
         screen.title = 'SSH Chatting as ' + name;
         // disable local echo
         screen.program.attr('invisible', true);
-        // hide cursor
-        //screen.program.hideCursor();
-        // XXX this is a hack since `program.hideCursor()` does not seem to
-        // work?
-        stream.write('\x1b[?25l');
 
         var output = stream.output = new blessed.log({
           screen: screen,
@@ -174,7 +172,6 @@ new Server({
         screen.append(input);
 
         input.focus();
-        screen.render();
 
         // local greetings
         localMessage('{blue-bg}{white-fg}{bold}Welcome to SSH Chat!{/}\n'
@@ -194,6 +191,11 @@ new Server({
                      + name
                      + formatMessage('{/bold} has joined the chat{/}', output));
         }
+
+        screen.render();
+        // XXX this fake resize event is needed for some terminals in order to
+        // have everything display correctly
+        screen.program.emit('resize');
 
         // read a line of input from the user
         input.on('submit', function(line) {
