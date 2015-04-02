@@ -2,8 +2,6 @@
 //   1. Install `blessed`: `npm install chjj/blessed#b34c90ee2b`
 //   2. Create a server host key in this same directory and name it `host.key`
 
-// Type /quit or /exit to exit the chat
-
 var blessed = require('blessed'),
     Server = require('ssh2').Server;
 
@@ -178,10 +176,12 @@ new Server({
         input.focus();
         screen.render();
 
-        // local greeting
-        localMessage('{blue-bg}{white-fg}{bold}Welcome to SSH Chat!{/}\nThere are {bold}'
+        // local greetings
+        localMessage('{blue-bg}{white-fg}{bold}Welcome to SSH Chat!{/}\n'
+                     + 'There are {bold}'
                      + (users.length - 1)
-                     + '{/} other user(s) connected.',
+                     + '{/} other user(s) connected.\n'
+                     + 'Type /quit or /exit to exit the chat.',
                      stream);
 
         // let everyone else know that this user just joined
