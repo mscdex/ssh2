@@ -19,6 +19,7 @@ var USER = 'nodejs',
     PASSWORD = 'FLUXCAPACITORISTHEPOWER',
     MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64',
     HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key')),
+    HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key')),
     CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa')),
     CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA)),
     CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
@@ -111,6 +112,38 @@ var tests = [
       });
     },
     what: 'Authenticate with a DSA key'
+  },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: 'asdf'
+                },
+                { privateKey: HOST_KEY_DSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'password',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.password === 'asdf',
+                 makeMsg(what, 'Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server with DSA host key'
   },
   { run: function() {
       var self = this,
