@@ -4,7 +4,8 @@ var Client = require('../lib/client'),
     STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE,
     utils = require('ssh2-streams').utils;
 
-var fs = require('fs'),
+var net = require('net'),
+    fs = require('fs'),
     crypto = require('crypto'),
     path = require('path'),
     join = path.join,
@@ -1085,6 +1086,34 @@ var tests = [
     },
     what: 'sftp server aborts with exit-status'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD,
+                  sock: new net.Socket()
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {});
+      });
+      client.on('ready', function() {
+        client.end();
+      });
+    },
+    what: 'double pipe on unconnected, passed in net.Socket'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
@@ -1141,8 +1170,12 @@ function setup(self, clientcfg, servercfg) {
 
   process.nextTick(function() {
     server.listen(0, 'localhost', function() {
-      clientcfg.host = 'localhost';
-      clientcfg.port = server.address().port;
+      if (clientcfg.sock)
+        clientcfg.sock.connect(server.address().port, 'localhost');
+      else {
+        clientcfg.host = 'localhost';
+        clientcfg.port = server.address().port;
+      }
       client.connect(clientcfg);
     });
   });
