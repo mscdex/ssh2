@@ -913,6 +913,26 @@ This is a normal **streams2** Duplex Stream, with the following changes:
     * For exec and shell-enabled channel instances, `channel.stderr` is a writable stream.
 
 
+Pseudo-TTY settings
+-------------------
+
+* **rows** - < _integer_ > - Number of rows **Default:** `24`
+
+* **cols** - < _integer_ > - Number of columns **Default:** `80`
+
+* **height** - < _integer_ > - Height in pixels **Default:** `480`
+
+* **width** - < _integer_ > - Width in pixels **Default:** `640`
+
+* **term** - < _string_ > - The value to use for $TERM **Default:** `'vt100'`
+
+`rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
+
+Pixel dimensions refer to the drawable area of the window.
+
+Zero dimension parameters are ignored.
+
+
 Terminal modes
 --------------
 
