@@ -415,7 +415,8 @@ Server Examples
 
 ```javascript
 var fs = require('fs'),
-    crypto = require('crypto');
+    crypto = require('crypto'),
+    inspect = require('util').inspect;
 var buffersEqual = require('buffer-equal-constant-time'),
     ssh2 = require('ssh2'),
     utils = ssh2.utils;
