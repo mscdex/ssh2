@@ -1074,7 +1074,7 @@ var tests = [
       client.on('ready', function() {
         var timeout = setTimeout(function() {
           assert(false, makeMsg(what, 'Unexpected SFTP timeout'));
-        }, 50);
+        }, 1000);
         client.sftp(function(err, sftp) {
           clearTimeout(timeout);
           assert(err, makeMsg(what, 'Expected error'));
