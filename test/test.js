@@ -14,6 +14,8 @@ function next() {
       .on('exit', function(code) {
         if (code === 0)
           process.nextTick(next);
+        else
+          process.exit(code);
       });
   }
 }
