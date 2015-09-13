@@ -2,7 +2,7 @@
 //   1. The server portion is best run on non-Windows systems because they have
 //      terminfo databases which are needed to properly work with different
 //      terminal types of client connections
-//   2. Install `blessed`: `npm install chjj/blessed#36fed3c12b`
+//   2. Install `blessed`: `npm install blessed`
 //   3. Create a server host key in this same directory and name it `host.key`
 
 var blessed = require('blessed'),
