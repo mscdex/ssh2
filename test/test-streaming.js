@@ -37,6 +37,15 @@ var USER = 'nodejs',
     STRICT_STREAMS2 = process.env['STREAMS2'],
     MAXNUMBER = (process.argv.length > 2 && parseInt(process.argv[2])) || 10000;
     
+var debug = function() {};
+
+if (DEBUG) {
+  debug = function(message) {
+    console.log(message);
+  }
+}
+
+
     
 
 function wGD(stream, generator, done) {
@@ -46,7 +55,9 @@ function wGD(stream, generator, done) {
   
   function write() {
     while (!generator.atEnd) {
-      stream.write(generator.next());
+      var chunk = generator.next();
+      debug('[DATA] ' + generator.name + ' wGD write(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
+      stream.write(chunk);
     }
     done();
   }
@@ -68,8 +79,8 @@ function wGDWonDrain(stream, generator, done) {
     do {
       chunk = generator.next();
       
-      // console.error("write " + ((null !== chunk && chunk.length) || '-') + ' ' + generator.atEnd);
-      
+      debug('[DATA] ' + generator.name + ' wGDWonDrain write(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
+       
       if (generator.atEnd) {
         // last time
         return stream.write(chunk, done);
@@ -80,14 +91,18 @@ function wGDWonDrain(stream, generator, done) {
     } while (ok);
     
     // wait on drain
-    stream.once('drain', write);
+    debug('[DATA] ' + generator.name + ' wGDWonDrain .once:drain  #' + generator.generated);
+    stream.once('drain', function() {
+      debug('[EVENT] drain ' + generator.name + ' wGDWonDrain  #' + generator.generated);
+      write();
+    });
   }
   
   setImmediate(write);
   
   return stream;
 }
-sODV
+
 function sODV(stream, verifier, done) {
   // streamOnDataVerify
 
@@ -101,7 +116,6 @@ function sODV(stream, verifier, done) {
     }
   });
 }
-
 
 function createExecTest(options) {
   
@@ -130,14 +144,23 @@ function createExecTest(options) {
     // SERVER
     
     server.on('connection', function(conn) {
+      debug('[EVENT] connection server(conn)');
+
       conn.on('authentication', function(ctx) {
+        debug('[EVENT] authentication server(ctx)');
         ctx.accept();
       }).on('ready', function() {
+        debug('[EVENT] ready server()');
+
         conn.once('session', function(accept, reject) {
+          debug('[EVENT] session server(f,f)');
+          
           var session = accept();
           session.once('exec', function(accept, reject, info) {
             assert(info.command === 'foo --bar',
                    makeMsg(what, 'Wrong exec command: ' + info.command));
+                   
+            debug('[EVENT] exec server.session(f,f,' + inspect(info) + ')');
                    
             var stream = accept();
       
@@ -148,7 +171,8 @@ function createExecTest(options) {
       
             function end(what) {
               if (undefined !== what) writesEnded |= what;
-              console.error('end(' + what + ') => ' + writesEnded);
+              
+              debug('[CHECK] server end(' + what + ') => ' + writesEnded);
         
               if (writesEnded != exitAtWritesEnded) return;
         
@@ -160,44 +184,52 @@ function createExecTest(options) {
             var generator;
       
             // create data writers stdout
-            generator = new data_utils.ChunkGenerator('server:stdout', maxNumber, maxChunkSize);
+            generator = new data_utils.ChunkGenerator('server.session.exec.stdout', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stdout) {
               wGD(stream, generator, function(err) { 
-                console.log('[SERVER] wGD:callback(' + inspect(err) + ')');
                 assert(!err, 
-                       makeMsg(what, 'wGD err: ' + inspect(err)));
+                       makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' wGD:cb(' + inspect(err) + ')');
+                
                 end(1);
               });
               exitAtWritesEnded |= 1;
             } 
             else if ('wGDWonDrain' === options.server.stdout) {
               wGDWonDrain(stream, generator, function(err) { 
-                console.log('[SERVER] wGDWonDrain:callback(' + inspect(err) + ')');
                 assert(!err, 
-                       makeMsg(what, 'wGDWonDrain err: ' + inspect(err)));
+                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
+                
                 end(1);
               });
               exitAtWritesEnded |= 1;        
             }
      
             // create data writers stderr
-            generator = new data_utils.ChunkGenerator('server:stderr', maxNumber, maxChunkSize);
+            generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stderr) {
               wGD(stream.stderr, generator, function(err) {          
-                console.log('[SERVER] wGD.stderr:callback(' + inspect(err) + ')');
                 assert(!err, 
-                       makeMsg(what, 'wGD.stderr err: ' + inspect(err)));
+                       makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' wGD:cb(' + inspect(err) + ')');
+                
                 end(2);
               });
               exitAtWritesEnded |= 2;
             }
             else if ('wGDWonDrain' === options.server.stdout) {
               wGDWonDrain(stream.stderr, generator, function(err) { 
-                console.log('[SERVER] wGDWonDrain.stderr:callback(' + inspect(err) + ')');
                 assert(!err, 
-                       makeMsg(what, 'wGDWonDrain.stderr err: ' + inspect(err)));
+                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
+                
                 end(2);
               });
               exitAtWritesEnded |= 2;        
@@ -214,35 +246,37 @@ function createExecTest(options) {
     
     // CLIENT
 
-    var closeEmitted = false;
-    
     client.on('ready', function() {
       client.exec('foo --bar', function(err, stream) {
         assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
 
+        var closeEmitted = false;
+    
         var verifiers = [],
             verifier;
     
         // create verifier on stdout
-        verifier = new data_utils.ChunkVerifier('client:stdout', maxNumber);
+        verifier = new data_utils.ChunkVerifier('client.exec.stdout', maxNumber);
     
         if ('sODV' === options.client.stdout) {
           sODV(stream, verifier, function(err) {
-            console.log('[CLIENT] streamOnDataVerify:callback(' + inspect(err) + ')');
             assert(undefined === err, 
-                  makeMsg(what, 'streamOnDataVerify err: ' + inspect(err)));
+                  makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
+                  
+            debug('[CHECK] ' + verifier.name + ' sODV:cb(' + inspect(err) + ')');
           });
           verifiers.push(verifier);
         }
     
         // create verifier on stderr
-        verifier = new data_utils.ChunkVerifier('client:stderr', maxNumber);
+        verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
     
         if ('sODV' === options.client.stderr) {
           sODV(stream.stderr, verifier, function(err) {
-            console.log('[CLIENT] streamOnDataVerify.stderr:callback(' + inspect(err) + ')');
             assert(undefined === err, 
-                   makeMsg(what, 'streamOnDataVerify.stderr err: ' + inspect(err)));
+                   makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
+
+            debug('[CHECK] ' + verifier.name + ' sODV:cb(' + inspect(err) + ')');
           });      
           verifiers.push(verifier);
         }
@@ -250,39 +284,41 @@ function createExecTest(options) {
         //
     
         stream.on('exit', function(code) {
+          debug('[EVENT] exit client.exec.channel(' + inspect(arguments) + ')');
+          
           exitArgs = new Array(arguments.length);
-          console.log('[CLIENT] stream.on:exit(' + inspect(arguments) + ')');
           for (var i = 0; i < exitArgs.length; ++i)
             exitArgs[i] = arguments[i];
         }).on('close', function(code) {
+          debug('[EVENT] close client.exec.channel(' + inspect(arguments) + ')');
+
           closeEmitted = true;
       
-          console.log('[CLIENT] stream.on:close(' + inspect(arguments) + ')');
           closeArgs = new Array(arguments.length);
           for (var i = 0; i < closeArgs.length; ++i)
             closeArgs[i] = arguments[i];
       
         }).on('end', function() {
-          console.log('[CLIENT] stream.on:end()');
+          debug('[EVENT] end client.exec.channel()');
       
           if (STRICT_STREAMS2) {
             assert(closeEmitted === false,
-                   makeMsg(what, 'stream emitted close before end'));
+                   makeMsg(what, 'client.exec.channel emitted close before end'));
           }
           else if (closeEmitted) {
-            console.error('ignoring stream emitted close before end');
+            debug('[IGNORE] client.exec.channel emitted close before end');
           }
       
           // all verifieres must be atEnd !!
           for (var verifier of verifiers) {
             assert(verifier.atEnd, 
-                   makeMsg(what, 'verifier ' + verifier.name + ' is not .atEnd'));
+                   makeMsg(what, 'client.exec.channel verifier ' + verifier.name + ' is not .atEnd'));
           }
         }); // stream.on
         
       }); // client.exec
     }).on('end', function() {
-      console.log('[CLIENT] client.on:end()');
+      debug('[EVENT] end client()');
       assert.deepEqual(exitArgs,
                        [100],
                        makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
@@ -315,8 +351,8 @@ function createExecTest(options) {
     client_descs.push('E:' + options.client.stderr);
   }
   
-  var what = 'Server( ' + server_descs.join(',') + ' )<->Client( ' + client_descs.join(',') + ' )';
-  console.log('created exec test ' + what);
+  var what = 'Exec( ' + client_descs.join(',') + ' )<->( ' + server_descs.join(',') + ' )';
+  debug('[CREATE] created test ' + what);
   
   
   return { run:run, what:what };
@@ -375,7 +411,7 @@ function setup(self, clientcfg, servercfg) {
       assert(self.state.ends == 0, makeMsg(self.what, which + ' emitted error after close: ' + err));
     }
     if (which === 'server' && err.message === 'Bad identification start') {
-      console.error('ignoring ' + which + ' error: ' + err);
+      debug('[IGNORE] ' + makeMsg(self.what, which + ' error: ' + err));
     }
     else {
       assert(false, makeMsg(self.what, 'Unexpected ' + which + ' error: ' + err));
