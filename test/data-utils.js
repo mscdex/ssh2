@@ -7,7 +7,8 @@ var stream = require('stream'),
 
 //
 
-function ChunkGenerator(maxNumber, maxSize) {
+function ChunkGenerator(name, maxNumber, maxSize) {
+  this.name = name;
   this.maxNumber = maxNumber;
   this.maxSize = maxSize;
   this.number = 0;
@@ -39,7 +40,8 @@ exports.ChunkGenerator = ChunkGenerator;
 
 //
 
-function ChunkVerifier(maxNumber) {
+function ChunkVerifier(name, maxNumber) {
+  this.name = name;
   this.maxNumber = maxNumber;
   this.number = 0;
   this.checked = 0;

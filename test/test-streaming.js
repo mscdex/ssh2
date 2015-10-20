@@ -2,7 +2,7 @@
 
 // (c) 2015 Michael Keller, minesworld-technologies.com , published under MIT license
 
-var datautils = require('./data-utils');
+var data_utils = require('./data-utils');
 
 var Client = require('../lib/client'),
     Server = require('../lib/server'),
@@ -66,7 +66,9 @@ function execClient(client, what, execfunc) {
 }
 
 
-function writeBigData(stream, generator, done) {
+function wGD(stream, generator, done) {
+  // writeGeneratedData
+  
   // code analog to stream.Writable.write documentation example
   
   function write() {
@@ -81,7 +83,9 @@ function writeBigData(stream, generator, done) {
   return stream;
 }
 
-function writeBigDataWaitOnDrain(stream, generator, done) {
+function wGDWonDrain(stream, generator, done) {
+  // writeGeneratedDataWaitsOnDrain
+  
   // code analog to stream.Writable.write documentation example
   
   function write() {
@@ -110,14 +114,9 @@ function writeBigDataWaitOnDrain(stream, generator, done) {
   
   return stream;
 }
-
-function pipeBigData(stream, generator, done) {
-  
-  
-  
-}
-
-function streamOnDataVerify(stream, verifier, done) {
+sODV
+function sODV(stream, verifier, done) {
+  // streamOnDataVerify
 
   return stream.on('data', function(d) {
     var err = verifier.verify(d);
@@ -130,233 +129,217 @@ function streamOnDataVerify(stream, verifier, done) {
   });
 }
 
+
+function createExecTest(options) {
+  
+  var run = function() {
+    var self = this,
+        what = this.what,
+        out = '',
+        outErr = '',
+        exitArgs,
+        closeArgs,
+        client,
+        server,
+        maxNumber = MAXNUMBER,
+        maxChunkSize,
+        r;
+
+    r = setup(this,
+              { username: USER,
+                password: PASSWORD
+              },
+              { privateKey: HOST_KEY_RSA
+              });
+    client = r.client;
+    server = r.server;
+    
+    execServer(server, what, function(conn, stream) {
+      
+      var writesEnded = 0, 
+          exitAtWritesEnded = 0;
+          
+      // exit and end if all generators finished
+      
+      function end(what) {
+        if (undefined !== what) writesEnded |= what;
+        console.error('end(' + what + ') => ' + writesEnded);
+        
+        if (writesEnded != exitAtWritesEnded) return;
+        
+        stream.exit(100);
+        stream.end();        
+        conn.end();
+      }
+      
+      var generator;
+      
+      // create data writers stdout
+      generator = new data_utils.ChunkGenerator('server:stdout', maxNumber, maxChunkSize);
+      
+      if ('wGD' === options.server.stdout) {
+        wGD(stream, generator, function(err) { 
+          console.log('[SERVER] wGD:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'wGD err: ' + inspect(err)));
+          end(1);
+        });
+        exitAtWritesEnded |= 1;
+      } 
+      else if ('wGDWonDrain' === options.server.stdout) {
+        wGDWonDrain(stream, generator, function(err) { 
+          console.log('[SERVER] wGDWonDrain:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'wGDWonDrain err: ' + inspect(err)));
+          end(1);
+        });
+        exitAtWritesEnded |= 1;        
+      }
+     
+      // create data writers stderr
+      generator = new data_utils.ChunkGenerator('server:stderr', maxNumber, maxChunkSize);
+      
+      if ('wGD' === options.server.stderr) {
+        wGD(stream.stderr, generator, function(err) {          
+          console.log('[SERVER] wGD.stderr:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'wGD.stderr err: ' + inspect(err)));
+          end(2);
+        });
+        exitAtWritesEnded |= 2;
+      }
+      else if ('wGDWonDrain' === options.server.stdout) {
+        wGDWonDrain(stream.stderr, generator, function(err) { 
+          console.log('[SERVER] wGDWonDrain.stderr:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'wGDWonDrain.stderr err: ' + inspect(err)));
+          end(2);
+        });
+        exitAtWritesEnded |= 2;        
+      }
+      if (2 === (exitAtWritesEnded & 2)) {
+        server_descs.push('E:' + options.server.stderr);
+      }
+      
+    });
+
+    var closeEmitted = false;
+    
+    execClient(client, what, function(stream) {
+      console.error("in execClient execFunc");
+      
+      var verifiers = [],
+          verifier;
+      
+      // create verifier on stdout
+      verifier = new data_utils.ChunkVerifier('client:stdout', maxNumber);
+      
+      if ('sODV' === options.client.stdout) {
+        sODV(stream, verifier, function(err) {
+          console.log('[CLIENT] streamOnDataVerify:callback(' + inspect(err) + ')');
+          assert(undefined === err, 
+                makeMsg(what, 'streamOnDataVerify err: ' + inspect(err)));
+        });
+        verifiers.push(verifier);
+      }
+      
+      // create verifier on stderr
+      verifier = new data_utils.ChunkVerifier('client:stderr', maxNumber);
+      
+      if ('sODV' === options.client.stderr) {
+        sODV(stream.stderr, verifier, function(err) {
+          console.log('[CLIENT] streamOnDataVerify.stderr:callback(' + inspect(err) + ')');
+          assert(undefined === err, 
+                 makeMsg(what, 'streamOnDataVerify.stderr err: ' + inspect(err)));
+        });      
+        verifiers.push(verifier);
+      }
+      
+      //
+      
+      stream.on('exit', function(code) {
+        exitArgs = new Array(arguments.length);
+        console.log('[CLIENT] stream.on:exit(' + inspect(arguments) + ')');
+        for (var i = 0; i < exitArgs.length; ++i)
+          exitArgs[i] = arguments[i];
+      }).on('close', function(code) {
+        closeEmitted = true;
+        
+        console.log('[CLIENT] stream.on:close(' + inspect(arguments) + ')');
+        closeArgs = new Array(arguments.length);
+        for (var i = 0; i < closeArgs.length; ++i)
+          closeArgs[i] = arguments[i];
+        
+      }).on('end', function() {
+        console.log('[CLIENT] stream.on:end()');
+        
+        if (STRICT_STREAMS2) {
+          assert(closeEmitted === false,
+                 makeMsg(what, 'stream emitted close before end'));
+        }
+        else if (closeEmitted) {
+          console.error('ignoring stream emitted close before end');
+        }
+        
+        // all verifieres must be atEnd !!
+        for (var verifier of verifiers) {
+          assert(verifier.atEnd, 
+                 makeMsg(what, 'verifier ' + verifier.name + ' is not .atEnd'));
+        }
+      });
+      
+    }).on('end', function() {
+      console.log('[CLIENT] client.on:end()');
+      assert.deepEqual(exitArgs,
+                       [100],
+                       makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
+      assert.deepEqual(closeArgs,
+                       [100],
+                       makeMsg(what,
+                               'Wrong close args: ' + inspect(closeArgs)));
+    });
+  };
+  
+  // generate description
+  
+  var server_descs = [],
+      client_descs = [];
+
+  var writers = ['wGD', 'wGDWonDrain'],
+      readers = ['sODV']
+
+  if (-1 !== writers.indexOf(options.server.stdout)) {
+    server_descs.push('O:' + options.server.stdout);
+  }
+  if (-1 !== writers.indexOf(options.server.stderr)) {
+    server_descs.push('E:' + options.server.stderr);
+  }
+ 
+  if (-1 !== readers.indexOf(options.client.stdout)) {
+    client_descs.push('O:' + options.client.stdout);
+  }
+  if (-1 !== readers.indexOf(options.client.stderr)) {
+    client_descs.push('E:' + options.client.stderr);
+  }
+  
+  var what = 'Server( ' + server_descs.join(',') + ' )<->Client( ' + client_descs.join(',') + ' )';
+  console.log('created exec test ' + what);
+  
+  return { run:run, what:what };
+}
+
+
+
+
 var tests = [
-  { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          outErr = '',
-          exitArgs,
-          closeArgs,
-          client,
-          server,
-          maxNumber = MAXNUMBER,
-          maxChunkSize,
-          r;
-
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { privateKey: HOST_KEY_RSA
-                });
-      client = r.client;
-      server = r.server;
-      
-      execServer(server, what, function(conn, stream) {
-        var writesEnded = 0;
-        
-        function end(what) {
-          if (undefined !== what) writesEnded |= what;
-          console.error('end(' + what + ') => ' + writesEnded);
-          
-          if (writesEnded != 3) return;
-          
-          stream.exit(100);
-          stream.end();        
-          conn.end();
-        }
-        
-        writeBigData(stream, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) { 
-          console.log('[SERVER] writeBigData:callback(' + inspect(err) + ')');
-          assert(!err, 
-                 makeMsg(what, 'writeBigData err: ' + inspect(err)));
-          end(1);
-        });
-        writeBigData(stream.stderr, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) {          
-          console.log('[SERVER] writeBigData.stderr:callback(' + inspect(err) + ')');
-          assert(!err, 
-                 makeMsg(what, 'writeBigData.stderr err: ' + inspect(err)));
-          end(2);
-        });
-      });
-
-      var stdoutVerifier = new datautils.ChunkVerifier(maxNumber),
-          stderrVerifier = new datautils.ChunkVerifier(maxNumber),
-          closeEmitted = false;
-      
-      execClient(client, what, function(stream) {
-        console.error("in execClient execFunc");
-        
-         streamOnDataVerify(stream, stdoutVerifier, function(err) {
-          console.log('[CLIENT] streamOnDataVerify:callback(' + inspect(err) + ')');
-          assert(undefined === err, 
-                makeMsg(what, 'streamOnDataVerify err: ' + inspect(err)));
-        }).on('exit', function(code) {
-          exitArgs = new Array(arguments.length);
-          console.log('[CLIENT] stream.on:exit(' + inspect(arguments) + ')');
-          for (var i = 0; i < exitArgs.length; ++i)
-            exitArgs[i] = arguments[i];
-        }).on('close', function(code) {
-          closeEmitted = true;
-          
-          console.log('[CLIENT] stream.on:close(' + inspect(arguments) + ')');
-          closeArgs = new Array(arguments.length);
-          for (var i = 0; i < closeArgs.length; ++i)
-            closeArgs[i] = arguments[i];
-          
-        }).on('end', function() {
-          console.log('[CLIENT] stream.on:end()');
-          
-          if (STRICT_STREAMS2) {
-            assert(closeEmitted === false,
-                   makeMsg(what, 'stream emitted close before end'));
-          }
-          else if (closeEmitted) {
-            console.error('ignoring stream emitted close before end');
-          }
-          
-          // both verifieres must be atEnd !!
-          assert(stdoutVerifier.atEnd, 
-                 makeMsg(what, 'stdoutVerifier is not .atEnd'));
-          assert(stderrVerifier.atEnd, 
-                 makeMsg(what, 'stderrVerifier is not .atEnd'));         
-        });
-        
-        // console.error('stream.on:exit=' + stream.listeners('exit'));
-        // console.error('stream.on:data=' + stream.listeners('data'));
-        
-        streamOnDataVerify(stream.stderr, stderrVerifier, function(err) {
-          console.log('[CLIENT] streamOnDataVerify.stderr:callback(' + inspect(err) + ')');
-          assert(undefined === err, 
-                 makeMsg(what, 'streamOnDataVerify.stderr err: ' + inspect(err)));
-        });
-      }).on('end', function() {
-        console.log('[CLIENT] client.on:end()');
-        assert.deepEqual(exitArgs,
-                         [100],
-                         makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
-        assert.deepEqual(closeArgs,
-                         [100],
-                         makeMsg(what,
-                                 'Wrong close args: ' + inspect(closeArgs)));
-      });
-    },
-    what: 'Big-data server.write->client.on:data exec'
-  },  
-  { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          outErr = '',
-          exitArgs,
-          closeArgs,
-          client,
-          server,
-          maxNumber = MAXNUMBER,
-          maxChunkSize,
-          r;
-
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { privateKey: HOST_KEY_RSA
-                });
-      client = r.client;
-      server = r.server;
-      
-      execServer(server, what, function(conn, stream) {
-        var writesEnded = 0;
-        
-        function end(what) {
-          if (undefined !== what) writesEnded |= what;
-          console.error('end(' + what + ') => ' + writesEnded);
-          
-          if (writesEnded != 3) return;
-          
-          stream.exit(100);
-          stream.end();        
-          conn.end();
-        }
-        
-        writeBigDataWaitOnDrain(stream, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) { 
-          console.log('[SERVER] writeBigDataWaitOnDrain:callback(' + inspect(err) + ')');
-          assert(!err, 
-                 makeMsg(what, 'writeBigDataWaitOnDrain err: ' + inspect(err)));
-          end(1);
-        });
-        writeBigDataWaitOnDrain(stream.stderr, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) {          
-          console.log('[SERVER] writeBigDataWaitOnDrain.stderr:callback(' + inspect(err) + ')');
-          assert(!err, 
-                 makeMsg(what, 'writeBigDataWaitOnDrain.stderr err: ' + inspect(err)));
-          end(2);
-        });
-      });
-
-      var stdoutVerifier = new datautils.ChunkVerifier(maxNumber),
-          stderrVerifier = new datautils.ChunkVerifier(maxNumber),
-          closeEmitted = false;
-      
-      execClient(client, what, function(stream) {
-        console.error("in execClient execFunc");
-        
-         streamOnDataVerify(stream, stdoutVerifier, function(err) {
-          console.log('[CLIENT] streamOnDataVerify:callback(' + inspect(err) + ')');
-          assert(undefined === err, 
-                makeMsg(what, 'streamOnDataVerify err: ' + inspect(err)));
-        }).on('exit', function(code) {
-          exitArgs = new Array(arguments.length);
-          console.log('[CLIENT] stream.on:exit(' + inspect(arguments) + ')');
-          for (var i = 0; i < exitArgs.length; ++i)
-            exitArgs[i] = arguments[i];
-        }).on('close', function(code) {
-          closeEmitted = true;
-          
-          console.log('[CLIENT] stream.on:close(' + inspect(arguments) + ')');
-          closeArgs = new Array(arguments.length);
-          for (var i = 0; i < closeArgs.length; ++i)
-            closeArgs[i] = arguments[i];
-          
-        }).on('end', function() {
-          console.log('[CLIENT] stream.on:end()');
-          
-          if (STRICT_STREAMS2) {
-            assert(closeEmitted === false,
-                   makeMsg(what, 'stream emitted close before end'));
-          }
-          else if (closeEmitted) {
-            console.error('ignoring stream emitted close before end');
-          }
-          
-          // both verifieres must be atEnd !!
-          assert(stdoutVerifier.atEnd, 
-                 makeMsg(what, 'stdoutVerifier is not .atEnd'));
-          assert(stderrVerifier.atEnd, 
-                 makeMsg(what, 'stderrVerifier is not .atEnd'));         
-        });
-        
-        // console.error('stream.on:exit=' + stream.listeners('exit'));
-        // console.error('stream.on:data=' + stream.listeners('data'));
-        
-        streamOnDataVerify(stream.stderr, stderrVerifier, function(err) {
-          console.log('[CLIENT] streamOnDataVerify.stderr:callback(' + inspect(err) + ')');
-          assert(undefined === err, 
-                 makeMsg(what, 'streamOnDataVerify.stderr err: ' + inspect(err)));
-        });
-      }).on('end', function() {
-        console.log('[CLIENT] client.on:end()');
-        assert.deepEqual(exitArgs,
-                         [100],
-                         makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
-        assert.deepEqual(closeArgs,
-                         [100],
-                         makeMsg(what,
-                                 'Wrong close args: ' + inspect(closeArgs)));
-      });
-    },
-    what: 'Big-data server.writeWaitOnDrain->client.on:data exec'
-  },  
+  createExecTest({ 
+    server: { stdout:'wGD', stderr:'wGD' },
+    client: { stdout:'sODV', stderr:'sODV' }
+  }),
+  createExecTest({ 
+    server: { stdout:'wGDWonDrain', stderr:'wGDWonDrain' },
+    client: { stdout:'sODV', stderr:'sODV' }
+  }),
 ];
 
 function setup(self, clientcfg, servercfg) {
