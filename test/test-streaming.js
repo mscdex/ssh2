@@ -1,6 +1,7 @@
 'use strict'
 
 // (c) 2015 Michael Keller, minesworld-technologies.com , published under MIT license
+// parts of code (c) mscdex
 
 var data_utils = require('./data-utils');
 
@@ -33,9 +34,7 @@ var USER = 'nodejs',
     CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA)),
     CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
     CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA)),
-    DEBUG = process.env['DEBUG'],
-    STRICT_STREAMS2 = process.env['STREAMS2'],
-    MAXNUMBER = (process.argv.length > 2 && parseInt(process.argv[2])) || 10000;
+    DEBUG = process.env['DEBUG'];
     
 var debug = function() {};
 
@@ -128,8 +127,9 @@ function createExecTest(options) {
         closeArgs,
         client,
         server,
-        maxNumber = MAXNUMBER,
+        maxNumber = options.maxNumber,
         maxChunkSize,
+        strictStreams2 = options.strictStreams2,
         r;
 
     r = setup(this,
@@ -137,7 +137,8 @@ function createExecTest(options) {
                 password: PASSWORD
               },
               { privateKey: HOST_KEY_RSA
-              });
+              },
+              strictStreams2);
     client = r.client;
     server = r.server;
     
@@ -301,7 +302,7 @@ function createExecTest(options) {
         }).on('end', function() {
           debug('[EVENT] end client.exec.channel()');
       
-          if (STRICT_STREAMS2) {
+          if (strictStreams2) {
             assert(closeEmitted === false,
                    makeMsg(what, 'client.exec.channel emitted close before end'));
           }
@@ -359,20 +360,136 @@ function createExecTest(options) {
 }
 
 
+//
+
+function parseTestLine(line) {
+  line = line.trim()
+  
+  var numberKeys = [ 'maxNumber' ],
+      tests = [ 'Exec' ];
+  
+  var config = {},
+      testFuncName,
+      m = /^(\S+)+\s+(Exec)\(\s*(\S*)\s*\)<->\(\s*(\S*)\s*\)$/.exec(line);
+      
+  if (!m) {
+    return [ new Error('invalid test line: ' + line) ];
+  } 
+  
+  // global options - everything without '('
+  
+  var i = 1,
+      element,
+      subElements;
+      
+  do {
+    element = m[i];
+    
+    if (undefined === element) {
+      return [ new Error('missing test: ' + line) ];
+    }
+    
+    if (-1 !== tests.indexOf(element)) {
+      break;
+    }
+
+    subElements = element.split('='); 
+    if (1 === subElements.length) {
+      config[subElements[0]] = true;
+    }
+    else if (2 === subElements.length) {
+      config[subElements[0]] = (-1 === numberKeys.indexOf(subElements[1]) && subElements[1]) || parseInt(subElements[1]);
+    }
+    else {
+      return [ new Error('invalid global option ' + element + ' in line: ' + line) ];
+    }
+    
+    i += 1;
+  } while (true);
+  
+  // type of test
+  
+  testFuncName = 'create' + m[i++] + 'Test';
+  
+  // client and server test parameters
+  
+  function parseParameters(what, parameterLine) {
+    var parameters = {};
+    
+    for (var parameter of parameterLine.split(',')) {
+      var m = /^([iIoOeE]):(\S+)$/.exec(parameter.trim());
+      
+      if (!m) {
+        return [ new Error(what + ' invalid parameter: ' + parameter) ];
+      } 
+      
+      if ('i' === m[1] || 'I' === m[1]) {
+        parameters['stdin'] = m[2];
+      }
+      else if ('o' === m[1] || 'O' === m[1]) {
+        parameters['stdout'] = m[2];
+      }
+      else if ('e' === m[1] || 'E' === m[1]) {
+        parameters['stderr'] = m[2];
+      }
+      
+    }
+    
+    return [ null, parameters ];
+  }
+  
+  var r;
+  
+  if (undefined === m[i]) {
+    return [ new Error('missing client parameters: ' + line) ]
+  }
+
+  r = parseParameters('client', m[i]);
+  if (r[0]) {
+    return [ r[0] ];
+  }
+  
+  config['client'] = r[1];
+  
+  if (undefined === m[i + 1]) {
+    return [ new Error('missing server parameters: ' + line) ]
+  }
+
+  r = parseParameters('server', m[i + 1]);
+  if (r[0]) {
+    return [ r[0] ];
+  }
+  
+  config['server'] = r[1];
+  
+  return [ null, testFuncName, config ];
+}
+
+var testLines = [ 
+  'maxNumber=100000 Exec( O:sODV,E:sODV )<->( O:wGDWonDrain,E:wGDWonDrain )'
+]
+
+var tests = [];
+
+for (var line of testLines) {
+  var r = parseTestLine(line);
+  if (r[0]) {
+    throw r[0];
+  }
+  
+  if ('createExecTest' === r[1]) {
+    tests.push(createExecTest(r[2]));
+  }
+  else {
+    throw new Error('unsupported function: ' + r[1]);
+  }
+}
 
 
-var tests = [
-  createExecTest({ 
-    server: { stdout:'wGD', stderr:'wGD' },
-    client: { stdout:'sODV', stderr:'sODV' }
-  }),
-  createExecTest({ 
-    server: { stdout:'wGDWonDrain', stderr:'wGDWonDrain' },
-    client: { stdout:'sODV', stderr:'sODV' }
-  }),
-];
+//
 
-function setup(self, clientcfg, servercfg) {
+
+function setup(self, clientcfg, servercfg, strictStreams2) {
   self.state = {
     readies: 0,
     ends: 0
@@ -407,7 +524,7 @@ function setup(self, clientcfg, servercfg) {
 
   function onError(err) {
     var which = (this === client ? 'client' : 'server');
-    if (STRICT_STREAMS2) {
+    if (strictStreams2) {
       assert(self.state.ends == 0, makeMsg(self.what, which + ' emitted error after close: ' + err));
     }
     if (which === 'server' && err.message === 'Bad identification start') {
