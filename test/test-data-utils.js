@@ -1,3 +1,8 @@
+'use strict'
+
+// (c) 2015 Michael Keller, minesworld-technologies.com , published under MIT license
+// parts of code (c) mscdex
+
 var data_utils = require('./data-utils');
 
 var EventEmitter = require('events');
