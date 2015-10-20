@@ -29,16 +29,58 @@ var tests = [
     run: function() {
       var self = this,
           what = this.what,
-          cfg = {};
-          
-      var e = setup(this, cfg);
-     
+          cfg = {},
+          e = setup(this, cfg);
+
       e.on('start', function() {
+        var generator = new data_utils.ChunkGenerator(what, 10),
+            expected = '',
+            out = '',
+            chunk;
+          
+        for (var i=0; i < 10; i++) {
+          expected += '' + i + "\n";
+        } 
+              
+        while (null !== (chunk = generator.next())) {
+          out += chunk.toString('ascii');
+        }
+      
+        assert(out === expected, 
+              makeMsg(what, generator.name + ' output not expected: ' + out));
+        assert(generator.atEnd,
+          makeMsg(what, generator.name + ' not .atEnd'));
+
         e.emit('end');
       });
     },
-    what: 'nothing'
-  }
+    what: 'ChunkGenerator(10)'
+  },
+  {
+    run: function() {
+      var self = this,
+          what = this.what,
+          cfg = {},
+          e = setup(this, cfg);
+
+      e.on('start', function() {
+        var verifier = new data_utils.ChunkVerifier(what, 10),
+            inStrs = [ "0", "\n1\n", "2\n", "3", "\n4\n5", "\n", "6\n7", "\n8", "\n9", "\n" ];
+          
+        for (var inStr of inStrs) {
+          var err = verifier.verify(new Buffer(inStr, 'ascii'));
+          assert(null === err,
+                 makeMsg(what, verifier.name + ' result not expected: ' + inspect(err)));
+        }
+          
+        assert(verifier.atEnd,
+          makeMsg(what, verifier.name + ' not .atEnd'));
+
+        e.emit('end');
+      });
+    },
+    what: 'ChunkVerifier(10)'
+  },  
 ];
 
 //
@@ -59,9 +101,10 @@ function setup(self, cfg) {
     };
   }
   
-  var emitter = new EventEmitter().on('end', function() {
-    next();
-  });
+  var emitter = new EventEmitter()
+    .once('end', function() {
+      next();
+    });
   
   process.nextTick(function() {
     emitter.emit('start');
