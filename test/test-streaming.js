@@ -1,3 +1,9 @@
+'use strict'
+
+// (c) 2015 Michael Keller, minesworld-technologies.com , published under MIT license
+
+var datautils = require('./data-utils');
+
 var Client = require('../lib/client'),
     Server = require('../lib/server'),
     OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE,
@@ -59,92 +65,21 @@ function execClient(client, what, execfunc) {
   });
 }
 
-function ChunkGenerator(maxNumber, maxSize) {
-  this.maxNumber = maxNumber;
-  this.maxSize = maxSize;
-  this.number = 0;
-  this.generated = 0;
-  this.remainder = '';
-  this.atEnd = false;
-}
 
-ChunkGenerator.prototype.next = function() {
-  if (this.atEnd) return null;
+function writeBigData(stream, generator, done) {
+  // code analog to stream.Writable.write documentation example
   
-  var chunk;
-  
-  if (this.maxSize) {
-    // random chunkSize with max 
-  }
-  else {
-    // single line
-    chunk = new Buffer('' + (this.number++) + "\n", 'ascii');
-  }
-  
-  this.atEnd = (0 === this.remainder.length && this.maxNumber <= this.number);
-  this.generated += chunk.length;
-  
-  return chunk;
-}
-
-function ChunkVerifier(maxNumber) {
-  this.maxNumber = maxNumber;
-  this.number = 0;
-  this.checked = 0;
-  this.remainder = '';
-  this.atEnd = false;
-}
-
-ChunkVerifier.prototype.next = function(chunk) {
-  if (null === chunk) {
-    return this.atEnd || new Error('ChunkVerifier.next(null) but not .atEnd');
-  }
-  if (this.atEnd) {
-    return new Error('ChunkVerifier.next(' + chunk.length + ') called after .atEnd');
-  }
-  
-  var data = chunk.toString('ascii'),
-      lines = data.split("\n"),
-      hasRemainder = (data[-1] != "\n");
-  
-  var line, index, number;
-
-  for (var i = 0; i < lines.length; i++) {
-    if (0 === i && 0 < this.remainder.length) {
-      line = this.remainder + lines[i];
-      this.remainder = '';      
+  function write() {
+    while (!generator.atEnd) {
+      stream.write(generator.next());
     }
-    else {
-      line = lines[i];
-    }
-    
-    if (i < lines.length - 1 || false === hasRemainder)
-    {
-      // console.error("verify " + line);
-      
-      try {
-        number = parseInt(line);
-      }
-      catch(exception) {
-        return exception;
-      }
-    
-      if (number !== this.number) {
-        return new Error("'" + line + "' different from " + this.number + ' at chunk ' + this.checked);
-      }
-      this.number += 1;
-    }
-    else {
-      this.remainder = line;
-    }
+    done();
   }
   
-  this.atEnd = (0 === this.remainder.length && this.maxNumber <= this.number);
-  this.checked += chunk.length;
+  setImmediate(write);
   
-  return null; // no error
+  return stream;
 }
-
 
 function writeBigDataWaitOnDrain(stream, generator, done) {
   // code analog to stream.Writable.write documentation example
@@ -176,25 +111,16 @@ function writeBigDataWaitOnDrain(stream, generator, done) {
   return stream;
 }
 
-function writeBigData(stream, generator, done) {
-  // code analog to stream.Writable.write documentation example
+function pipeBigData(stream, generator, done) {
   
-  function write() {
-    while (!generator.atEnd) {
-      stream.write(generator.next());
-    }
-    done();
-  }
   
-  setImmediate(write);
   
-  return stream;
 }
 
 function streamOnDataVerify(stream, verifier, done) {
 
   return stream.on('data', function(d) {
-    var err = verifier.next(d);
+    var err = verifier.verify(d);
     if (err) {
       return done(err);
     }
@@ -241,22 +167,22 @@ var tests = [
           conn.end();
         }
         
-        writeBigDataWaitOnDrain(stream, new ChunkGenerator(maxNumber, maxChunkSize), function(err) { 
-          console.log('[SERVER] writeBigDataWaitOnDrain:callback(' + inspect(err) + ')');
+        writeBigData(stream, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) { 
+          console.log('[SERVER] writeBigData:callback(' + inspect(err) + ')');
           assert(!err, 
-                 makeMsg(what, 'writeBigDataWaitOnDrain err: ' + inspect(err)));
+                 makeMsg(what, 'writeBigData err: ' + inspect(err)));
           end(1);
         });
-        writeBigDataWaitOnDrain(stream.stderr, new ChunkGenerator(maxNumber, maxChunkSize), function(err) {          
-          console.log('[SERVER] writeBigDataWaitOnDrain.stderr:callback(' + inspect(err) + ')');
+        writeBigData(stream.stderr, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) {          
+          console.log('[SERVER] writeBigData.stderr:callback(' + inspect(err) + ')');
           assert(!err, 
-                 makeMsg(what, 'writeBigDataWaitOnDrain.stderr err: ' + inspect(err)));
+                 makeMsg(what, 'writeBigData.stderr err: ' + inspect(err)));
           end(2);
         });
       });
 
-      var stdoutVerifier = new ChunkVerifier(maxNumber),
-          stderrVerifier = new ChunkVerifier(maxNumber),
+      var stdoutVerifier = new datautils.ChunkVerifier(maxNumber),
+          stderrVerifier = new datautils.ChunkVerifier(maxNumber),
           closeEmitted = false;
       
       execClient(client, what, function(stream) {
@@ -317,6 +243,119 @@ var tests = [
       });
     },
     what: 'Big-data server.write->client.on:data exec'
+  },  
+  { run: function() {
+      var self = this,
+          what = this.what,
+          out = '',
+          outErr = '',
+          exitArgs,
+          closeArgs,
+          client,
+          server,
+          maxNumber = MAXNUMBER,
+          maxChunkSize,
+          r;
+
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD
+                },
+                { privateKey: HOST_KEY_RSA
+                });
+      client = r.client;
+      server = r.server;
+      
+      execServer(server, what, function(conn, stream) {
+        var writesEnded = 0;
+        
+        function end(what) {
+          if (undefined !== what) writesEnded |= what;
+          console.error('end(' + what + ') => ' + writesEnded);
+          
+          if (writesEnded != 3) return;
+          
+          stream.exit(100);
+          stream.end();        
+          conn.end();
+        }
+        
+        writeBigDataWaitOnDrain(stream, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) { 
+          console.log('[SERVER] writeBigDataWaitOnDrain:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'writeBigDataWaitOnDrain err: ' + inspect(err)));
+          end(1);
+        });
+        writeBigDataWaitOnDrain(stream.stderr, new datautils.ChunkGenerator(maxNumber, maxChunkSize), function(err) {          
+          console.log('[SERVER] writeBigDataWaitOnDrain.stderr:callback(' + inspect(err) + ')');
+          assert(!err, 
+                 makeMsg(what, 'writeBigDataWaitOnDrain.stderr err: ' + inspect(err)));
+          end(2);
+        });
+      });
+
+      var stdoutVerifier = new datautils.ChunkVerifier(maxNumber),
+          stderrVerifier = new datautils.ChunkVerifier(maxNumber),
+          closeEmitted = false;
+      
+      execClient(client, what, function(stream) {
+        console.error("in execClient execFunc");
+        
+         streamOnDataVerify(stream, stdoutVerifier, function(err) {
+          console.log('[CLIENT] streamOnDataVerify:callback(' + inspect(err) + ')');
+          assert(undefined === err, 
+                makeMsg(what, 'streamOnDataVerify err: ' + inspect(err)));
+        }).on('exit', function(code) {
+          exitArgs = new Array(arguments.length);
+          console.log('[CLIENT] stream.on:exit(' + inspect(arguments) + ')');
+          for (var i = 0; i < exitArgs.length; ++i)
+            exitArgs[i] = arguments[i];
+        }).on('close', function(code) {
+          closeEmitted = true;
+          
+          console.log('[CLIENT] stream.on:close(' + inspect(arguments) + ')');
+          closeArgs = new Array(arguments.length);
+          for (var i = 0; i < closeArgs.length; ++i)
+            closeArgs[i] = arguments[i];
+          
+        }).on('end', function() {
+          console.log('[CLIENT] stream.on:end()');
+          
+          if (STRICT_STREAMS2) {
+            assert(closeEmitted === false,
+                   makeMsg(what, 'stream emitted close before end'));
+          }
+          else if (closeEmitted) {
+            console.error('ignoring stream emitted close before end');
+          }
+          
+          // both verifieres must be atEnd !!
+          assert(stdoutVerifier.atEnd, 
+                 makeMsg(what, 'stdoutVerifier is not .atEnd'));
+          assert(stderrVerifier.atEnd, 
+                 makeMsg(what, 'stderrVerifier is not .atEnd'));         
+        });
+        
+        // console.error('stream.on:exit=' + stream.listeners('exit'));
+        // console.error('stream.on:data=' + stream.listeners('data'));
+        
+        streamOnDataVerify(stream.stderr, stderrVerifier, function(err) {
+          console.log('[CLIENT] streamOnDataVerify.stderr:callback(' + inspect(err) + ')');
+          assert(undefined === err, 
+                 makeMsg(what, 'streamOnDataVerify.stderr err: ' + inspect(err)));
+        });
+      }).on('end', function() {
+        console.log('[CLIENT] client.on:end()');
+        assert.deepEqual(exitArgs,
+                         [100],
+                         makeMsg(what, 'Wrong exit args: ' + inspect(exitArgs)));
+        assert.deepEqual(closeArgs,
+                         [100],
+                         makeMsg(what,
+                                 'Wrong close args: ' + inspect(closeArgs)));
+      });
+    },
+    what: 'Big-data server.writeWaitOnDrain->client.on:data exec'
   },  
 ];
 
