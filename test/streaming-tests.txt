@@ -1,0 +1,6 @@
+maxNumber=10 Exec( O:sODV )<->( O:wGD )
+maxNumber=10 Exec( E:sODV )<->( E:wGD )
+maxNumber=10 Exec( O:sODV,E:sODV )<->( O:wGD,E:wGD )
+maxNumber=10 Exec( O:sODV )<->( O:wGDWonDrain )
+maxNumber=10 Exec( E:sODV )<->( E:wGDWonDrain )
+maxNumber=10 Exec( O:sODV,E:sODV )<->( O:wGDWonDrain,E:wGDWonDrain )

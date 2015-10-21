@@ -50,8 +50,6 @@ if (DEBUG) {
 function wGD(stream, generator, done) {
   // writeGeneratedData
   
-  // code analog to stream.Writable.write documentation example
-  
   function write() {
     while (!generator.atEnd) {
       var chunk = generator.next();
@@ -465,23 +463,25 @@ function parseTestLine(line) {
   return [ null, testFuncName, config ];
 }
 
-var testLines = [ 
-  'maxNumber=100000 Exec( O:sODV,E:sODV )<->( O:wGDWonDrain,E:wGDWonDrain )'
-]
-
 var tests = [];
 
-for (var line of testLines) {
-  var r = parseTestLine(line);
-  if (r[0]) {
-    throw r[0];
-  }
+function createTestLines(testLines) {
+  for (var line of testLines) {
+    line = line.trim();
+    if ('' === line) {
+      continue;
+    }
+    var r = parseTestLine(line);
+    if (r[0]) {
+      throw r[0];
+    }
   
-  if ('createExecTest' === r[1]) {
-    tests.push(createExecTest(r[2]));
-  }
-  else {
-    throw new Error('unsupported function: ' + r[1]);
+    if ('createExecTest' === r[1]) {
+      tests.push(createExecTest(r[2]));
+    }
+    else {
+      throw new Error('unsupported function: ' + r[1]);
+    }
   }
 }
 
@@ -588,4 +588,29 @@ process.once('exit', function() {
                  'Only finished ' + t + '/' + tests.length + ' tests'));
 });
 
-next();
+
+// starts here - read, generates tests and execute next test
+
+
+if ('-' === process.argv[2]) {
+  // read from stdin
+  var inData = '';
+  process.stdin.on('data', function(d) {
+    inData += d.toString('ascii');
+  }).on('end', function() {
+    createTestLines(inData.split("\n"));
+    next();
+  }).on('error', function(err) {
+    console.error('error reading tests from stdin: ' + err);
+    process.exit(1);
+  });
+}
+else if (process.argv[2]) {
+  // read from file at specified path
+  createTestLines(fs.readFileSync(process.argv[2], { encoding:'ascii'}).split("\n"));
+  next();
+} else {
+  // hmm? we read from this directory the "standard" tests...
+  createTestLines(fs.readFileSync(join(__dirname, 'streaming-tests.txt'), { encoding:'ascii'}).split("\n"));
+  next();
+}
