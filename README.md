@@ -1049,8 +1049,14 @@ The data generated and verified is a stream of lines each containing a single nu
 * Global flags
 
 <pre>
-strictStreams2  Fail if node.js Streams2 conventions are broken. E.g. no other event should be emitted after an 'close'
-                If not specified those incidents will be logged only.
+strictStreams2                  Fail if node.js Streams2 conventions are broken. E.g. no other event should be 
+                                emitted after an 'close'. If not specified those incidents will be logged only.
+                                
+failOnBadIdentificationStarts   Fail if the server encounters a 'Bad identification start' error. This will happen
+                                after the client did close the connection. If not specified those incidents 
+                                will be logged only.
+                                
+strict                          Ingore nothing, always fail.
 </pre>
 
 * Global keys

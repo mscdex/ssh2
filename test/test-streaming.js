@@ -126,7 +126,8 @@ function createExecTest(what, options) {
         server,
         maxNumber = options.maxNumber,
         maxChunkSize,
-        strictStreams2 = options.strictStreams2,
+        strictStreams2 = options.strictStreams2 || options.strict,
+        ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
         r;
 
     r = setup(this,
@@ -135,7 +136,8 @@ function createExecTest(what, options) {
               },
               { privateKey: HOST_KEY_RSA
               },
-              strictStreams2);
+              strictStreams2,
+              ignoreBadIdenficationStarts);
     client = r.client;
     server = r.server;
     
@@ -358,20 +360,25 @@ function parseTestLine(line) {
   
   var config = {},
       testFuncName,
-      m = /^(\S+)+\s+(Exec)\(\s*(\S*)\s*\)<->\(\s*(\S*)\s*\)$/.exec(line);
-      
-  if (!m) {
-    return [ new Error('invalid test line: ' + line) ];
-  } 
-  
+      elements = line.split(' ');
+            
   // global options - everything without '('
   
-  var i = 1,
-      element,
+  var element,
       subElements;
       
   do {
-    element = m[i];
+    if (undefined === elements[0]) {
+      return [ new Error('missing test: ' + line) ];
+    }
+    if (-1 !== elements[0].indexOf('(')) {
+      break;
+    }
+    
+    element = elements.shift();
+    if ('' === element) {
+      continue;
+    }
     
     if (undefined === element) {
       return [ new Error('missing test: ' + line) ];
@@ -391,13 +398,16 @@ function parseTestLine(line) {
     else {
       return [ new Error('invalid global option ' + element + ' in line: ' + line) ];
     }
-    
-    i += 1;
   } while (true);
   
   // type of test
+
+  var m = /^(\S+)\(\s*(\S*)\s*\)<->\(\s*(\S*)\s*\)$/.exec(elements.join(' '));
+  if (!m) {
+    return [ new Error('invalid test syntax: ' + line)];
+  }
   
-  testFuncName = 'create' + m[i++] + 'Test';
+  testFuncName = 'create' + m[1] + 'Test';
   
   // client and server test parameters
   
@@ -428,22 +438,22 @@ function parseTestLine(line) {
   
   var r;
   
-  if (undefined === m[i]) {
+  if (undefined === m[2]) {
     return [ new Error('missing client parameters: ' + line) ]
   }
 
-  r = parseParameters('client', m[i]);
+  r = parseParameters('client', m[2]);
   if (r[0]) {
     return [ r[0] ];
   }
   
   config['client'] = r[1];
   
-  if (undefined === m[i + 1]) {
+  if (undefined === m[3]) {
     return [ new Error('missing server parameters: ' + line) ]
   }
 
-  r = parseParameters('server', m[i + 1]);
+  r = parseParameters('server', m[3]);
   if (r[0]) {
     return [ r[0] ];
   }
@@ -479,7 +489,7 @@ function createTestLines(testLines) {
 //
 
 
-function setup(self, clientcfg, servercfg, strictStreams2) {
+function setup(self, clientcfg, servercfg, strictStreams2, ignoreBadIdenficationStarts) {
   self.state = {
     readies: 0,
     ends: 0
@@ -517,7 +527,7 @@ function setup(self, clientcfg, servercfg, strictStreams2) {
     if (strictStreams2) {
       assert(self.state.ends == 0, makeMsg(self.what, which + ' emitted error after close: ' + err));
     }
-    if (which === 'server' && err.message === 'Bad identification start') {
+    if (which === 'server' && err.message === 'Bad identification start' && ignoreBadIdenficationStarts) {
       debug('[IGNORE] ' + makeMsg(self.what, which + ' error: ' + err));
     }
     else {
