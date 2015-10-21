@@ -114,11 +114,10 @@ function sODV(stream, verifier, done) {
   });
 }
 
-function createExecTest(options) {
+function createExecTest(what, options) {
   
   var run = function() {
     var self = this,
-        what = this.what,
         out = '',
         outErr = '',
         exitArgs,
@@ -207,6 +206,10 @@ function createExecTest(options) {
               });
               exitAtWritesEnded |= 1;        
             }
+            else {
+              assert(!options.server.stdout,
+                     makeMsg('unhandled server stdout Exec parameter: ' + options.server.stdout));
+            }
      
             // create data writers stderr
             generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
@@ -222,7 +225,7 @@ function createExecTest(options) {
               });
               exitAtWritesEnded |= 2;
             }
-            else if ('wGDWonDrain' === options.server.stdout) {
+            else if ('wGDWonDrain' === options.server.stderr) {
               wGDWonDrain(stream.stderr, generator, function(err) { 
                 assert(!err, 
                        makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
@@ -233,8 +236,9 @@ function createExecTest(options) {
               });
               exitAtWritesEnded |= 2;        
             }
-            if (2 === (exitAtWritesEnded & 2)) {
-              server_descs.push('E:' + options.server.stderr);
+            else {
+              assert(!options.server.stderr,
+                     makeMsg('unhandled server stderr Exec parameter: ' + options.server.stderr));
             }
             
           }); // session.once:exec
@@ -246,9 +250,11 @@ function createExecTest(options) {
     // CLIENT
 
     client.on('ready', function() {
+      debug('[EVENT] ready client()');
       client.exec('foo --bar', function(err, stream) {
         assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
-
+        debug('[CHECK] client.exec(e,s)');
+        
         var closeEmitted = false;
     
         var verifiers = [],
@@ -266,6 +272,10 @@ function createExecTest(options) {
           });
           verifiers.push(verifier);
         }
+        else {
+          assert(!options.client.stdout,
+                 makeMsg('unhandled client stdout Exec parameter: ' + options.client.stdout));
+        }
     
         // create verifier on stderr
         verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
@@ -278,6 +288,10 @@ function createExecTest(options) {
             debug('[CHECK] ' + verifier.name + ' sODV:cb(' + inspect(err) + ')');
           });      
           verifiers.push(verifier);
+        }
+        else {
+          assert(!options.client.stderr,
+                 makeMsg('unhandled client stderr Exec parameter: ' + options.client.stderr));
         }
     
         //
@@ -328,32 +342,8 @@ function createExecTest(options) {
     });
   };
   
-  // DESCRIPTION
-  
-  var server_descs = [],
-      client_descs = [];
-
-  var writers = ['wGD', 'wGDWonDrain'],
-      readers = ['sODV']
-
-  if (-1 !== writers.indexOf(options.server.stdout)) {
-    server_descs.push('O:' + options.server.stdout);
-  }
-  if (-1 !== writers.indexOf(options.server.stderr)) {
-    server_descs.push('E:' + options.server.stderr);
-  }
- 
-  if (-1 !== readers.indexOf(options.client.stdout)) {
-    client_descs.push('O:' + options.client.stdout);
-  }
-  if (-1 !== readers.indexOf(options.client.stderr)) {
-    client_descs.push('E:' + options.client.stderr);
-  }
-  
-  var what = 'Exec( ' + client_descs.join(',') + ' )<->( ' + server_descs.join(',') + ' )';
   debug('[CREATE] created test ' + what);
-  
-  
+   
   return { run:run, what:what };
 }
 
@@ -396,7 +386,7 @@ function parseTestLine(line) {
       config[subElements[0]] = true;
     }
     else if (2 === subElements.length) {
-      config[subElements[0]] = (-1 === numberKeys.indexOf(subElements[1]) && subElements[1]) || parseInt(subElements[1]);
+      config[subElements[0]] = (-1 === numberKeys.indexOf(subElements[0]) && subElements[1]) || parseInt(subElements[1]);
     }
     else {
       return [ new Error('invalid global option ' + element + ' in line: ' + line) ];
@@ -477,7 +467,7 @@ function createTestLines(testLines) {
     }
   
     if ('createExecTest' === r[1]) {
-      tests.push(createExecTest(r[2]));
+      tests.push(createExecTest(line, r[2]));
     }
     else {
       throw new Error('unsupported function: ' + r[1]);
