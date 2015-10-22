@@ -54,7 +54,7 @@ var tests = [
         assert(out === expected, 
               makeMsg(what, generator.name + ' output not expected: ' + out));
         assert(generator.atEnd,
-          makeMsg(what, generator.name + ' not .atEnd'));
+               makeMsg(what, generator.name + ' not .atEnd'));
 
         e.emit('end');
       });
@@ -79,13 +79,159 @@ var tests = [
         }
           
         assert(verifier.atEnd,
-          makeMsg(what, verifier.name + ' not .atEnd'));
+               makeMsg(what, verifier.name + ' not .atEnd'));
 
         e.emit('end');
       });
     },
     what: 'ChunkVerifier(10)'
+  },
+  {
+    run: function() {
+      var self = this,
+          what = this.what,
+          cfg = {},
+          e = setup(this, cfg);
+
+      e.on('start', function() {
+        var generator = new data_utils.ChunkGenerator(what, 10),
+            pipeOrigin = new data_utils.StreamOfNumberLines(generator),
+            expected = '',
+            out = '',
+            chunk;
+          
+        for (var i=0; i < 10; i++) {
+          expected += '' + i + "\n";
+        } 
+              
+        while (null !== (chunk = pipeOrigin.read())) {
+          out += chunk.toString('ascii');
+        }
+      
+        assert(out === expected, 
+               makeMsg(what, generator.name + ' output not expected: ' + out));
+        assert(generator.atEnd,
+               makeMsg(what, generator.name + ' not .atEnd'));
+
+        e.emit('end');
+      });
+    },
+    what: 'StreamOfNumberLines(10)'
   },  
+  {
+    run: function() {
+      var self = this,
+          what = this.what,
+          cfg = {},
+          e = setup(this, cfg);
+
+      e.on('start', function() {
+        var verifier = new data_utils.ChunkVerifier(what, 10),
+            pipeSink = new data_utils.NumberLineStreamVerifier(verifier),
+            inStrs = [ "0", "\n1\n", "2\n", "3", "\n4\n5", "\n", "6\n7", "\n8", "\n9", "\n" ];
+          
+        var i = 0;
+        
+        function write() {
+          while (i < inStrs.length) {
+            if (false === pipeSink.write(new Buffer(inStrs[i++], 'ascii'))) {
+              return pipeSink.once('drain', write);
+            }
+          }
+        }
+        
+        write();
+        
+        pipeSink.end(function() {
+           assert(verifier.atEnd,
+            makeMsg(what, verifier.name + ' not .atEnd'));
+        });
+          
+        e.emit('end');
+      });
+    },
+    what: 'NumberLineStreamVerifier(10)'
+  },
+  {
+    run: function() {
+      var self = this,
+          what = this.what,
+          cfg = {},
+          e = setup(this, cfg);
+
+      e.on('start', function() {
+        var generator = new data_utils.ChunkGenerator(what + ' StreamOfNumberLines', 10),
+            pipeOrigin = new data_utils.StreamOfNumberLines(generator),     
+            verifier = new data_utils.ChunkVerifier(what + ' NumberLineStreamVerifier', 10),
+            pipeSink = new data_utils.NumberLineStreamVerifier(verifier);
+        
+        pipeOrigin
+          .on('end', function() {
+            debug('[EVENT] finish StreamOfNumberLines');
+          })
+          .pipe(pipeSink)
+          .on('finish', function() {
+            debug('[EVENT] finish NumberLineStreamVerifier');
+            assert(generator.atEnd,
+                   makeMsg(what, generator.name + ' not .atEnd'));
+            assert(verifier.atEnd,
+                   makeMsg(what, verifier.name + ' not .atEnd'));
+            e.emit('end');
+          })
+          .on('error', function(err) {
+            debug('[EVENT] error NumberLineStreamVerifier');
+            assert(true,
+                   makeMsg(what, '' + err));
+            e.emit('end');
+          });
+       });
+    },
+    what: 'StreamOfNumberLines(10)->NumberLineStreamVerifier(10)'
+  },
+  {
+    run: function() {
+      var self = this,
+          what = this.what,
+          cfg = {},
+          e = setup(this, cfg);
+
+      e.on('start', function() {
+        var generator = new data_utils.ChunkGenerator(what + ' StreamOfNumberLines', 10),
+            pipeOrigin = new data_utils.StreamOfNumberLines(generator),
+            thruVerifier = new data_utils.ChunkVerifier(what + ' VerifyingNumberLinesStream', 10),
+            pipeThru = new data_utils.VerifyingNumberLinesStream(thruVerifier),
+            verifier = new data_utils.ChunkVerifier(what + ' NumberLineStreamVerifier', 10),
+            pipeSink = new data_utils.NumberLineStreamVerifier(verifier);
+        
+        pipeOrigin
+          .on('end', function() {
+            debug('[EVENT] finish StreamOfNumberLines');
+          })
+          .pipe(pipeThru)
+          .on('end', function() {
+            debug('[EVENT] finish VerifyingNumberLinesStream');
+          })
+          .pipe(pipeSink)
+          .on('finish', function() {
+            debug('[EVENT] finish NumberLineStreamVerifier');
+            assert(generator.atEnd,
+                   makeMsg(what, generator.name + ' not .atEnd'));
+            assert(verifier.atEnd,
+                   makeMsg(what, verifier.name + ' not .atEnd'));
+           assert(thruVerifier.atEnd,
+                  makeMsg(what, thruVerifier.name + ' not .atEnd'));
+            e.emit('end');
+          })
+          .on('error', function(err) {
+            debug('[EVENT] error NumberLineStreamVerifier');
+            assert(true,
+                   makeMsg(what, '' + err));
+            e.emit('end');
+          });
+       });
+    },
+    what: 'StreamOfNumberLines(10)->VerifyingNumberLinesStream(10)->NumberLineStreamVerifier(10)'
+  },    
 ];
 
 //

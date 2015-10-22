@@ -109,11 +109,17 @@ function StreamOfNumberLines(generator, options) {
   stream.Readable.call(this, options);
 
   this.generator = generator;
+  this.atEnd = false;
 }
 
 StreamOfNumberLines.prototype._read = function(size) {
   if (this.generator.atEnd) {
-    throw new Error('StreamOfNumberLines _read after .atEnd');
+    if (this.atEnd) {
+      throw new Error('StreamOfNumberLines _read after .atEnd');
+    }
+    
+    this.atEnd = true;
+    this.push(null);
   }
   this.push(this.generator.next());
 };
