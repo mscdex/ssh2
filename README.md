@@ -1063,6 +1063,7 @@ strict                          Ingore nothing, always fail.
 
   <pre>
   maxNumber=VALUE  Maximum number of lines to generate. Required.
+  timeout=SECONDS  Timeout writes or reads after SECONDS. Values less then 0 disable the timeout [default:-1].
   </pre>
 
 * Test types and parameters

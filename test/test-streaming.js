@@ -45,17 +45,53 @@ if (DEBUG) {
 }
 
 
-    
+// 
 
-function wGD(stream, generator, done) {
+function Timeout(name, ms) {
+  if (undefined === ms || 0 > ms) {
+    this.renew = function() {};
+    this.clear = function() {};
+    return;
+  }
+  
+  var lastRenew = Date.now();
+  
+  var  intervalID = setInterval(function() {
+        var d = Date.now() - lastRenew;
+        assert(ms > d,
+               makeMsg(name, 'timed out after: ' + d + 'ms'));
+      }, 500);
+      
+  this.renew = function() {
+    var d = Date.now() - lastRenew;
+    assert(ms > d,
+           makeMsg(name, 'timed out after: ' + d + 'ms'));
+
+    lastRenew = Date.now();
+  };
+  
+  this.clear = function() {
+    clearInterval(intervalID);
+  }
+  
+  this.renew();
+}
+
+    
+function wGD(stream, generator, timeout, done) {
   // writeGeneratedData
   
+  var t = new Timeout(generator.name + ' wGD', timeout);
+
   function write() {
+    
     while (!generator.atEnd) {
       var chunk = generator.next();
       debug('[DATA] ' + generator.name + ' wGD write(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
       stream.write(chunk);
+      t.renew();
     }
+    t.clear();
     done();
   }
   
@@ -64,10 +100,12 @@ function wGD(stream, generator, done) {
   return stream;
 }
 
-function wGDWonDrain(stream, generator, done) {
+function wGDWonDrain(stream, generator, timeout, done) {
   // writeGeneratedDataWaitsOnDrain
   
   // code analog to stream.Writable.write documentation example
+
+  var t = new Timeout(generator.name + ' wGDWonDrain', timeout);
   
   function write() {
     var ok,
@@ -80,10 +118,14 @@ function wGDWonDrain(stream, generator, done) {
        
       if (generator.atEnd) {
         // last time
-        return stream.write(chunk, done);
+        return stream.write(chunk, function() {
+          t.clear();
+          done();
+        });
       }
       else {
         ok = stream.write(chunk);
+        t.renew();
       }
     } while (ok);
     
@@ -100,15 +142,22 @@ function wGDWonDrain(stream, generator, done) {
   return stream;
 }
 
-function sODV(stream, verifier, done) {
+function sODV(stream, verifier, timeout, done) {
   // streamOnDataVerify
 
+  var t = new Timeout(verifier.name + ' sODV', timeout);
+
   return stream.on('data', function(d) {
+    debug('[EVENT] data ' + verifier.name + ' sODV (' + d.length + ') #' + verifier.checked);
+    
     var err = verifier.verify(d);
+    t.renew();
     if (err) {
+      t.clear();
       return done(err);
     }
     if (verifier.atEnd) {
+      t.clear();
       return done();
     }
   });
@@ -128,6 +177,7 @@ function createExecTest(what, options) {
         maxChunkSize,
         strictStreams2 = options.strictStreams2 || options.strict,
         ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
+        timeout = (options.timeout && options.timeout * 1000) || -1,
         r;
 
     r = setup(this,
@@ -187,7 +237,7 @@ function createExecTest(what, options) {
             generator = new data_utils.ChunkGenerator('server.session.exec.stdout', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stdout) {
-              wGD(stream, generator, function(err) { 
+              wGD(stream, generator, timeout, function(err) { 
                 assert(!err, 
                        makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
                        
@@ -198,7 +248,7 @@ function createExecTest(what, options) {
               exitAtWritesEnded |= 1;
             } 
             else if ('wGDWonDrain' === options.server.stdout) {
-              wGDWonDrain(stream, generator, function(err) { 
+              wGDWonDrain(stream, generator, timeout, function(err) { 
                 assert(!err, 
                        makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
                        
@@ -217,7 +267,7 @@ function createExecTest(what, options) {
             generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stderr) {
-              wGD(stream.stderr, generator, function(err) {          
+              wGD(stream.stderr, generator, timeout, function(err) {          
                 assert(!err, 
                        makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
                        
@@ -228,7 +278,7 @@ function createExecTest(what, options) {
               exitAtWritesEnded |= 2;
             }
             else if ('wGDWonDrain' === options.server.stderr) {
-              wGDWonDrain(stream.stderr, generator, function(err) { 
+              wGDWonDrain(stream.stderr, generator, timeout, function(err) { 
                 assert(!err, 
                        makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
                        
@@ -266,7 +316,7 @@ function createExecTest(what, options) {
         verifier = new data_utils.ChunkVerifier('client.exec.stdout', maxNumber);
     
         if ('sODV' === options.client.stdout) {
-          sODV(stream, verifier, function(err) {
+          sODV(stream, verifier, timeout, function(err) {
             assert(undefined === err, 
                   makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
                   
@@ -283,7 +333,7 @@ function createExecTest(what, options) {
         verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
     
         if ('sODV' === options.client.stderr) {
-          sODV(stream.stderr, verifier, function(err) {
+          sODV(stream.stderr, verifier, timeout, function(err) {
             assert(undefined === err, 
                    makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
 
@@ -355,7 +405,7 @@ function createExecTest(what, options) {
 function parseTestLine(line) {
   line = line.trim()
   
-  var numberKeys = [ 'maxNumber' ],
+  var numberKeys = [ 'maxNumber', 'timeout' ],
       tests = [ 'Exec' ];
   
   var config = {},
