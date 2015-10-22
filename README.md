@@ -1063,8 +1063,22 @@ strict                          Ingore nothing, always fail.
 
   <pre>
   maxNumber=VALUE  Maximum number of lines to generate. Required.
+  
   timeout=SECONDS  Timeout writes or reads after SECONDS. Values less then 0 disable the timeout [default:-1].
+                   The timeout message tells the ms, last number and bytes generated/verified.
   </pre>
+
+  ** The timeout interval check function is called every 500ms. The difference in time is calculated from the 
+     REAL TIME, not CPU time. 
+     
+     If a timeout occurs this might due to the fact that node didn't call interval function checking the timeout 
+     soon enough as the buffers are full and there won't be a async operation called while processing those. 
+     
+     So please try running the test again with a higher timeout value to find out which is the right one for your
+     system and its CPU load.
+     
+     Its best used together with very high maxNumber values which tests need 'some' time. In this case you'll 
+     shorten the time noticing a stuck stream...
 
 * Test types and parameters
 
@@ -1119,15 +1133,21 @@ path  read all test script lines from the file given at path [default:./streamin
 Algorithms
 ----------
 
+timeout.renew() resets the timeout counter. timeout.clear() clears the interval from being called again.
+Please note: it is also checked in timeout.clear() if this is a timeout...
+
 * streamOnDataVerify
 
   ```javascript
   stream.on('data', function(d) {
+    timeout.renew();
     var err = verifier.verify(d);
     if (err) {
+      timeout.clear();
       return done(err);
     }
     if (verifier.atEnd) {
+      timeout.clear();
       return done();
     }
   });
@@ -1141,9 +1161,11 @@ Algorithms
   function write() {
     while (!generator.atEnd) {
       var chunk = generator.next();
-      debug('[DATA] ' + generator.name + ' wGD write(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
+      generator.generated);
       stream.write(chunk);
+      timeout.renew();
     }
+    timeout.clear();
     done();
   }
 
@@ -1158,18 +1180,21 @@ Algorithms
   ```javascript
 
     function write() {
-      var ok,
-          chunk;
+      var ok, chunk;
   
       do {
         chunk = generator.next();
     
         if (generator.atEnd) {
           // last time
-          return stream.write(chunk, done);
+          return stream.write(chunk, function() {
+            timeout.clear();
+            done();
+          });
         }
         else {
           ok = stream.write(chunk);
+          timeout.renew();
         }
       } while (ok);
   

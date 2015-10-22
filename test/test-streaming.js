@@ -49,24 +49,29 @@ if (DEBUG) {
 
 function Timeout(name, ms) {
   if (undefined === ms || 0 > ms) {
-    this.renew = function() {};
+    this.renew = function(b, n) {};
     this.clear = function() {};
     return;
   }
   
-  var lastRenew = Date.now();
+  var lastRenew = Date.now(),
+      lastNumber,
+      lastBytes;
   
   var  intervalID = setInterval(function() {
         var d = Date.now() - lastRenew;
         assert(ms > d,
-               makeMsg(name, 'timed out after: ' + d + 'ms'));
+               makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
       }, 500);
       
-  this.renew = function() {
+  this.renew = function(b, n) {
     var d = Date.now() - lastRenew;
     assert(ms > d,
-           makeMsg(name, 'timed out after: ' + d + 'ms'));
+           makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes + ' -> ' + n + ',#' + b));
 
+    lastBytes = b;
+    lastNumber = n;
+    
     lastRenew = Date.now();
   };
   
@@ -89,7 +94,7 @@ function wGD(stream, generator, timeout, done) {
       var chunk = generator.next();
       debug('[DATA] ' + generator.name + ' wGD write(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
       stream.write(chunk);
-      t.renew();
+      t.renew(generator.generated, generator.number);
     }
     t.clear();
     done();
@@ -125,7 +130,7 @@ function wGDWonDrain(stream, generator, timeout, done) {
       }
       else {
         ok = stream.write(chunk);
-        t.renew();
+        t.renew(generator.generated, generator.number);
       }
     } while (ok);
     
@@ -149,9 +154,10 @@ function sODV(stream, verifier, timeout, done) {
 
   return stream.on('data', function(d) {
     debug('[EVENT] data ' + verifier.name + ' sODV (' + d.length + ') #' + verifier.checked);
+
+    t.renew(verifier.checked, verifier.number);
     
     var err = verifier.verify(d);
-    t.renew();
     if (err) {
       t.clear();
       return done(err);
