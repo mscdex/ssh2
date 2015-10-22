@@ -42,8 +42,12 @@ if (DEBUG) {
   debug = function(message) {
     console.log(message);
   }
-}
 
+  for (var key in process.versions) {
+    debug('[INFO] ' + key + ': ' + process.versions[key]);
+  }
+  debug('[INFO] platform: ' + process.platform + ' ' + process.arch);
+}
 
 // 
 
