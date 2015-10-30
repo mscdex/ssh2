@@ -144,12 +144,9 @@ function wStream(stream, generator, timeout, done) {
          }
       })
       .on('end', function() {
-        t.clear();
         debug('[EVENT] end ' + generator.name + ' wStream  #' + generator.generated);
-        done();
       })
       .on('close', function() {
-        t.clear();
         debug('[EVENT] close ' + generator.name + ' wStream  #' + generator.generated);
       })      
       .on('error', function(err) {
@@ -157,7 +154,21 @@ function wStream(stream, generator, timeout, done) {
         debug('[EVENT] error ' + generator.name + ' wStream  #' + generator.generated);
         done(err);
       })
-      .pipe(stream);
+      .pipe(stream)
+      .on('end', function() {
+        t.clear();
+        debug('[EVENT] end ' + generator.name + ' wStream');
+        done();
+      })
+      .on('close', function() {
+        t.clear();
+        debug('[EVENT] close ' + generator.name + ' wStream');
+      })      
+      .on('error', function(err) {
+        t.clear();
+        debug('[EVENT] error ' + generator.name + ' wStream');
+        done(err);
+      })      
   }
   
   setImmediate(createPipe);

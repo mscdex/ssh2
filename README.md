@@ -1224,6 +1224,10 @@ Please note: it is also checked in timeout.clear() if this is a timeout...
         .on('willpush', function(chunk) {
           timeout.renew();
         })
+        .on('error', function(err) {
+          done(err);
+        })
+        .pipe(stream)
         .on('end', function() {
           t.clear();
           done();
@@ -1235,7 +1239,6 @@ Please note: it is also checked in timeout.clear() if this is a timeout...
           t.clear();
           done(err);
         })
-        .pipe(stream);
     }
     
     createPipe();
