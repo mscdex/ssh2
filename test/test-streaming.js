@@ -34,7 +34,10 @@ var USER = 'nodejs',
     CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA)),
     CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
     CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA)),
-    DEBUG = process.env['DEBUG'];
+    DEBUG = process.env['DEBUG'],
+    endEventWorkaround = process.env['endEventWorkaround']
+                         && !process.env['strictStreams2']
+                         && !process.env['strict'];
     
 var debug = function() {};
 
@@ -59,6 +62,20 @@ function wGD(stream, generator, timeout, done) {
                    makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
           });
 
+  stream
+    .on('end', function() {
+      debug('[EVENT] end ' + generator.name + ' wGD');
+      done(null, 'end');
+    })
+    .on('close', function() {
+      debug('[EVENT] close ' + generator.name + ' wGD');
+      done(null, 'close');
+    })
+    .on('error', function(err) {
+      debug('[EVENT] error ' + generator.name + ' wGD');
+      done(err);
+    });
+    
   function write() {
     
     while (!generator.atEnd) {
@@ -68,7 +85,13 @@ function wGD(stream, generator, timeout, done) {
       t.renew(generator.generated, generator.number);
     }
     t.clear();
-    done();
+    
+    if (endEventWorkaround) {
+      debug('[FIX] endEventWorkaround ' + generator.name);
+      done(null, 'end'); // this may call stream.exit()
+    }
+    stream.end();
+    done(null, 'close'); // according to the specs not all streams must emit an close event    
   }
   
   setImmediate(write);
@@ -86,6 +109,20 @@ function wGDWonDrain(stream, generator, timeout, done) {
                    makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
           });
   
+  stream
+    .on('end', function() {
+      debug('[EVENT] end ' + generator.name + ' wGDWonDrain');
+      done(null, 'end');
+    })
+    .on('close', function() {
+      debug('[EVENT] close ' + generator.name + ' wGDWonDrain');
+      done(null, 'close');
+    })
+    .on('error', function(err) {
+      debug('[EVENT] error ' + generator.name + ' wGDWonDrain');
+      done(err);
+    });
+    
   function write() {
     var ok,
         chunk;
@@ -99,7 +136,13 @@ function wGDWonDrain(stream, generator, timeout, done) {
         // last time
         return stream.write(chunk, function() {
           t.clear();
-          done();
+
+          if (endEventWorkaround) {
+            debug('[FIX] endEventWorkaround ' + generator.name);
+            done(null, 'end'); // this may call stream.exit()
+          }
+          stream.end();
+          done(null, 'close'); // according to the specs not all streams must emit an close event    
         });
       }
       else {
@@ -145,6 +188,10 @@ function wStream(stream, generator, timeout, done) {
       })
       .on('end', function() {
         debug('[EVENT] end ' + generator.name + ' wStream  #' + generator.generated);
+        if (endEventWorkaround) {
+          debug('[FIX] endEventWorkaround ' + generator.name);
+          done(null, 'end'); // this may call stream.exit()
+        }
       })
       .on('close', function() {
         debug('[EVENT] close ' + generator.name + ' wStream  #' + generator.generated);
@@ -154,15 +201,16 @@ function wStream(stream, generator, timeout, done) {
         debug('[EVENT] error ' + generator.name + ' wStream  #' + generator.generated);
         done(err);
       })
+      
       .pipe(stream)
       .on('end', function() {
-        t.clear();
         debug('[EVENT] end ' + generator.name + ' wStream');
-        done();
+        done(null, 'end');
       })
       .on('close', function() {
         t.clear();
         debug('[EVENT] close ' + generator.name + ' wStream');
+        done(null, 'close');
       })      
       .on('error', function(err) {
         t.clear();
@@ -252,8 +300,9 @@ function createExecTest(what, options) {
                    
             var stream = accept();
       
-            var writesEnded = 0, 
-                exitAtWritesEnded = 0;
+            var writesEnded = 0,
+                writesClosed = 0,
+                writerFlags = 0;
           
             // exit and end if all generators finished
       
@@ -262,11 +311,36 @@ function createExecTest(what, options) {
               
               debug('[CHECK] server end(' + what + ') => ' + writesEnded);
         
-              if (writesEnded != exitAtWritesEnded) return;
+              if (writesEnded != writerFlags) return;
         
               stream.exit(100);
+            }
+            
+            function close(what) {
+              if (undefined !== what) writesClosed |= what;
+              
+              debug('[CHECK] server close(' + what + ') => ' + writesClosed);
+        
+              if (writesClosed != writerFlags) return;
+        
               stream.end();        
               conn.end();
+            }
+            
+            function createDoneFunc(name, generator, writer) {
+              return function(err, event) {
+                assert(!err, 
+                       makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
+                
+                if (event === 'end') {
+                  end(writer);
+                }
+                else if (event === 'close') {
+                  close(writer);
+                }
+              }
             }
       
             var generator;
@@ -275,37 +349,16 @@ function createExecTest(what, options) {
             generator = new data_utils.ChunkGenerator('server.session.exec.stdout', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stdout) {
-              wGD(stream, generator, timeout, function(err) { 
-                assert(!err, 
-                       makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' wGD:cb(' + inspect(err) + ')');
-                
-                end(1);
-              });
-              exitAtWritesEnded |= 1;
+              wGD(stream, generator, timeout, createDoneFunc('wGD', generator, 1));
+              writerFlags |= 1;
             } 
             else if ('wGDWonDrain' === options.server.stdout) {
-              wGDWonDrain(stream, generator, timeout, function(err) { 
-                assert(!err, 
-                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
-                
-                end(1);
-              });
-              exitAtWritesEnded |= 1;        
+              wGDWonDrain(stream, generator, timeout, createDoneFunc('wGDWonDrain', generator, 1));
+              writerFlags |= 1;        
             }
             else if ('wStream' === options.server.stdout) {
-              wStream(stream, generator, timeout, function(err) {
-                assert(!err, 
-                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
-                
-                end(1);
-              });
-              exitAtWritesEnded |= 1;        
+              wStream(stream, generator, timeout, createDoneFunc('wStream', generator, 1));
+              writerFlags |= 1;        
             }
             else {
               assert(!options.server.stdout,
@@ -316,26 +369,16 @@ function createExecTest(what, options) {
             generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
       
             if ('wGD' === options.server.stderr) {
-              wGD(stream.stderr, generator, timeout, function(err) {          
-                assert(!err, 
-                       makeMsg(what, 'wGD ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' wGD:cb(' + inspect(err) + ')');
-                
-                end(2);
-              });
-              exitAtWritesEnded |= 2;
+              wGD(stream.stderr, generator, timeout, createDoneFunc('wGD', generator, 2));
+              writerFlags |= 2;
             }
             else if ('wGDWonDrain' === options.server.stderr) {
-              wGDWonDrain(stream.stderr, generator, timeout, function(err) { 
-                assert(!err, 
-                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
-                
-                end(2);
-              });
-              exitAtWritesEnded |= 2;        
+              wGDWonDrain(stream.stderr, generator, timeout, createDoneFunc('wGDWonDrain', generator, 2));
+              writerFlags |= 2;        
+            }
+            else if ('wStream' === options.server.stderr) {
+              wStream(stream, generator, timeout,  createDoneFunc('wStream', generator, 2));
+              writerFlags |= 2;        
             }
             else {
               assert(!options.server.stderr,

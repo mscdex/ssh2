@@ -1056,6 +1056,9 @@ failOnBadIdentificationStarts   Fail if the server encounters a 'Bad identificat
                                 after the client did close the connection. If not specified those incidents 
                                 will be logged only.
                                 
+endEventWorkaround              Use a work around that ssh2.Channel does not emit an end event when calling .end()
+                                on it. Will be ignored it strictStreams2 or strict is set.
+                                
 strict                          Ingore nothing, always fail.
 </pre>
 
@@ -1228,12 +1231,9 @@ Please note: it is also checked in timeout.clear() if this is a timeout...
           done(err);
         })
         .pipe(stream)
-        .on('end', function() {
-          t.clear();
-          done();
-        })
         .on('close', function() {
           t.clear();
+          done();
         })
         .on('error', function(err) {
           t.clear();
