@@ -139,14 +139,14 @@ exports.ChunkVerifier = ChunkVerifier;
 
 //
 
-util.inherits(StreamOfNumberLines, stream.Readable);
-
 function StreamOfNumberLines(generator,options) {
   stream.Readable.call(this, options);
 
   this.generator = generator;
   this.atEnd = false;
 }
+
+util.inherits(StreamOfNumberLines, stream.Readable);
 
 StreamOfNumberLines.prototype._read = function(size) {
   if (this.generator.atEnd) {
@@ -167,13 +167,13 @@ exports.StreamOfNumberLines = StreamOfNumberLines;
 
 //
 
-util.inherits(NumberLineStreamVerifier, stream.Writable);
-
 function NumberLineStreamVerifier(verifier, options) {
   stream.Writable.call(this, options);
   
   this.verifier = verifier;
 }
+
+util.inherits(NumberLineStreamVerifier, stream.Writable);
 
 NumberLineStreamVerifier.prototype._write = function(chunk, encoding, callback) {
   var err = this.verifier.verify(chunk);
@@ -189,13 +189,13 @@ exports.NumberLineStreamVerifier = NumberLineStreamVerifier;
 
 //
 
-util.inherits(VerifyingNumberLinesStream, stream.Transform);
-
 function VerifyingNumberLinesStream(verifier, options) {
   stream.Transform.call(this, options);
   
   this.verifier = verifier;
 }
+
+util.inherits(VerifyingNumberLinesStream, stream.Transform);
 
 VerifyingNumberLinesStream.prototype._transform = function(chunk, encoding, callback) {
   var err = this.verifier.verify(chunk);
