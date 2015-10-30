@@ -6,6 +6,42 @@ var stream = require('stream'),
     util= require('util');
 
 //
+    
+function Timeout(name, ms, errfunc) {
+  if (undefined === ms || 0 > ms) {
+    this.renew = function(b, n) {};
+    this.clear = function() {};
+    return;
+  }
+
+  var lastRenew = Date.now(),
+      lastNumber,
+      lastBytes;
+
+  var intervalID = setInterval(function() {
+        var d = Date.now() - lastRenew;
+        if (ms <= d) errfunc(name, d, lastNumber, lastBytes);
+      }, 500);
+  
+  this.renew = function(b, n) {
+    var d = Date.now() - lastRenew;
+    if (ms <= d) errfunc(name, d, lastNumber, lastBytes);
+    lastBytes = b;
+    lastNumber = n;
+
+    lastRenew = Date.now();
+  };
+
+  this.clear = function() {
+    clearInterval(intervalID);
+  }
+
+  this.renew();
+}
+
+exports.Timeout = Timeout;
+    
+//
 
 function ChunkGenerator(name, maxNumber, maxSize) {
   this.name = name;
@@ -105,7 +141,7 @@ exports.ChunkVerifier = ChunkVerifier;
 
 util.inherits(StreamOfNumberLines, stream.Readable);
 
-function StreamOfNumberLines(generator, options) {
+function StreamOfNumberLines(generator,options) {
   stream.Readable.call(this, options);
 
   this.generator = generator;
@@ -119,9 +155,12 @@ StreamOfNumberLines.prototype._read = function(size) {
     }
     
     this.atEnd = true;
-    this.push(null);
+    this.emit('willpush', null);
+    return this.push(null);
   }
-  this.push(this.generator.next());
+  var chunk = this.generator.next();
+  this.emit('willpush', chunk);
+  this.push(chunk);
 };
 
 exports.StreamOfNumberLines = StreamOfNumberLines;  

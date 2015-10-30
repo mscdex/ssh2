@@ -1095,6 +1095,9 @@ strict                          Ingore nothing, always fail.
 
   o:wGDWonDrain  Write lines to stdout generated via 'writeGeneratedDataWaitsOnDrain' algorithm.
   e:wGDWonDrain  As above but to stderr.
+  
+  o:wStream      Write lines to stdout via a stream using the 'wStream' algorithm.
+  e:wStream      As above but to stderr.  
   </pre>
 
   Please note
@@ -1209,3 +1212,34 @@ Please note: it is also checked in timeout.clear() if this is a timeout...
 
   This algorythm is analog to the official node.js stream.Writable.write documentations example. It is expected
   to write up to maxNumber lines unless there is is an underlying issue with ssh2/ssh2-streams...
+
+* wStream
+
+  ```javascript
+  
+    function createPipe() {
+      var source = new data_utils.StreamOfNumberLines(generator)l
+    
+      source
+        .on('willpush', function(chunk) {
+          timeout.renew();
+        })
+        .on('end', function() {
+          t.clear();
+          done();
+        })
+        .on('close', function() {
+          t.clear();
+        })
+        .on('error', function(err) {
+          t.clear();
+          done(err);
+        })
+        .pipe(stream);
+    }
+    
+    createPipe();
+  ```
+  
+  This algorythm is expected to write up to maxNumber lines unless there is is an underlying issue with 
+  ssh2/ssh2-streams...

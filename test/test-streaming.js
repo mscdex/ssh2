@@ -51,46 +51,13 @@ if (DEBUG) {
 
 // 
 
-function Timeout(name, ms) {
-  if (undefined === ms || 0 > ms) {
-    this.renew = function(b, n) {};
-    this.clear = function() {};
-    return;
-  }
-  
-  var lastRenew = Date.now(),
-      lastNumber,
-      lastBytes;
-  
-  var  intervalID = setInterval(function() {
-        var d = Date.now() - lastRenew;
-        assert(ms > d,
-               makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
-      }, 500);
-      
-  this.renew = function(b, n) {
-    var d = Date.now() - lastRenew;
-    assert(ms > d,
-           makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes + ' -> ' + n + ',#' + b));
-
-    lastBytes = b;
-    lastNumber = n;
-    
-    lastRenew = Date.now();
-  };
-  
-  this.clear = function() {
-    clearInterval(intervalID);
-  }
-  
-  this.renew();
-}
-
-    
 function wGD(stream, generator, timeout, done) {
   // writeGeneratedData
   
-  var t = new Timeout(generator.name + ' wGD', timeout);
+  var t = new data_utils.Timeout(generator.name + ' wGD', timeout, function(name, d, lastNumber, lastBytes) {
+            assert(true,
+                   makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
+          });
 
   function write() {
     
@@ -114,7 +81,10 @@ function wGDWonDrain(stream, generator, timeout, done) {
   
   // code analog to stream.Writable.write documentation example
 
-  var t = new Timeout(generator.name + ' wGDWonDrain', timeout);
+  var t = new data_utils.Timeout(generator.name + ' wGDWonDrain', timeout, function(name, d, lastNumber, lastBytes) {
+            assert(true,
+                   makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
+          });
   
   function write() {
     var ok,
@@ -151,10 +121,57 @@ function wGDWonDrain(stream, generator, timeout, done) {
   return stream;
 }
 
+function wStream(stream, generator, timeout, done) {
+  // writeStream
+  
+  function createPipe() {
+    var t = new data_utils.Timeout(generator.name + ' wStream', timeout, function(name, d, lastNumber, lastBytes) {
+              assert(true,
+                     makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
+            });
+
+    var source = new data_utils.StreamOfNumberLines(generator);
+    
+    source
+      .on('willpush', function(chunk) {
+        t.renew(generator.generated, generator.number);
+
+        if (chunk) {
+          debug('[DATA] ' + generator.name + ' wStream push(' + chunk.length + ') .atEnd=' + generator.atEnd + '  #' + generator.generated);
+        }
+        else {
+          debug('[DATA] ' + generator.name + ' wStream push(null) .atEnd=' + generator.atEnd + '  #' + generator.generated);
+         }
+      })
+      .on('end', function() {
+        t.clear();
+        debug('[EVENT] end ' + generator.name + ' wStream  #' + generator.generated);
+        done();
+      })
+      .on('close', function() {
+        t.clear();
+        debug('[EVENT] close ' + generator.name + ' wStream  #' + generator.generated);
+      })      
+      .on('error', function(err) {
+        t.clear();
+        debug('[EVENT] error ' + generator.name + ' wStream  #' + generator.generated);
+        done(err);
+      })
+      .pipe(stream);
+  }
+  
+  setImmediate(createPipe);
+   
+  return stream;
+}
+
 function sODV(stream, verifier, timeout, done) {
   // streamOnDataVerify
 
-  var t = new Timeout(verifier.name + ' sODV', timeout);
+  var t = new data_utils.Timeout(verifier.name + ' sODV', timeout, function(name, d, lastNumber, lastBytes) {
+            assert(true,
+                   makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
+          });
 
   return stream.on('data', function(d) {
     debug('[EVENT] data ' + verifier.name + ' sODV (' + d.length + ') #' + verifier.checked);
@@ -259,6 +276,17 @@ function createExecTest(what, options) {
             } 
             else if ('wGDWonDrain' === options.server.stdout) {
               wGDWonDrain(stream, generator, timeout, function(err) { 
+                assert(!err, 
+                       makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
+                       
+                debug('[CHECK] ' + generator.name + ' wGDWonDrain:cb(' + inspect(err) + ')');
+                
+                end(1);
+              });
+              exitAtWritesEnded |= 1;        
+            }
+            else if ('wStream' === options.server.stdout) {
+              wStream(stream, generator, timeout, function(err) {
                 assert(!err, 
                        makeMsg(what, 'wGDWonDrain ' + generator.name + ' err: ' + inspect(err)));
                        
