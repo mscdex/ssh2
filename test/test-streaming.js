@@ -383,6 +383,7 @@ function createExecTest(what, options) {
       
             var writesFinished = 0,
                 writesClosed = 0,
+                writersEmittedFinish = 0,
                 writerFlags = 0;
           
             // exit and end if all generators finished
@@ -404,10 +405,23 @@ function createExecTest(what, options) {
               }
             }
             
-            stream.once('finish', function() {
-              debug('[EVENT] finish server.session.exec.stream')
+            function emittedFinish(what) {
+              if (undefined !== what) writersEmittedFinish |= what;
+              
+              if (writersEmittedFinish != writerFlags) return;
+
               debug('[CHECK] server.end()');
               conn.end();
+            }
+            
+            stream.once('finish', function() {
+              debug('[EVENT] finish server.session.exec.stream')
+              emittedFinish(1);
+            });
+            
+            stream.stderr.once('finish', function() {
+              debug('[EVENT] finish server.session.exec.stream.stderr')
+              emittedFinish(2);
             });
             
             function close(what) {
