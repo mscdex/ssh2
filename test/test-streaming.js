@@ -37,7 +37,10 @@ var USER = 'nodejs',
     DEBUG = process.env['DEBUG'],
     exitOnSourceEnd = process.env['exitOnSourceEnd']
                       && !process.env['strictStreams2']
-                      && !process.env['strict'];
+                      && !process.env['strict'],
+    endWorkaround = process.env['endWorkaround']
+                    && !process.env['strictStreams2']
+                    && !process.env['strict'];
     
 var debug = function() {};
 
@@ -50,6 +53,12 @@ if (DEBUG) {
     debug('[INFO] ' + key + ': ' + process.versions[key]);
   }
   debug('[INFO] platform: ' + process.platform + ' ' + process.arch);
+  
+  debug('[INFO] strictStreams2: ' + process.env['strictStreams2']);
+  debug('[INFO] failOnBadIdentificationStarts: ' + process.env['failOnBadIdentificationStarts']);
+  debug('[INFO] exitOnSourceEnd: ' + exitOnSourceEnd);
+  debug('[INFO] endWorkaround: ' + endWorkaround);
+  debug('[INFO] strict: ' + process.env['strict']);
 }
 
 // 
@@ -66,11 +75,16 @@ function wGD(stream, generator, timeout, done) {
     .on('finish', function() {
       debug('[EVENT] finish ' + generator.name + ' wGD');
       done(null, 'finish');
-      done(null, 'close'); // according to the specs not all streams must emit an close event    
+      if (!endWorkaround) { // done(close) might call stream.end...
+        done(null, 'close'); // according to the specs not all streams must emit an close event
+      } 
+      else {
+        debug('[FIX] endWorkaround ' + generator.name + ' wGD stream');
+      }
     })
     .on('close', function() {
       debug('[EVENT] close ' + generator.name + ' wGD');
-      done(null, 'close');
+      done(null, 'close'); // all done, can savely close
     })
     .on('error', function(err) {
       debug('[EVENT] error ' + generator.name + ' wGD');
@@ -91,7 +105,12 @@ function wGD(stream, generator, timeout, done) {
       debug('[FIX] exitOnSourceEnd ' + generator.name);
       done(null, 'finish'); // this may call stream.exit()
     }
-    stream.end();
+    if (!endWorkaround) { // don't end stream here as another stream might be still transferring data...
+      stream.end(); 
+    }
+    else {
+      debug('[FIX] endWorkaround ' + generator.name + ' wGD write');
+    }
   }
   
   setImmediate(write);
@@ -113,11 +132,16 @@ function wGDWonDrain(stream, generator, timeout, done) {
     .on('finish', function() {
       debug('[EVENT] finish ' + generator.name + ' wGDWonDrain');
       done(null, 'finish');
-      done(null, 'close'); // according to the specs not all streams must emit an close event    
+      if (!endWorkaround) { // done(close) might call stream.end...
+        done(null, 'close'); // according to the specs not all streams must emit an close event
+      }
+      else {
+        debug('[FIX] endWorkaround ' + generator.name + ' wGDWonDrain stream');
+      }
     })
     .on('close', function() {
       debug('[EVENT] close ' + generator.name + ' wGDWonDrain');
-      done(null, 'close');
+      done(null, 'close'); // all done, can savely close
     })
     .on('error', function(err) {
       debug('[EVENT] error ' + generator.name + ' wGDWonDrain');
@@ -142,7 +166,12 @@ function wGDWonDrain(stream, generator, timeout, done) {
             debug('[FIX] exitOnSourceEnd ' + generator.name);
             done(null, 'finish'); // this may call stream.exit()
           }
-          stream.end();
+          if (!endWorkaround) { // don't end stream here as another stream might be still transferring data...
+            stream.end();
+          }
+          else {
+            debug('[FIX] endWorkaround ' + generator.name + ' wGDWonDrain write');
+          }
         });
       }
       else {
@@ -202,16 +231,21 @@ function wStream(stream, generator, timeout, done) {
         done(err);
       })
       
-      .pipe(stream)
+      .pipe(stream, {end:!endWorkaround})
       .on('finish', function() {
         debug('[EVENT] finish ' + generator.name + ' wStream');
         done(null, 'finish');
-        done(null, 'close'); // according to the specs not all streams must emit an close event    
+        if (!endWorkaround) { // don't end stream here as another stream might be still transferring data...
+          done(null, 'close'); // according to the specs not all streams must emit an close event    
+        }
+        else {
+          debug('[FIX] endWorkaround ' + generator.name + ' wStream target');
+        }
       })
       .on('close', function() {
         t.clear();
         debug('[EVENT] close ' + generator.name + ' wStream target');
-        done(null, 'close');
+        done(null, 'close'); // all done, can savely close
       })      
       .on('error', function(err) {
         t.clear();
@@ -362,19 +396,33 @@ function createExecTest(what, options) {
         
               debug('[CHECK] server.session.exec.exit(100)');
               stream.exit(100);
+              
+              // this is a critical workaround - as 
+              
+              if (endWorkaround) {
+                close(writesFinished);
+              }
             }
             
-            function close(what) {
-              if (undefined !== what) writesClosed |= what;
-              
-              debug('[CHECK] server close(' + what + ') => ' + writesClosed);
-        
-              if (writesClosed != writerFlags) return;
-        
-              debug('[CHECK] server.session.exec.end()');
-              stream.end();        
+            stream.once('finish', function() {
+              debug('[EVENT] finish server.session.exec.stream')
               debug('[CHECK] server.end()');
               conn.end();
+            });
+            
+            function close(what) {
+              if (undefined !== what) {
+                writesClosed |= what;
+              }
+                
+              debug('[CHECK] server close(' + what + ') => ' + writesClosed);
+
+              if (writesClosed != writerFlags) return;
+              
+              if (endWorkaround) {
+                debug('[CHECK] server.session.exec.end()');
+                stream.end() // will close BOTH stdout AND stderr !!
+              }
             }
             
             function createDoneFunc(name, generator, writer) {

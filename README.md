@@ -1059,6 +1059,10 @@ failOnBadIdentificationStarts   Fail if the server encounters a 'Bad identificat
 exitOnSourceEnd                 Use a work around that ssh2.Channel will closes automatically on .end() and the 
                                 exit code has to be set before. Will be ignored when either strictStreams2 or 
                                 strict is set.
+
+endWorkaround                   Use a work around to wait for both ssh2.Channel stdout and stderr to have all
+                                data transferred before calling .exit() and then stdout.end() . Will be ignored 
+                                when either strictStreams2 or strict is set.
                                 
 strict                          Ingore nothing, always fail.
 </pre>
