@@ -1056,8 +1056,9 @@ failOnBadIdentificationStarts   Fail if the server encounters a 'Bad identificat
                                 after the client did close the connection. If not specified those incidents 
                                 will be logged only.
                                 
-endEventWorkaround              Use a work around that ssh2.Channel does not emit an end event when calling .end()
-                                on it. Will be ignored it strictStreams2 or strict is set.
+exitOnSourceEnd                 Use a work around that ssh2.Channel will closes automatically on .end() and the 
+                                exit code has to be set before. Will be ignored when either strictStreams2 or 
+                                strict is set.
                                 
 strict                          Ingore nothing, always fail.
 </pre>

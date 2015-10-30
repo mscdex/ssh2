@@ -35,9 +35,9 @@ var USER = 'nodejs',
     CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
     CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA)),
     DEBUG = process.env['DEBUG'],
-    endEventWorkaround = process.env['endEventWorkaround']
-                         && !process.env['strictStreams2']
-                         && !process.env['strict'];
+    exitOnSourceEnd = process.env['exitOnSourceEnd']
+                      && !process.env['strictStreams2']
+                      && !process.env['strict'];
     
 var debug = function() {};
 
@@ -63,9 +63,10 @@ function wGD(stream, generator, timeout, done) {
           });
 
   stream
-    .on('end', function() {
-      debug('[EVENT] end ' + generator.name + ' wGD');
-      done(null, 'end');
+    .on('finish', function() {
+      debug('[EVENT] finish ' + generator.name + ' wGD');
+      done(null, 'finish');
+      done(null, 'close'); // according to the specs not all streams must emit an close event    
     })
     .on('close', function() {
       debug('[EVENT] close ' + generator.name + ' wGD');
@@ -86,12 +87,11 @@ function wGD(stream, generator, timeout, done) {
     }
     t.clear();
     
-    if (endEventWorkaround) {
-      debug('[FIX] endEventWorkaround ' + generator.name);
-      done(null, 'end'); // this may call stream.exit()
+    if (exitOnSourceEnd) {
+      debug('[FIX] exitOnSourceEnd ' + generator.name);
+      done(null, 'finish'); // this may call stream.exit()
     }
     stream.end();
-    done(null, 'close'); // according to the specs not all streams must emit an close event    
   }
   
   setImmediate(write);
@@ -110,9 +110,10 @@ function wGDWonDrain(stream, generator, timeout, done) {
           });
   
   stream
-    .on('end', function() {
-      debug('[EVENT] end ' + generator.name + ' wGDWonDrain');
-      done(null, 'end');
+    .on('finish', function() {
+      debug('[EVENT] finish ' + generator.name + ' wGDWonDrain');
+      done(null, 'finish');
+      done(null, 'close'); // according to the specs not all streams must emit an close event    
     })
     .on('close', function() {
       debug('[EVENT] close ' + generator.name + ' wGDWonDrain');
@@ -137,12 +138,11 @@ function wGDWonDrain(stream, generator, timeout, done) {
         return stream.write(chunk, function() {
           t.clear();
 
-          if (endEventWorkaround) {
-            debug('[FIX] endEventWorkaround ' + generator.name);
-            done(null, 'end'); // this may call stream.exit()
+          if (exitOnSourceEnd) {
+            debug('[FIX] exitOnSourceEnd ' + generator.name);
+            done(null, 'finish'); // this may call stream.exit()
           }
           stream.end();
-          done(null, 'close'); // according to the specs not all streams must emit an close event    
         });
       }
       else {
@@ -187,34 +187,35 @@ function wStream(stream, generator, timeout, done) {
          }
       })
       .on('end', function() {
-        debug('[EVENT] end ' + generator.name + ' wStream  #' + generator.generated);
-        if (endEventWorkaround) {
-          debug('[FIX] endEventWorkaround ' + generator.name);
-          done(null, 'end'); // this may call stream.exit()
+        debug('[EVENT] end ' + generator.name + ' wStream #' + generator.generated);
+        if (exitOnSourceEnd) {
+          debug('[FIX] exitOnSourceEnd ' + generator.name);
+          done(null, 'finish'); // this may call stream.exit()
         }
       })
       .on('close', function() {
-        debug('[EVENT] close ' + generator.name + ' wStream  #' + generator.generated);
+        debug('[EVENT] close ' + generator.name + ' wStream source #' + generator.generated);
       })      
       .on('error', function(err) {
         t.clear();
-        debug('[EVENT] error ' + generator.name + ' wStream  #' + generator.generated);
+        debug('[EVENT] error ' + generator.name + ' wStream source #' + generator.generated);
         done(err);
       })
       
       .pipe(stream)
-      .on('end', function() {
-        debug('[EVENT] end ' + generator.name + ' wStream');
-        done(null, 'end');
+      .on('finish', function() {
+        debug('[EVENT] finish ' + generator.name + ' wStream');
+        done(null, 'finish');
+        done(null, 'close'); // according to the specs not all streams must emit an close event    
       })
       .on('close', function() {
         t.clear();
-        debug('[EVENT] close ' + generator.name + ' wStream');
+        debug('[EVENT] close ' + generator.name + ' wStream target');
         done(null, 'close');
       })      
       .on('error', function(err) {
         t.clear();
-        debug('[EVENT] error ' + generator.name + ' wStream');
+        debug('[EVENT] error ' + generator.name + ' wStream target');
         done(err);
       })      
   }
@@ -247,6 +248,16 @@ function sODV(stream, verifier, timeout, done) {
       return done();
     }
   });
+}
+
+
+function vStream(stream, verifier, timeout, done) {
+  // verifyStream
+  
+  var target = null;
+  
+  stream.pipe(target);
+  
 }
 
 function createExecTest(what, options) {
@@ -300,18 +311,18 @@ function createExecTest(what, options) {
                    
             var stream = accept();
       
-            var writesEnded = 0,
+            var writesFinished = 0,
                 writesClosed = 0,
                 writerFlags = 0;
           
             // exit and end if all generators finished
       
-            function end(what) {
-              if (undefined !== what) writesEnded |= what;
+            function finish(what) {
+              if (undefined !== what) writesFinished |= what;
               
-              debug('[CHECK] server end(' + what + ') => ' + writesEnded);
+              debug('[CHECK] server finish(' + what + ') => ' + writesFinished);
         
-              if (writesEnded != writerFlags) return;
+              if (writesFinished != writerFlags) return;
         
               stream.exit(100);
             }
@@ -334,8 +345,8 @@ function createExecTest(what, options) {
                        
                 debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
                 
-                if (event === 'end') {
-                  end(writer);
+                if (event === 'finish') {
+                  finish(writer);
                 }
                 else if (event === 'close') {
                   close(writer);
