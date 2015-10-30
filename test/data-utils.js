@@ -176,6 +176,8 @@ function NumberLineStreamVerifier(verifier, options) {
 util.inherits(NumberLineStreamVerifier, stream.Writable);
 
 NumberLineStreamVerifier.prototype._write = function(chunk, encoding, callback) {
+  this.emit('verify', chunk);
+  
   var err = this.verifier.verify(chunk);
   
   if (err) {

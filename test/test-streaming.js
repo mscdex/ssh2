@@ -253,11 +253,47 @@ function sODV(stream, verifier, timeout, done) {
 
 function vStream(stream, verifier, timeout, done) {
   // verifyStream
+
+  var t = new data_utils.Timeout(verifier.name + ' vStream', timeout, function(name, d, lastNumber, lastBytes) {
+            assert(true,
+                   makeMsg(name, 'timed out after: ' + d + 'ms ' + lastNumber + ',#' + lastBytes));
+          });
   
-  var target = null;
+  function createPipe() {
+    var target = new data_utils.NumberLineStreamVerifier(verifier);
   
-  stream.pipe(target);
-  
+    stream
+      .on('end', function() {
+        debug('[EVENT] end ' + verifier.name + ' vStream');        
+      })
+      .on('close', function() {
+        debug('[EVENT] close ' + verifier.name + ' vStream');        
+      })
+      .on('error', function(err) {
+        t.clear();
+        debug('[EVENT] error ' + verifier.name + ' vStream source');        
+        done(err);
+      })
+      .pipe(target)
+      .on('verify', function(chunk) {
+        debug('[DATA] ' + verifier.name + ' vStream (' + chunk.length + ') #' + verifier.checked);
+        t.renew(verifier.checked, verifier.number);
+      })
+      .on('finish', function() {
+        t.clear();
+        debug('[EVENT] finish ' + verifier.name + ' vStream');        
+        done();
+      })
+      .on('error', function(err) {
+        t.clear();
+        debug('[EVENT] error ' + verifier.name + ' vStream target');        
+        done(err);
+      });
+  }
+      
+  setImmediate(createPipe);   
+    
+  return stream;
 }
 
 function createExecTest(what, options) {
@@ -324,6 +360,7 @@ function createExecTest(what, options) {
         
               if (writesFinished != writerFlags) return;
         
+              debug('[CHECK] server.session.exec.exit(100)');
               stream.exit(100);
             }
             
@@ -334,7 +371,9 @@ function createExecTest(what, options) {
         
               if (writesClosed != writerFlags) return;
         
+              debug('[CHECK] server.session.exec.end()');
               stream.end();        
+              debug('[CHECK] server.end()');
               conn.end();
             }
             
@@ -388,7 +427,7 @@ function createExecTest(what, options) {
               writerFlags |= 2;        
             }
             else if ('wStream' === options.server.stderr) {
-              wStream(stream, generator, timeout,  createDoneFunc('wStream', generator, 2));
+              wStream(stream.stderr, generator, timeout,  createDoneFunc('wStream', generator, 2));
               writerFlags |= 2;        
             }
             else {
@@ -414,17 +453,25 @@ function createExecTest(what, options) {
     
         var verifiers = [],
             verifier;
+            
+        function createDoneFunc(name, verifier) {
+          return function(err) {
+            assert(undefined === err, 
+                  makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
+                  
+            debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
+          }  
+        }
     
         // create verifier on stdout
         verifier = new data_utils.ChunkVerifier('client.exec.stdout', maxNumber);
     
         if ('sODV' === options.client.stdout) {
-          sODV(stream, verifier, timeout, function(err) {
-            assert(undefined === err, 
-                  makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
-                  
-            debug('[CHECK] ' + verifier.name + ' sODV:cb(' + inspect(err) + ')');
-          });
+          sODV(stream, verifier, timeout, createDoneFunc('sODV', verifier));
+          verifiers.push(verifier);
+        }
+        else if ('vStream' === options.client.stdout) {
+          vStream(stream, verifier, timeout, createDoneFunc('vStream', verifier));
           verifiers.push(verifier);
         }
         else {
@@ -436,12 +483,11 @@ function createExecTest(what, options) {
         verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
     
         if ('sODV' === options.client.stderr) {
-          sODV(stream.stderr, verifier, timeout, function(err) {
-            assert(undefined === err, 
-                   makeMsg(what, 'sODV ' + verifier.name + ' err: ' + inspect(err)));
-
-            debug('[CHECK] ' + verifier.name + ' sODV:cb(' + inspect(err) + ')');
-          });      
+          sODV(stream.stderr, verifier, timeout, createDoneFunc('sODV', verifier));      
+          verifiers.push(verifier);
+        }
+        else if ('vStream' === options.client.stderr) {
+          vStream(stream.stderr, verifier, timeout, createDoneFunc('vStream', verifier));
           verifiers.push(verifier);
         }
         else {
