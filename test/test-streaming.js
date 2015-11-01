@@ -1035,8 +1035,9 @@ function createTest(what, options) {
       
       var subtests = Array.from(options['subtests']);
       
-      while (0 < subtests.length) {
+      function next() {
         var subtest = subtests.shift();
+        if (!subtest) return;
         
         if ('Exec' === subtest['type']) {
           execTestCount += 1;
@@ -1060,7 +1061,11 @@ function createTest(what, options) {
             clientData(what, 'forwardOut_' + port, stream, options, subtest, finishedClientSubtest);
           });
         }
+        
+        setImmediate(next);
       }
+      
+      next();
       
 
     }).on('end', function() {
