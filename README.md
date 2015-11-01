@@ -1042,7 +1042,7 @@ Streams test language
 test-streaming.js contains a test suite specific for streaming data including a mini language to describe tests easily. 
 Its syntax is 
 
-   [globalFlag|globalKey=value] Type( <client-parm1>,<client-parm2>... )<->( <server-parm1>,<server-parm2>... )
+   [globalFlag|globalKey=value] Type( <client-parm1>,<client-parm2>... )<->( <server-parm1>,<server-parm2>... ) ...
 
 The data generated and verified is a stream of lines each containing a single number with the number of the line starting at 0 encoded in ASCII.
 
@@ -1105,6 +1105,17 @@ strict                          Ingore nothing, always fail.
                  
                  format. If a stream (i,o,e) is used there must be on the sending side the generator, on the
                  receiving side the verifier.
+                 
+  ForwardOut    The client will create a 'forwardOut' which results in a 'tcpip' request on the server. This
+                stdin and stdout are stremas which can be tested.
+                
+                 Parameters have to follow
+                 
+                               CLIENT                                SERVER
+                 ( i:generator,o:verifier )<->( i:verifier,o:generator )
+                 
+                 format. If a stream (i,o) is used there must be on the sending side the generator, on the
+                 receiving side the verifier.
     
 Verifiers:
   sODV           Verify lines via the 'streamOnDataVerify' algorithm.
@@ -1131,7 +1142,7 @@ path  read all test script lines from the file given at path [default:./streamin
   
   echo 'maxNumber=10 Exec( o:sODV )<->( o:wGD )' | DEBUG=1 node test/test-streaming.js -
    
-  echo 'maxNumber=10 Exec( o:sODV,e:sODV )<->( o:wGD,e:wGDWonDrain )' > tests.txt && node test/test-streaming.js tests.txt
+  echo 'maxNumber=10 Exec( o:sODV,e:sODV )<->( o:wGD,e:wGDWonDrain ) ForwardOut( i:wStream )<->( i:vStream )' > tests.txt && node test/test-streaming.js tests.txt
 
 * Creating a number of test script lines
 
