@@ -503,7 +503,7 @@ function serverExec(conn, what, session, options, sOptions, cb) {
   }); // session.once:exec
 }
 
-function clientExec(what, client, options, sOptions) {
+function clientExec(what, client, options, sOptions, cb) {
   var maxNumber = options.maxNumber,
       maxChunkSize,
       strictStreams2 = options.strictStreams2 || options.strict,
@@ -649,6 +649,8 @@ function clientExec(what, client, options, sOptions) {
       // stdin must have finished
       assert(writesFinished == flags,
         makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
+        
+      cb();
       
     }); // stream.on
     
@@ -668,6 +670,7 @@ function createTest(what, options) {
         exitArgs = [],
         closeArgs = [],
         execTestCount = 0,
+        clientTestsRunning = 0,
         client,
         server,
         strictStreams2 = options.strictStreams2 || options.strict,
@@ -700,16 +703,14 @@ function createTest(what, options) {
         var subtests = Array.from(options['subtests']),
             running = 0;
             
-        function finishedSubtest(err) {
+        function finishedServerSubtest(err) {
           running -= 1;
-          debug('[EVENT] server finishedSubtest ' + running + ' running')
+          debug('[CHECK] server subtest finished ' + running + ' running')
           if (0 === running) {
             debug('[CHECK] server.end()');
             conn.end();
           }
         }
-        
-        
         
         conn.on('session', function(accept, reject) {
           debug('[EVENT] session server(f,f)');
@@ -730,15 +731,19 @@ function createTest(what, options) {
           
           var session = accept();
           running += 1;
-          serverExec(conn, what, session, options, subtest, finishedSubtest);
- 
-          
+          serverExec(conn, what, session, options, subtest, finishedServerSubtest);
+
         }); // conn.once:session
       }); // conn.on:ready
     }); // server.on:connection
     
     // CLIENT
 
+    function finishedClientSubtest(err) {
+      clientTestsRunning -= 1;
+      debug('[CHECK] client subtest finished ' + clientTestsRunning + ' running')
+    }
+    
     client.on('ready', function() {
       debug('[EVENT] ready client()');
       
@@ -749,7 +754,8 @@ function createTest(what, options) {
         
         if ('Exec' === subtest['type']) {
           execTestCount += 1;
-          clientExec(what, client, options, subtest)
+          clientTestsRunning += 1;
+          clientExec(what, client, options, subtest, finishedClientSubtest)
             .on('close', function(args) {
               closeArgs.push(args);
             })
@@ -762,6 +768,9 @@ function createTest(what, options) {
 
     }).on('end', function() {
       debug('[EVENT] end client()');
+      
+      assert(0 === clientTestsRunning,
+             makeMsg(what, 'Subtests still running: ' + clientTestsRunning));
       
       assert(execTestCount === exitArgs.length,
              makeMsg(what, 'Wrong number of exits: ' + exitArgs.length));
