@@ -3,7 +3,8 @@
 // (c) 2015 Michael Keller, minesworld-technologies.com , published under MIT license
 // parts of code (c) mscdex
 
-var data_utils = require('./data-utils');
+var EventEmitter = require('events').EventEmitter,
+    data_utils = require('./data-utils');
 
 var Client = require('../lib/client'),
     Server = require('../lib/server'),
@@ -334,6 +335,331 @@ function vStream(stream, verifier, timeout, done) {
   return stream;
 }
 
+//
+
+
+function serverExec(conn, what, session, options) {
+  var maxNumber = options.maxNumber,
+      maxChunkSize,
+      strictStreams2 = options.strictStreams2 || options.strict,
+      ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
+      timeout = (options.timeout && options.timeout * 1000) || -1;
+  
+  session.once('exec', function(accept, reject, info) {
+    assert(info.command === 'foo --bar',
+           makeMsg(what, 'Wrong exec command: ' + info.command));
+           
+    debug('[EVENT] exec server.session(f,f,' + inspect(info) + ')');
+           
+    var stream = accept();
+
+    var writesFinished = 0,
+        writesClosed = 0,
+        writersEmittedFinish = 0,
+        flags = 0; // 1=stdout, 2=stderr, 4=stdin
+  
+    var generator,
+        verifier;
+    
+  
+    // exit and end if all generators finished
+
+    function finish(what) {
+      if (undefined !== what) writesFinished |= what;
+      
+      debug('[CHECK] server finish(' + what + ') => ' + writesFinished);
+
+      if (writesFinished != flags) return;
+
+      debug('[CHECK] server.session.exec.exit(100)');
+      stream.exit(100);
+      
+      // this is a critical workaround - as 
+      
+      if (endWorkaround) {
+        close(writesFinished);
+      }
+    }
+    
+    function emittedFinish(what) {
+      if (undefined !== what) writersEmittedFinish |= what;
+      
+      if (writersEmittedFinish != flags && !disconnectOnFirstFinish) return;
+
+      debug('[CHECK] server.end()');
+      conn.end();
+    }
+    
+    stream.once('finish', function() {
+      debug('[EVENT] finish server.session.exec.stream')
+      emittedFinish(1);
+    });
+    
+    stream.stderr.once('finish', function() {
+      debug('[EVENT] finish server.session.exec.stream.stderr')
+      emittedFinish(2);
+    });
+    
+    function close(what) {
+      if (undefined !== what) {
+        writesClosed |= what;
+      }
+        
+      debug('[CHECK] server close(' + what + ') => ' + writesClosed);
+
+      if (writesClosed != (flags & 3)) return; // ignore stdin
+      
+      if (endWorkaround) {
+        debug('[CHECK] server.session.exec.end()');
+        stream.end() // will close BOTH stdout AND stderr !!
+      }
+    }
+    
+    function createWriteDoneFunc(name, generator, writer) {
+      return function(err, event) {
+        assert(!err, 
+               makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
+               
+        debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
+        
+        if (event === 'finish') {
+          finish(writer);
+        }
+        else if (event === 'close') {
+          close(writer);
+        }
+      }
+    }
+    
+    function createVerifyDoneFunc(name, verifier) {
+      return function(err) {
+        assert(undefined === err, 
+              makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
+          
+        debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
+        
+        finish(4);
+      }  
+    }
+    
+    
+    
+    // create verifier on stdin
+    verifier = new data_utils.ChunkVerifier('server.session.exec.stdin', maxNumber);
+
+    if ('sODV' === options.server.stdin) {
+      sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
+      flags |= 4;
+    }
+    else if ('vStream' === options.server.stdin) {
+      vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
+      flags |= 4;
+    }
+    else {
+      assert(!options.server.stdin,
+             makeMsg('unhandled server stdin Exec parameter: ' + options.server.stdin));
+    }
+     
+
+    // create data writers stdout
+    generator = new data_utils.ChunkGenerator('server.session.exec.stdout', maxNumber, maxChunkSize);
+
+    if ('wGD' === options.server.stdout) {
+      wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
+      flags |= 1;
+    } 
+    else if ('wGDWonDrain' === options.server.stdout) {
+      wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
+      flags |= 1;        
+    }
+    else if ('wStream' === options.server.stdout) {
+      wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
+      flags |= 1;        
+    }
+    else {
+      assert(!options.server.stdout,
+             makeMsg('unhandled server stdout Exec parameter: ' + options.server.stdout));
+    }
+
+    // create data writers stderr
+    generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
+
+    if ('wGD' === options.server.stderr) {
+      wGD(stream.stderr, generator, timeout, createWriteDoneFunc('wGD', generator, 2));
+      flags |= 2;
+    }
+    else if ('wGDWonDrain' === options.server.stderr) {
+      wGDWonDrain(stream.stderr, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 2));
+      flags |= 2;        
+    }
+    else if ('wStream' === options.server.stderr) {
+      wStream(stream.stderr, generator, timeout,  createWriteDoneFunc('wStream', generator, 2));
+      flags |= 2;        
+    }
+    else {
+      assert(!options.server.stderr,
+             makeMsg('unhandled server stderr Exec parameter: ' + options.server.stderr));
+    }
+    
+  }); // session.once:exec
+}
+
+function clientExec(what, client, options) {
+  var maxNumber = options.maxNumber,
+      maxChunkSize,
+      strictStreams2 = options.strictStreams2 || options.strict,
+      ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
+      timeout = (options.timeout && options.timeout * 1000) || -1;
+    
+  var emitter = new EventEmitter();
+  
+  client.exec('foo --bar', function(err, stream) {
+    assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+    debug('[CHECK] client.exec(e,s)');
+    
+    var closeEmitted = false;
+
+    var verifiers = [],
+        flags = 0,
+        writesFinished = 0;
+    
+    var generator,
+        verifier;
+        
+    function createVerifyDoneFunc(name, verifier) {
+      return function(err) {
+        assert(undefined === err, 
+              makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
+              
+        debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
+      }  
+    }
+    
+    function createWriteDoneFunc(name, generator, writer) {
+      return function(err, event) {
+        assert(!err, 
+               makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
+               
+        debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
+        
+        if (event === 'finish') {
+          writesFinished |= 1;
+          debug('[CHECK] client.exec.stdin.end()');
+          stream.end();
+        }
+        else if (event === 'close') {
+        }
+      }
+    }
+    
+    // create data writer stdin
+    generator = new data_utils.ChunkGenerator('client.exec.stdin', maxNumber, maxChunkSize);
+
+    if ('wGD' === options.client.stdin) {
+      wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
+      flags |= 1;
+    } 
+    else if ('wGDWonDrain' === options.client.stdin) {
+      wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
+      flags |= 1;        
+    }
+    else if ('wStream' === options.client.stdin) {
+      wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
+      flags |= 1;        
+    }
+    else {
+      assert(!options.server.stdin,
+             makeMsg('unhandled client stdin Exec parameter: ' + options.client.stdin));
+    }
+    
+
+    // create verifier on stdout
+    verifier = new data_utils.ChunkVerifier('client.exec.stdout', maxNumber);
+
+    if ('sODV' === options.client.stdout) {
+      sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
+      verifiers.push(verifier);
+    }
+    else if ('vStream' === options.client.stdout) {
+      vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
+      verifiers.push(verifier);
+    }
+    else {
+      assert(!options.client.stdout,
+             makeMsg('unhandled client stdout Exec parameter: ' + options.client.stdout));
+    }
+
+    // create verifier on stderr
+    verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
+
+    if ('sODV' === options.client.stderr) {
+      sODV(stream.stderr, verifier, timeout, createVerifyDoneFunc('sODV', verifier));      
+      verifiers.push(verifier);
+    }
+    else if ('vStream' === options.client.stderr) {
+      vStream(stream.stderr, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
+      verifiers.push(verifier);
+    }
+    else {
+      assert(!options.client.stderr,
+             makeMsg('unhandled client stderr Exec parameter: ' + options.client.stderr));
+    }
+
+    //
+
+    stream.on('exit', function(code) {
+      debug('[EVENT] exit client.exec.channel(' + inspect(arguments) + ')');
+                
+      var args = new Array(arguments.length);
+      for (var i = 0; i < args.length; ++i)
+        args[i] = arguments[i];
+      
+      // stdin must have finished
+      assert(writesFinished == flags,
+        makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
+      
+      emitter.emit('exit', args);
+    }).on('close', function(code) {
+      debug('[EVENT] close client.exec.channel(' + inspect(arguments) + ')');
+
+      closeEmitted = true;
+  
+      var args = new Array(arguments.length);
+      for (var i = 0; i < args.length; ++i)
+        args[i] = arguments[i];
+      
+      emitter.emit('close', args);
+  
+    }).on('end', function() {
+      debug('[EVENT] end client.exec.channel()');
+  
+      if (strictStreams2) {
+        assert(closeEmitted === false,
+               makeMsg(what, 'client.exec.channel emitted close before end'));
+      }
+      else if (closeEmitted) {
+        debug('[IGNORE] client.exec.channel emitted close before end');
+      }
+  
+      // all verifieres must be atEnd !!
+      for (var verifier of verifiers) {
+        assert(verifier.atEnd, 
+               makeMsg(what, 'client.exec.channel verifier ' + verifier.name + ' is not .atEnd'));
+      }
+      
+      // stdin must have finished
+      assert(writesFinished == flags,
+        makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
+      
+    }); // stream.on
+    
+  }); // client.exec  
+  
+  return emitter;
+}
+
+
+
 function createExecTest(what, options) {
   
   var run = function() {
@@ -344,11 +670,8 @@ function createExecTest(what, options) {
         closeArgs,
         client,
         server,
-        maxNumber = options.maxNumber,
-        maxChunkSize,
         strictStreams2 = options.strictStreams2 || options.strict,
         ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
-        timeout = (options.timeout && options.timeout * 1000) || -1,
         r;
 
     r = setup(this,
@@ -377,163 +700,8 @@ function createExecTest(what, options) {
           debug('[EVENT] session server(f,f)');
           
           var session = accept();
-          session.once('exec', function(accept, reject, info) {
-            assert(info.command === 'foo --bar',
-                   makeMsg(what, 'Wrong exec command: ' + info.command));
-                   
-            debug('[EVENT] exec server.session(f,f,' + inspect(info) + ')');
-                   
-            var stream = accept();
-      
-            var writesFinished = 0,
-                writesClosed = 0,
-                writersEmittedFinish = 0,
-                flags = 0; // 1=stdout, 2=stderr, 4=stdin
-          
-            var generator,
-                verifier;
-            
-          
-            // exit and end if all generators finished
-      
-            function finish(what) {
-              if (undefined !== what) writesFinished |= what;
-              
-              debug('[CHECK] server finish(' + what + ') => ' + writesFinished);
-        
-              if (writesFinished != flags) return;
-        
-              debug('[CHECK] server.session.exec.exit(100)');
-              stream.exit(100);
-              
-              // this is a critical workaround - as 
-              
-              if (endWorkaround) {
-                close(writesFinished);
-              }
-            }
-            
-            function emittedFinish(what) {
-              if (undefined !== what) writersEmittedFinish |= what;
-              
-              if (writersEmittedFinish != flags && !disconnectOnFirstFinish) return;
-
-              debug('[CHECK] server.end()');
-              conn.end();
-            }
-            
-            stream.once('finish', function() {
-              debug('[EVENT] finish server.session.exec.stream')
-              emittedFinish(1);
-            });
-            
-            stream.stderr.once('finish', function() {
-              debug('[EVENT] finish server.session.exec.stream.stderr')
-              emittedFinish(2);
-            });
-            
-            function close(what) {
-              if (undefined !== what) {
-                writesClosed |= what;
-              }
-                
-              debug('[CHECK] server close(' + what + ') => ' + writesClosed);
-
-              if (writesClosed != (flags & 3)) return; // ignore stdin
-              
-              if (endWorkaround) {
-                debug('[CHECK] server.session.exec.end()');
-                stream.end() // will close BOTH stdout AND stderr !!
-              }
-            }
-            
-            function createWriteDoneFunc(name, generator, writer) {
-              return function(err, event) {
-                assert(!err, 
-                       makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
-                       
-                debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
-                
-                if (event === 'finish') {
-                  finish(writer);
-                }
-                else if (event === 'close') {
-                  close(writer);
-                }
-              }
-            }
-            
-            function createVerifyDoneFunc(name, verifier) {
-              return function(err) {
-                assert(undefined === err, 
-                      makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
-                  
-                debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
-                
-                finish(4);
-              }  
-            }
-            
-            
-            
-            // create verifier on stdin
-            verifier = new data_utils.ChunkVerifier('server.session.exec.stdin', maxNumber);
-    
-            if ('sODV' === options.server.stdin) {
-              sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
-              flags |= 4;
-            }
-            else if ('vStream' === options.server.stdin) {
-              vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
-              flags |= 4;
-            }
-            else {
-              assert(!options.server.stdin,
-                     makeMsg('unhandled server stdin Exec parameter: ' + options.server.stdin));
-            }
-             
-      
-            // create data writers stdout
-            generator = new data_utils.ChunkGenerator('server.session.exec.stdout', maxNumber, maxChunkSize);
-      
-            if ('wGD' === options.server.stdout) {
-              wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
-              flags |= 1;
-            } 
-            else if ('wGDWonDrain' === options.server.stdout) {
-              wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
-              flags |= 1;        
-            }
-            else if ('wStream' === options.server.stdout) {
-              wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
-              flags |= 1;        
-            }
-            else {
-              assert(!options.server.stdout,
-                     makeMsg('unhandled server stdout Exec parameter: ' + options.server.stdout));
-            }
-     
-            // create data writers stderr
-            generator = new data_utils.ChunkGenerator('server.session.exec.stderr', maxNumber, maxChunkSize);
-      
-            if ('wGD' === options.server.stderr) {
-              wGD(stream.stderr, generator, timeout, createWriteDoneFunc('wGD', generator, 2));
-              flags |= 2;
-            }
-            else if ('wGDWonDrain' === options.server.stderr) {
-              wGDWonDrain(stream.stderr, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 2));
-              flags |= 2;        
-            }
-            else if ('wStream' === options.server.stderr) {
-              wStream(stream.stderr, generator, timeout,  createWriteDoneFunc('wStream', generator, 2));
-              flags |= 2;        
-            }
-            else {
-              assert(!options.server.stderr,
-                     makeMsg('unhandled server stderr Exec parameter: ' + options.server.stderr));
-            }
-            
-          }); // session.once:exec
+          serverExec(conn, what, session, options);
+ 
           
         }); // conn.once:session
       }); // conn.on:ready
@@ -543,145 +711,14 @@ function createExecTest(what, options) {
 
     client.on('ready', function() {
       debug('[EVENT] ready client()');
-      client.exec('foo --bar', function(err, stream) {
-        assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
-        debug('[CHECK] client.exec(e,s)');
-        
-        var closeEmitted = false;
-    
-        var verifiers = [],
-            flags = 0,
-            writesFinished = 0;
-        
-        var generator,
-            verifier;
-            
-        function createVerifyDoneFunc(name, verifier) {
-          return function(err) {
-            assert(undefined === err, 
-                  makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
-                  
-            debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
-          }  
-        }
-        
-        function createWriteDoneFunc(name, generator, writer) {
-          return function(err, event) {
-            assert(!err, 
-                   makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
-                   
-            debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
-            
-            if (event === 'finish') {
-              writesFinished |= 1;
-              debug('[CHECK] client.exec.stdin.end()');
-              stream.end();
-            }
-            else if (event === 'close') {
-            }
-          }
-        }
-        
-        // create data writer stdin
-        generator = new data_utils.ChunkGenerator('client.exec.stdin', maxNumber, maxChunkSize);
-  
-        if ('wGD' === options.client.stdin) {
-          wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
-          flags |= 1;
-        } 
-        else if ('wGDWonDrain' === options.client.stdin) {
-          wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
-          flags |= 1;        
-        }
-        else if ('wStream' === options.client.stdin) {
-          wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
-          flags |= 1;        
-        }
-        else {
-          assert(!options.server.stdin,
-                 makeMsg('unhandled client stdin Exec parameter: ' + options.client.stdin));
-        }
-        
-    
-        // create verifier on stdout
-        verifier = new data_utils.ChunkVerifier('client.exec.stdout', maxNumber);
-    
-        if ('sODV' === options.client.stdout) {
-          sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
-          verifiers.push(verifier);
-        }
-        else if ('vStream' === options.client.stdout) {
-          vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
-          verifiers.push(verifier);
-        }
-        else {
-          assert(!options.client.stdout,
-                 makeMsg('unhandled client stdout Exec parameter: ' + options.client.stdout));
-        }
-    
-        // create verifier on stderr
-        verifier = new data_utils.ChunkVerifier('client.exec.stderr', maxNumber);
-    
-        if ('sODV' === options.client.stderr) {
-          sODV(stream.stderr, verifier, timeout, createVerifyDoneFunc('sODV', verifier));      
-          verifiers.push(verifier);
-        }
-        else if ('vStream' === options.client.stderr) {
-          vStream(stream.stderr, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
-          verifiers.push(verifier);
-        }
-        else {
-          assert(!options.client.stderr,
-                 makeMsg('unhandled client stderr Exec parameter: ' + options.client.stderr));
-        }
-    
-        //
-    
-        stream.on('exit', function(code) {
-          debug('[EVENT] exit client.exec.channel(' + inspect(arguments) + ')');
-                    
-          exitArgs = new Array(arguments.length);
-          for (var i = 0; i < exitArgs.length; ++i)
-            exitArgs[i] = arguments[i];
-          
-          // stdin must have finished
-          assert(writesFinished == flags,
-            makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
-          
-          
-        }).on('close', function(code) {
-          debug('[EVENT] close client.exec.channel(' + inspect(arguments) + ')');
+      clientExec(what, client, options)
+        .on('close', function(args) {
+          closeArgs = args;
+        })
+        .on('exit', function(args) {
+          exitArgs = args;
+        })
 
-          closeEmitted = true;
-      
-          closeArgs = new Array(arguments.length);
-          for (var i = 0; i < closeArgs.length; ++i)
-            closeArgs[i] = arguments[i];
-      
-        }).on('end', function() {
-          debug('[EVENT] end client.exec.channel()');
-      
-          if (strictStreams2) {
-            assert(closeEmitted === false,
-                   makeMsg(what, 'client.exec.channel emitted close before end'));
-          }
-          else if (closeEmitted) {
-            debug('[IGNORE] client.exec.channel emitted close before end');
-          }
-      
-          // all verifieres must be atEnd !!
-          for (var verifier of verifiers) {
-            assert(verifier.atEnd, 
-                   makeMsg(what, 'client.exec.channel verifier ' + verifier.name + ' is not .atEnd'));
-          }
-          
-          // stdin must have finished
-          assert(writesFinished == flags,
-            makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
-          
-        }); // stream.on
-        
-      }); // client.exec
     }).on('end', function() {
       debug('[EVENT] end client()');
       assert.deepEqual(exitArgs,
@@ -698,7 +735,6 @@ function createExecTest(what, options) {
    
   return { run:run, what:what };
 }
-
 
 //
 
