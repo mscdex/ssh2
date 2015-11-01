@@ -338,7 +338,7 @@ function vStream(stream, verifier, timeout, done) {
 //
 
 
-function serverExec(conn, what, session, options, sOptions, cb) {
+function serverExec(what, session, options, sOptions, cb) {
   var maxNumber = options.maxNumber,
       maxChunkSize,
       strictStreams2 = options.strictStreams2 || options.strict,
@@ -356,7 +356,9 @@ function serverExec(conn, what, session, options, sOptions, cb) {
     var writesFinished = 0,
         writesClosed = 0,
         writersEmittedFinish = 0,
-        flags = 0; // 1=stdout, 2=stderr, 4=stdin
+        flags = 0, // 1=stdout, 2=stderr, 4=stdin
+        exited = false,
+        ended = false;
   
     var generator,
         verifier;
@@ -367,12 +369,15 @@ function serverExec(conn, what, session, options, sOptions, cb) {
     function finish(what) {
       if (undefined !== what) writesFinished |= what;
       
-      debug('[CHECK] server finish(' + what + ') => ' + writesFinished);
+      debug('[CHECK] server.session.exec finish(' + what + ') => ' + writesFinished);
 
       if (writesFinished != flags) return;
 
-      debug('[CHECK] server.session.exec.exit(100)');
-      stream.exit(100);
+      if (!exited) {
+        exited = true;
+        debug('[CHECK] server.session.exec.exit(100)');
+        stream.exit(100);
+      }
       
       // this is a critical workaround - as 
       
@@ -382,21 +387,34 @@ function serverExec(conn, what, session, options, sOptions, cb) {
     }
     
     function emittedFinish(what) {
-      if (undefined !== what) writersEmittedFinish |= what;
-      
-      if (writersEmittedFinish != flags && !disconnectOnFirstFinish) return;
+      if (undefined !== what) {
+        writersEmittedFinish |= what;
+      }
 
-      cb();
+      debug('[CHECK] server.session.exec finish emitted(' + what + ') => ' + writersEmittedFinish + '/' + flags);
+      
+      if ((writersEmittedFinish & 3) !== (flags & 3) && !disconnectOnFirstFinish) return;
+
+      console.log(cb);
+
+      if (cb) {
+        var cbx = cb;
+        cb = null;
+        setImmediate(cbx);
+      }
+      else {
+        debug('[IGNORE] server.session.exec second callback')
+      }
     }
     
     stream.once('finish', function() {
       debug('[EVENT] finish server.session.exec.stream')
-      emittedFinish(1);
+      emittedFinish(flags & 1);
     });
     
     stream.stderr.once('finish', function() {
       debug('[EVENT] finish server.session.exec.stream.stderr')
-      emittedFinish(2);
+      emittedFinish(flags & 2);
     });
     
     function close(what) {
@@ -404,13 +422,16 @@ function serverExec(conn, what, session, options, sOptions, cb) {
         writesClosed |= what;
       }
         
-      debug('[CHECK] server close(' + what + ') => ' + writesClosed);
+      debug('[CHECK] server.session.exec close(' + what + ') => ' + writesClosed + '/' + flags);
 
-      if (writesClosed != (flags & 3)) return; // ignore stdin
+      if ((writesClosed & 3) != (flags & 3)) return; // ignore stdin
       
       if (endWorkaround) {
-        debug('[CHECK] server.session.exec.end()');
-        stream.end() // will close BOTH stdout AND stderr !!
+        if (!ended) {
+          ended = true;
+          debug('[CHECK] server.session.exec.end()');
+          stream.end() // will close BOTH stdout AND stderr !!
+        }
       }
     }
     
@@ -649,14 +670,267 @@ function clientExec(what, client, options, sOptions, cb) {
       // stdin must have finished
       assert(writesFinished == flags,
         makeMsg(what, 'client.exec.channel emitted close before stdin.end()'));
-        
-      cb();
+      
+      if (cb) {
+        var cbx = cb;
+        cb = null;
+        setImmediate(cbx);
+      }
+      else {
+        debug('[IGNORE] client.exec second callback')
+      }
       
     }); // stream.on
     
   }); // client.exec  
   
   return emitter;
+}
+
+
+//
+
+function serverData(what, stream, options, sOptions, cb) {
+  var maxNumber = options.maxNumber,
+      maxChunkSize,
+      strictStreams2 = options.strictStreams2 || options.strict,
+      ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
+      timeout = (options.timeout && options.timeout * 1000) || -1;
+  
+  var flags = 0,
+      closed = 0,
+      finished = 0;
+  
+  var generator,
+      verifier;
+  
+  stream.once('finish', function() {
+    debug('[EVENT] finish server.tcpip')
+    
+    if (cb) {
+      var cbx = cb;
+      cb = null;
+      setImmediate(cbx);
+    }
+    else {
+      debug('[IGNORE] server.tcpip second callback')
+    }
+  });
+  
+  function finish(what) {
+    if (undefined !== what) finished |= what;
+    
+    debug('[CHECK] server finish(' + what + ') => ' + finished);
+
+    if (finished != flags) return;
+
+   // this is a critical workaround - as 
+    
+    if (endWorkaround) {
+      close(3);
+    }
+  }
+  
+  function close(what) {
+    if (undefined !== what) {
+      closed |= what;
+    }
+      
+    debug('[CHECK] server close(' + what + ') => ' + closed);
+
+    if (closed != flags) return;
+    
+    if (endWorkaround) {
+      debug('[CHECK] server.tcpip.end()');
+      stream.end();
+    }
+  }
+  
+  function createWriteDoneFunc(name, generator) {
+    return function(err, event) {
+      assert(!err, 
+             makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
+             
+      debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
+      
+      if (event === 'finish') {
+        finish(2);
+      }
+      else if (event === 'close') {
+        close(2);
+      }
+    }
+  }
+  
+  function createVerifyDoneFunc(name, verifier) {
+    return function(err) {
+      assert(undefined === err, 
+            makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
+        
+      debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
+      
+      finish(1);
+    }  
+  }
+  
+  
+  
+  // create verifier on 'stdin'
+  verifier = new data_utils.ChunkVerifier('server.tcpip', maxNumber);
+
+  if ('sODV' === sOptions.server.stdin) {
+    sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
+    flags |= 1;
+  }
+  else if ('vStream' === sOptions.server.stdin) {
+    vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
+    flags |= 1;
+  }
+  else {
+    assert(!sOptions.server.stdin,
+           makeMsg('unhandled server stdin Exec parameter: ' + sOptions.server.stdin));
+  }
+   
+
+  // create data writers stdout
+  generator = new data_utils.ChunkGenerator('server.tcpip', maxNumber, maxChunkSize);
+
+  if ('wGD' === sOptions.server.stdout) {
+    wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
+    flags |= 2;
+  } 
+  else if ('wGDWonDrain' === sOptions.server.stdout) {
+    wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
+    flags |= 2;        
+  }
+  else if ('wStream' === sOptions.server.stdout) {
+    wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
+    flags |= 2;        
+  }
+  else {
+    assert(!sOptions.server.stdout,
+           makeMsg('unhandled server stdout Exec parameter: ' + sOptions.server.stdout));
+  }
+}
+
+function clientData(what, desc, stream, options, sOptions, cb) {
+  var maxNumber = options.maxNumber,
+      maxChunkSize,
+      strictStreams2 = options.strictStreams2 || options.strict,
+      ignoreBadIdenficationStarts = !options.failOnBadIdentificationStarts && !options.strict,
+      timeout = (options.timeout && options.timeout * 1000) || -1;
+    
+  var emitter = new EventEmitter();
+  
+  var closeEmitted = false;
+
+  var flags = 0,
+      writesFinished = 0;
+  
+  var generator,
+      verifier;
+      
+  function createVerifyDoneFunc(name, verifier) {
+    return function(err) {
+      assert(undefined === err, 
+            makeMsg(what, name + ' ' + verifier.name + ' err: ' + inspect(err)));
+            
+      debug('[CHECK] ' + verifier.name + ' ' + name + ':cb(' + inspect(err) + ')');
+    }  
+  }
+  
+  function createWriteDoneFunc(name, generator, writer) {
+    return function(err, event) {
+      assert(!err, 
+             makeMsg(what, name + ' ' + generator.name + ' err: ' + inspect(err)));
+             
+      debug('[CHECK] ' + generator.name + ' ' + name + ':cb(' + inspect(err) + ', ' + event + ')');
+      
+      if (event === 'finish') {
+        writesFinished |= 1;
+        debug('[CHECK] client.forwardOut.end()');
+        stream.end();
+      }
+      else if (event === 'close') {
+      }
+    }
+  }
+  
+  // create data writer stdin
+  generator = new data_utils.ChunkGenerator('client.' + desc + '.stdin', maxNumber, maxChunkSize);
+
+  if ('wGD' === sOptions.client.stdin) {
+    wGD(stream, generator, timeout, createWriteDoneFunc('wGD', generator, 1));
+    flags |= 1;
+  } 
+  else if ('wGDWonDrain' === sOptions.client.stdin) {
+    wGDWonDrain(stream, generator, timeout, createWriteDoneFunc('wGDWonDrain', generator, 1));
+    flags |= 1;        
+  }
+  else if ('wStream' === sOptions.client.stdin) {
+    wStream(stream, generator, timeout, createWriteDoneFunc('wStream', generator, 1));
+    flags |= 1;        
+  }
+  else {
+    assert(!sOptions.server.stdin,
+           makeMsg('unhandled client stdin Exec parameter: ' + sOptions.client.stdin));
+  }
+  
+
+  // create verifier on stdout
+  verifier = new data_utils.ChunkVerifier('client.' + desc + '.stdout', maxNumber);
+
+  if ('sODV' === sOptions.client.stdout) {
+    sODV(stream, verifier, timeout, createVerifyDoneFunc('sODV', verifier));
+    flags |= 2;
+  }
+  else if ('vStream' === sOptions.client.stdout) {
+    vStream(stream, verifier, timeout, createVerifyDoneFunc('vStream', verifier));
+    flags |= 2;
+  }
+  else {
+    assert(!sOptions.client.stdout,
+           makeMsg('unhandled client stdout Exec parameter: ' + sOptions.client.stdout));
+  }
+
+  //
+
+  stream.on('close', function() {
+    debug('[EVENT] close client.' + desc);
+
+    closeEmitted = true;
+
+  }).on('end', function() {
+    debug('[EVENT] end client.' + desc);
+
+    if (strictStreams2) {
+      assert(closeEmitted === false,
+             makeMsg(what, 'client.' + desc + ' emitted close before end'));
+    }
+    else if (closeEmitted) {
+      debug('[IGNORE] client.' + desc + ' emitted close before end');
+    }
+
+    // all verifieres must be atEnd !!
+    if (2 === (flags & 2)) {
+      assert(verifier.atEnd, 
+             makeMsg(what, 'client.' + desc + ' verifier ' + verifier.name + ' is not .atEnd'));
+    }
+    
+    // stdin must have finished
+    assert((writesFinished & 1) === (flags & 1),
+      makeMsg(what, 'client.' + desc + ' emitted close before stdin.end()'));
+
+    if (cb) {
+      var cbx = cb;
+      cb = null;
+      setImmediate(cbx);
+    }
+    else {
+      debug('[IGNORE] client.' + desc + ' second callback')
+    }
+    
+  }); // stream.on
 }
 
 //
@@ -671,6 +945,7 @@ function createTest(what, options) {
         closeArgs = [],
         execTestCount = 0,
         clientTestsRunning = 0,
+        port = 0,
         client,
         server,
         strictStreams2 = options.strictStreams2 || options.strict,
@@ -703,37 +978,48 @@ function createTest(what, options) {
         var subtests = Array.from(options['subtests']),
             running = 0;
             
+        function findSubtest(request, type) {
+          // find a matching Exec test
+          var subtest;
+        
+          for (var i = 0; i < subtests.length; i++) {
+            if (type === subtests[i]['type'] ) {
+              return subtests.splice(i, 1)[0];
+            }
+          }
+        
+          throw new Error('server can not handle unmatched test request: ' + request);
+        }
+            
         function finishedServerSubtest(err) {
           running -= 1;
-          debug('[CHECK] server subtest finished ' + running + ' running')
+          debug('[CHECK] server subtest finished (' + running + ' running)')
           if (0 === running) {
             debug('[CHECK] server.end()');
             conn.end();
           }
         }
         
-        conn.on('session', function(accept, reject) {
-          debug('[EVENT] session server(f,f)');
+        conn
+          .on('session', function(accept, reject) {
+            debug('[EVENT] session server(f,f)');
           
-          // find a matching Exec test
-          var subtest;
+            var subtest = findSubtest('session', 'Exec');
           
-          for (var i = 0; i < subtests.length; i++) {
-            if ('Exec' === subtests[i]['type'] ) {
-              subtest = subtests.splice(i, 1)[0];
-              break;
-            }
-          }
-          
-          if (!subtest) {
-            throw new Error('server can not handle unmatched test request: session');
-          }
-          
-          var session = accept();
-          running += 1;
-          serverExec(conn, what, session, options, subtest, finishedServerSubtest);
+            var session = accept();
+            running += 1;
+            serverExec(what, session, options, subtest, finishedServerSubtest);
 
-        }); // conn.once:session
+          })
+          .on('tcpip', function(accept, reject, info) {
+            debug('[EVENT] tcpip server(f,f,' + inspect(info).split("\n").join('') + ')');
+
+            var subtest = findSubtest('tcpip', 'ForwardOut');
+            
+            var stream = accept();
+            running += 1;
+            serverData(what, stream, options, subtest, finishedServerSubtest);
+          });
       }); // conn.on:ready
     }); // server.on:connection
     
@@ -741,7 +1027,7 @@ function createTest(what, options) {
 
     function finishedClientSubtest(err) {
       clientTestsRunning -= 1;
-      debug('[CHECK] client subtest finished ' + clientTestsRunning + ' running')
+      debug('[CHECK] client subtest finished (' + clientTestsRunning + ' running)')
     }
     
     client.on('ready', function() {
@@ -762,6 +1048,17 @@ function createTest(what, options) {
             .on('exit', function(args) {
               exitArgs.push(args);
             })
+        }
+        else if ('ForwardOut' === subtest['type']) {
+          port += 1;
+          debug('[CHECK] client.forwardOut(localhost, ' + port + ', somehost, ' + port + ')');
+          client.forwardOut('localhost', port, 'somehost', port, function(err, stream) {
+            assert(!err, makeMsg(what, 'Unexpected exec error: ' + err));
+            debug('[CHECK] client.forwardOut(e,s)');
+            
+            clientTestsRunning += 1;
+            clientData(what, 'forwardOut_' + port, stream, options, subtest, finishedClientSubtest);
+          });
         }
       }
       
@@ -803,7 +1100,7 @@ function parseTestLine(line) {
   line = line.trim()
   
   var numberKeys = [ 'maxNumber', 'timeout' ],
-      tests = [ 'Exec', 'Data' ];
+      tests = [ 'Exec', 'ForwardOut' ];
   
   var config = {},
       testFuncName,
