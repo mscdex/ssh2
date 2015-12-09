@@ -568,9 +568,9 @@ Client events
 
     * **srcPort** - _integer_ - The originating port of the connection.
 
-    * **dstIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
+    * **destIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
 
-    * **dstPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
+    * **destPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
 
 * **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
 
