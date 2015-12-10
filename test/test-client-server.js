@@ -1131,18 +1131,21 @@ var tests = [
         });
         conn.on('request', function(accept, reject, name, info) {
           accept();
-          conn.forwardOut('localhost', 0, 'remote', 12345, function(err, ch) {
+          conn.forwardOut('good', 0, 'remote', 12345, function(err, ch) {
             if (err) {
               assert(!err, makeMsg(what, 'Unexpected error: ' + err));
             }
-            client.end();
+            conn.forwardOut('bad', 0, 'remote', 12345, function(err, ch) {
+              assert(err, makeMsg(what, 'Should receive error'));
+              client.end();
+            });
           });
         });
       });
 
       client.on('ready', function() {
         // request forwarding
-        client.forwardIn('localhost', 0, function(err, port) {
+        client.forwardIn('good', 0, function(err, port) {
           if (err) {
             assert(!err, makeMsg(what, 'Unexpected error: ' + err));
           }
@@ -1152,7 +1155,7 @@ var tests = [
         accept();
       });
     },
-    what: 'Client will not reject valid forwarded-tcpip'
+    what: 'client auto-rejects unrequested, allows requested forwarded-tcpip'
   },
 
 ];
