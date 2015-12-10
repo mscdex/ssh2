@@ -1114,6 +1114,50 @@ var tests = [
     },
     what: 'double pipe on unconnected, passed in net.Socket'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r;
+
+      r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+        conn.on('request', function(accept, reject, name, info) {
+          accept();
+          conn.forwardOut('good', 0, 'remote', 12345, function(err, ch) {
+            if (err) {
+              assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+            }
+            conn.forwardOut('bad', 0, 'remote', 12345, function(err, ch) {
+              assert(err, makeMsg(what, 'Should receive error'));
+              client.end();
+            });
+          });
+        });
+      });
+
+      client.on('ready', function() {
+        // request forwarding
+        client.forwardIn('good', 0, function(err, port) {
+          if (err) {
+            assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          }
+        });
+      });
+      client.on('tcp connection', function(details, accept, reject) {
+        accept();
+      });
+    },
+    what: 'client auto-rejects unrequested, allows requested forwarded-tcpip'
+  },
+
 ];
 
 function setup(self, clientcfg, servercfg) {
