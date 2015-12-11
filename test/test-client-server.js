@@ -1194,6 +1194,61 @@ var tests = [
     },
     what: 'Server banner'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          wasReply = false,
+          fastrejectSent = false,
+          r;
+
+      function sendAcceptLater(accept) {
+        // Only call accept after reject was called
+        if (fastrejectSent) {
+          accept();
+        } else {
+          process.nextTick(sendAcceptLater, accept);
+        }
+      }
+
+      r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+        conn.on('request', function(accept, reject, name, info) {
+          if (info.bindAddr === 'fastreject') {
+            // Will call reject on 'fastreject' soon
+            reject();
+            fastrejectSent = true;
+          } else {
+            // but accept on 'slowaccept' a bit later
+            sendAcceptLater(accept);
+          }
+        });
+      });
+
+      client.on('ready', function() {
+        client.forwardIn('slowaccept', 0, function(err) {
+          if (err) {
+            assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          }
+          if (wasReply) client.end();
+          wasReply = true;
+        });
+        client.forwardIn('fastreject', 0, function(err) {
+          assert(err, makeMsg(what, 'Should receive error'));
+          if (wasReply) client.end();
+          wasReply = true;
+        });
+      });
+    },
+    what: 'server responds to global requests in the right order'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
