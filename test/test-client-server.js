@@ -1199,51 +1199,47 @@ var tests = [
           what = this.what,
           client,
           server,
-          wasReply = false,
-          fastrejectSent = false,
           r;
-
-      function sendAcceptLater(accept) {
-        // Only call accept after reject was called
-        if (fastrejectSent) {
-          accept();
-        } else {
-          process.nextTick(sendAcceptLater, accept);
-        }
-      }
 
       r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
       client = r.client;
       server = r.server;
 
       server.on('connection', function(conn) {
+        var fastrejectSent = false;
+
         conn.on('authentication', function(ctx) {
           ctx.accept();
         });
+
         conn.on('request', function(accept, reject, name, info) {
+          function sendAcceptLater() {
+            if (fastrejectSent) accept();
+            else process.nextTick(sendAcceptLater);
+          }
+
           if (info.bindAddr === 'fastreject') {
             // Will call reject on 'fastreject' soon
             reject();
             fastrejectSent = true;
           } else {
-            // but accept on 'slowaccept' a bit later
+            // but accept on 'slowaccept' later
             sendAcceptLater(accept);
           }
         });
       });
 
       client.on('ready', function() {
+        var replyCnt = 0;
+
         client.forwardIn('slowaccept', 0, function(err) {
-          if (err) {
-            assert(!err, makeMsg(what, 'Unexpected error: ' + err));
-          }
-          if (wasReply) client.end();
-          wasReply = true;
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          if (++replyCnt === 2) client.end();
         });
+
         client.forwardIn('fastreject', 0, function(err) {
           assert(err, makeMsg(what, 'Should receive error'));
-          if (wasReply) client.end();
-          wasReply = true;
+          if (++replyCnt === 2) client.end();
         });
       });
     },
