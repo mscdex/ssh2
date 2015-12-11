@@ -1343,6 +1343,62 @@ var tests = [
     },
     what: 'Server banner'
   },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var fastRejectSent = false;
+
+      function sendAcceptLater(accept) {
+        if (fastRejectSent)
+          accept();
+        else
+          setImmediate(sendAcceptLater, accept);
+      }
+
+      r = setup(
+        this,
+        { username: USER },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+
+        conn.on('request', function(accept, reject, name, info) {
+          if (info.bindAddr === 'fastReject') {
+            // Will call reject on 'fastReject' soon
+            reject();
+            fastRejectSent = true;
+          } else
+            // but accept on 'slowAccept' later
+            sendAcceptLater(accept);
+        });
+      });
+
+      client.on('ready', function() {
+        var replyCnt = 0;
+
+        client.forwardIn('slowAccept', 0, function(err) {
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          if (++replyCnt === 2)
+            client.end();
+        });
+
+        client.forwardIn('fastReject', 0, function(err) {
+          assert(err, makeMsg(what, 'Should receive error'));
+          if (++replyCnt === 2)
+            client.end();
+        });
+      });
+    },
+    what: 'Server responds to global requests in the right order'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
