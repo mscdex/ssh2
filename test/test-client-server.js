@@ -1199,25 +1199,24 @@ var tests = [
           what = this.what,
           client,
           server,
-          r;
+          r,
+          fastrejectSent = false;
+
+      function sendAcceptLater(accept) {
+        if (fastrejectSent) accept();
+        else setImmediate(sendAcceptLater, accept);
+      }
 
       r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
       client = r.client;
       server = r.server;
 
       server.on('connection', function(conn) {
-        var fastrejectSent = false;
-
         conn.on('authentication', function(ctx) {
           ctx.accept();
         });
 
         conn.on('request', function(accept, reject, name, info) {
-          function sendAcceptLater() {
-            if (fastrejectSent) accept();
-            else process.nextTick(sendAcceptLater);
-          }
-
           if (info.bindAddr === 'fastreject') {
             // Will call reject on 'fastreject' soon
             reject();
