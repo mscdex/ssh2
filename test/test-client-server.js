@@ -739,7 +739,7 @@ var tests = [
         assert(sawOpenC, makeMsg(what, 'Expected sftp close() callback'));
       });
     },
-    what: 'Simple sftp'
+    what: 'Simple SFTP'
   },
   { run: function() {
       var self = this,
@@ -1034,7 +1034,7 @@ var tests = [
         });
       });
     },
-    what: 'ignore outgoing after stream close'
+    what: 'Ignore outgoing after stream close'
   },
   { run: function() {
       var self = this,
@@ -1084,7 +1084,7 @@ var tests = [
         });
       });
     },
-    what: 'sftp server aborts with exit-status'
+    what: 'SFTP server aborts with exit-status'
   },
   { run: function() {
       var self = this,
@@ -1112,7 +1112,7 @@ var tests = [
         client.end();
       });
     },
-    what: 'double pipe on unconnected, passed in net.Socket'
+    what: 'Double pipe on unconnected, passed in net.Socket'
   },
   { run: function() {
       var self = this,
@@ -1155,7 +1155,7 @@ var tests = [
         accept();
       });
     },
-    what: 'client auto-rejects unrequested, allows requested forwarded-tcpip'
+    what: 'Client auto-rejects unrequested, allows requested forwarded-tcpip'
   },
 
 ];
