@@ -1157,7 +1157,43 @@ var tests = [
     },
     what: 'Client auto-rejects unrequested, allows requested forwarded-tcpip'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r;
 
+      r = setup(this,
+                { username: USER,
+                  password: PASSWORD
+                },
+                { privateKey: HOST_KEY_RSA,
+                  banner: 'Hello world!'
+                });
+      client = r.client;
+      server = r.server;
+
+      client.on('greeting', function(greeting) {
+        assert.strictEqual(greeting, 'Hello world!\r\n');
+      });
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'password',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.password === PASSWORD,
+                 makeMsg(what, 'Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server banner'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
