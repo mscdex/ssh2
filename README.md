@@ -541,6 +541,7 @@ new ssh2.Server({
 });
 ```
 
+* You can find more examples in the `examples` directory of this repository.
 
 API
 ===
