@@ -541,6 +541,8 @@ new ssh2.Server({
 });
 ```
 
+* There are two more examples in the [examples] directory. One is a chat
+server, and one is a more complete example of an SFTP server.
 
 API
 ===
