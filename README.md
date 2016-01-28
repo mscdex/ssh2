@@ -23,7 +23,7 @@ Install
 Client Examples
 ===============
 
-* Authenticate using keys and execute `uptime` on a server:
+* Execute `uptime` on a server:
 
 ```javascript
 var Client = require('ssh2').Client;
@@ -57,7 +57,7 @@ conn.on('ready', function() {
 // Stream :: close
 ```
 
-* Authenticate using keys and start an interactive shell session:
+* Start an interactive shell session:
 
 ```javascript
 var Client = require('ssh2').Client;
@@ -106,7 +106,7 @@ conn.on('ready', function() {
 // Stream :: close
 ```
 
-* Authenticate using password and send an HTTP request to port 80 on the server:
+* Send a raw HTTP request to port 80 on the server:
 
 ```javascript
 var Client = require('ssh2').Client;
@@ -154,7 +154,7 @@ conn.on('ready', function() {
 // TCP :: CLOSED
 ```
 
-* Authenticate using password and forward remote connections on port 8000 to us:
+* Forward connections to 127.0.0.1:8000 on the server to us:
 
 ```javascript
 var Client = require('ssh2').Client;
@@ -206,7 +206,7 @@ conn.on('ready', function() {
 // TCP :: CLOSED
 ```
 
-* Authenticate using password and get a directory listing via SFTP:
+* Get a directory listing via SFTP:
 
 ```javascript
 var Client = require('ssh2').Client;
@@ -294,7 +294,7 @@ conn2.on('ready', function() {
 });
 ```
 
-* Forward X11 connections (xeyes):
+* Forward X11 connections (xeyes in this case):
 
 ```javascript
 var net = require('net'),
@@ -379,7 +379,7 @@ socks.createServer(function(info, accept, deny) {
 //   curl -i --socks5 localhost:1080 google.com
 ```
 
-* Invoke an arbitrary subsystem (netconf in this example):
+* Invoke an arbitrary subsystem (netconf in this case):
 
 ```javascript
 var Client = require('ssh2').Client,
@@ -411,7 +411,7 @@ conn.on('ready', function() {
 Server Examples
 ===============
 
-* Only allow password and public key authentication and command execution:
+* Only allow password and public key authentication and non-interactive (exec) command execution:
 
 ```javascript
 var fs = require('fs'),
