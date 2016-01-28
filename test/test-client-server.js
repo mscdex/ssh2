@@ -1203,8 +1203,10 @@ var tests = [
           fastrejectSent = false;
 
       function sendAcceptLater(accept) {
-        if (fastrejectSent) accept();
-        else setImmediate(sendAcceptLater, accept);
+        if (fastrejectSent)
+          accept();
+        else
+          setImmediate(sendAcceptLater, accept);
       }
 
       r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
@@ -1221,10 +1223,9 @@ var tests = [
             // Will call reject on 'fastreject' soon
             reject();
             fastrejectSent = true;
-          } else {
+          } else
             // but accept on 'slowaccept' later
             sendAcceptLater(accept);
-          }
         });
       });
 
@@ -1233,12 +1234,14 @@ var tests = [
 
         client.forwardIn('slowaccept', 0, function(err) {
           assert(!err, makeMsg(what, 'Unexpected error: ' + err));
-          if (++replyCnt === 2) client.end();
+          if (++replyCnt === 2)
+            client.end();
         });
 
         client.forwardIn('fastreject', 0, function(err) {
           assert(err, makeMsg(what, 'Should receive error'));
-          if (++replyCnt === 2) client.end();
+          if (++replyCnt === 2)
+            client.end();
         });
       });
     },
