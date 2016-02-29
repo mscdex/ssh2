@@ -3,9 +3,9 @@ Description
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (6.6 currently).
+Development/testing is done against OpenSSH (7.1 currently).
 
-[Changes from v0.3.x-v0.4.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.3.x-to-0.4.x)
+[Changes from v0.4.x-v0.5.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.4.x-to-0.5.x)
 
 
 Requirements
@@ -616,6 +616,8 @@ Client methods
 
     * **agent** - _string_ - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant or (actual) path to a cygwin "UNIX socket."** **Default:** (none)
 
+    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`) for the life of the connection. `agent` must also be set to use this feature. **Default:** `false`
+
     * **privateKey** - _mixed_ - _Buffer_ or _string_ that contains a private key for either key-based or hostbased user authentication (OpenSSH format). **Default:** (none)
 
     * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
@@ -632,11 +634,23 @@ Client methods
 
     * **readyTimeout** - _integer_ - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `20000`
 
-    * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
-
     * **sock** - _ReadableStream_ - A _ReadableStream_ to use for communicating with the server instead of creating and using a new TCP connection (useful for connection hopping).
 
-    * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`) for the life of the connection. `agent` must also be set to use this feature. **Default:** `false`
+    * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
+
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2-streams` used by this module. Valid keys:
+
+        * **kex** - _array_ - Key exchange algorithms.
+
+        * **cipher** - _array_ - Ciphers.
+
+        * **serverHostKey** - _array_ - Server host key formats.
+
+        * **hmac** - _array_ - (H)MAC algorithms.
+
+        * **compress** - _array_ - Compression algorithms.
+
+    * **compress** - _mixed_ - Set to `true` to enable compression if server supports it, `'force'` to force compression (disconnecting if server does not support it), or `false` to explicitly opt out of compression all of the time. Note: this setting is overridden when explicitly setting a compression algorithm in the `algorithms` configuration option. **Default:** (only use compression if that is only what the server supports)
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
