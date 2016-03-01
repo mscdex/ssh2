@@ -439,7 +439,7 @@ new ssh2.Server({
       if (ctx.signature) {
         var verifier = crypto.createVerify(ctx.sigAlgo);
         verifier.update(ctx.blob);
-        if (verifier.verify(pubKey.publicOrig, ctx.signature, 'binary'))
+        if (verifier.verify(pubKey.publicOrig, ctx.signature))
           ctx.accept();
         else
           ctx.reject();
