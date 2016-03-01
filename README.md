@@ -1027,3 +1027,282 @@ TTY_OP_ISPEED  Specifies the input baud rate in
 TTY_OP_OSPEED  Specifies the output baud rate in
                bits per second.
 </pre>
+
+Testing
+=======
+
+General
+-------
+
+Change your working directory into the ssh2 folder
+
+    cd ssh2
+
+Run the complete test suite via
+
+    node test/test.js
+    
+All files containing tests begin with 'test-' an can be started directly too
+
+   node test/test-client-server.js
+
+Run with while showing debug output (either while its interesting or as requested by the developers)
+
+   DEBUG=1 node test/test.js
+   
+Streams test language
+---------------------
+
+test-streaming.js contains a test suite specific for streaming data including a mini language to describe tests easily. 
+Its syntax is 
+
+   [globalFlag|globalKey=value] Type( <client-parm1>,<client-parm2>... )<->( <server-parm1>,<server-parm2>... ) ...
+
+The data generated and verified is a stream of lines each containing a single number with the number of the line starting at 0 encoded in ASCII.
+
+* Global flags
+
+<pre>
+strictStreams2                  Fail if node.js Streams2 conventions are broken. E.g. no other event should be 
+                                emitted after an 'close'. If not specified those incidents will be logged only.
+                                
+failOnBadIdentificationStarts   Fail if the server encounters a 'Bad identification start' error. This will happen
+                                after the client did close the connection. If not specified those incidents 
+                                will be logged only.
+                                
+exitOnSourceEnd                 Use a work around that ssh2.Channel will closes automatically on .end() and the 
+                                exit code has to be set before. Will be ignored when either strictStreams2 or 
+                                strict is set.
+
+endWorkaround                   Use a work around to wait for both ssh2.Channel stdout and stderr to have all
+                                data transferred before calling .exit() and then stdout.end() . Will be ignored 
+                                when either strictStreams2 or strict is set.
+                                
+disconnectOnFirstFinish         Server will .end() the connection if either session.stdout or session.stderr 
+                                emits a finish event. If not set will wait for both streams to emit a finish
+                                event. Will be ignored when either strictStreams2 or strict is set.
+                                
+strict                          Ingore nothing, always fail.
+</pre>
+
+* Global keys
+
+  <pre>
+  maxNumber=VALUE  Maximum number of lines to generate. Required.
+  
+  timeout=SECONDS  Timeout writes or reads after SECONDS. Values less then 0 disable the timeout [default:-1].
+                   The timeout message tells the ms, last number and bytes generated/verified.
+  </pre>
+
+  ** The timeout interval check function is called every 500ms. The difference in time is calculated from the 
+     REAL TIME, not CPU time. 
+     
+     If a timeout occurs this might due to the fact that node didn't call interval function checking the timeout 
+     soon enough as the buffers are full and there won't be a async operation called while processing those. 
+     
+     So please try running the test again with a higher timeout value to find out which is the right one for your
+     system and its CPU load.
+     
+     Its best used together with very high maxNumber values which tests need 'some' time. In this case you'll 
+     shorten the time noticing a stuck stream...
+
+* Test types and parameters
+
+  <pre>
+  Exec           The client will create a 'session' and do an 'exec' on the server. Thus stdin, stdout and stderr 
+                 are streams which can be tested.
+                 
+                 Parameters have to follow
+                 
+                               CLIENT                                SERVER
+                 ( i:generator,o:verifier,e:verifier )<->( i:verifier,o:generator,e:generator )
+                 
+                 format. If a stream (i,o,e) is used there must be on the sending side the generator, on the
+                 receiving side the verifier.
+                 
+  ForwardOut    The client will create a 'forwardOut' which results in a 'tcpip' request on the server. This
+                stdin and stdout are stremas which can be tested.
+                
+                 Parameters have to follow
+                 
+                               CLIENT                                SERVER
+                 ( i:generator,o:verifier )<->( i:verifier,o:generator )
+                 
+                 format. If a stream (i,o) is used there must be on the sending side the generator, on the
+                 receiving side the verifier.
+    
+Verifiers:
+  sODV           Verify lines via the 'streamOnDataVerify' algorithm.
+  vStream        Verify lines via the 'verifyStrean' algorithm.
+  
+Generators:
+  wGD            Write lines via 'writeGeneratedData; algorithm.
+  wGDWonDrain    Write lines via 'writeGeneratedDataWaitsOnDrain' algorithm.
+  wStream        Write lines via a stream using the 'wStream' algorithm.
+</pre>
+
+
+Usage
+-----
+
+node test-streaming.js [-|path]
+
+<pre>
+-     reads all test script lines from stdin
+path  read all test script lines from the file given at path [default:./streaming-tests.txt]
+</pre> 
+
+* Examples:
+  
+  echo 'maxNumber=10 Exec( o:sODV )<->( o:wGD )' | DEBUG=1 node test/test-streaming.js -
+   
+  echo 'maxNumber=10 Exec( o:sODV,e:sODV )<->( o:wGD,e:wGDWonDrain ) ForwardOut( i:wStream )<->( i:vStream )' > tests.txt && node test/test-streaming.js tests.txt
+
+* Creating a number of test script lines
+
+  create-streaming-tests.js generates a number of tests using different combinations and writes them to stdout
+   
+  As the test lines creation is static at the current state edit the script itself to have it output the tests 
+  you need.
+     
+* Note
+
+  When reporting errors to the developer(s) please include at least the test script line which failed. Even better 
+  would be running with DEBUG=1 an included its output too...
+
+Algorithms
+----------
+
+timeout.renew() resets the timeout counter. timeout.clear() clears the interval from being called again.
+Please note: it is also checked in timeout.clear() if this is a timeout...
+
+* streamOnDataVerify
+
+  ```javascript
+  stream.on('data', function(d) {
+    timeout.renew();
+    var err = verifier.verify(d);
+    if (err) {
+      timeout.clear();
+      return done(err);
+    }
+    if (verifier.atEnd) {
+      timeout.clear();
+      return done();
+    }
+  });
+  ```
+
+  It is expected to verifiy up to maxNumber of lines. If it fails there is either an issue on the generator/stream side or in the underlying ssh/ssh2-streams...
+  
+* vStream
+
+  ```javascript
+  function createPipe() {
+    stream
+      .on('error', function(err) {
+        t.clear();
+        done(err);
+      })
+      .pipe(verifier)
+      .on('verify', function(chunk) {
+        t.renew();
+      })
+      .on('finish', function() {
+        t.clear();
+        done();
+      })
+      .on('error', function(err) {
+        t.clear();
+        done(err);
+      });
+  };
+  ```
+  
+  It is expected to verifiy up to maxNumber of lines. If it fails there is either an issue on the generator/stream side or in the underlying ssh/ssh2-streams...
+
+* writeGeneratedData
+
+  ```javascript
+  function write() {
+    while (!generator.atEnd) {
+      var chunk = generator.next();
+      generator.generated);
+      stream.write(chunk);
+      timeout.renew();
+    }
+    timeout.clear();
+    done();
+  }
+
+  write();
+  ```
+
+  This will fill up the streams buffer very quickly and if the specified maxNumber is too high 
+  the test is expected to fail...
+    
+* writeGeneratedDataWaitsOnDrain
+
+  ```javascript
+
+    function write() {
+      var ok, chunk;
+  
+      do {
+        chunk = generator.next();
+    
+        if (generator.atEnd) {
+          // last time
+          return stream.write(chunk, function() {
+            timeout.clear();
+            done();
+          });
+        }
+        else {
+          ok = stream.write(chunk);
+          timeout.renew();
+        }
+      } while (ok);
+  
+      // wait on drain
+      stream.once('drain', function() {
+        write();
+      });
+    }
+
+    write();
+  ```
+
+  This algorythm is analog to the official node.js stream.Writable.write documentations example. It is expected
+  to write up to maxNumber lines unless there is is an underlying issue with ssh2/ssh2-streams...
+
+* wStream
+
+  ```javascript
+  
+    function createPipe() {
+      var source = new data_utils.StreamOfNumberLines(generator)l
+    
+      source
+        .on('willpush', function(chunk) {
+          timeout.renew();
+        })
+        .on('error', function(err) {
+          done(err);
+        })
+        .pipe(stream)
+        .on('close', function() {
+          t.clear();
+          done();
+        })
+        .on('error', function(err) {
+          t.clear();
+          done(err);
+        })
+    }
+    
+    createPipe();
+  ```
+  
+  This algorythm is expected to write up to maxNumber lines unless there is is an underlying issue with 
+  ssh2/ssh2-streams...

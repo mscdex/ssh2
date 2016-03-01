@@ -27,7 +27,7 @@ var USER = 'nodejs',
     CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA)),
     CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
     CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA)),
-    DEBUG = false;
+    DEBUG = process.env['DEBUG'];
 
 var tests = [
   { run: function() {
