@@ -40,7 +40,7 @@ var tests = [
                 { username: USER,
                   privateKey: CLIENT_KEY_RSA
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -82,7 +82,7 @@ var tests = [
                 { username: USER,
                   privateKey: CLIENT_KEY_PPK_RSA
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -121,7 +121,7 @@ var tests = [
                 { username: USER,
                   privateKey: CLIENT_KEY_DSA
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -163,7 +163,7 @@ var tests = [
                 { username: USER,
                   password: 'asdf'
                 },
-                { privateKey: HOST_KEY_DSA
+                { hostKeys: [HOST_KEY_DSA]
                 });
       client = r.client;
       server = r.server;
@@ -198,7 +198,7 @@ var tests = [
                   localHostname: hostname,
                   localUsername: username
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [ HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -244,7 +244,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -282,7 +282,7 @@ var tests = [
                     verified = true;
                   }
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -313,7 +313,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -381,7 +381,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -435,7 +435,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -499,7 +499,7 @@ var tests = [
                   password: PASSWORD,
                   agent: '/foo/bar/baz'
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -553,7 +553,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -607,7 +607,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -660,7 +660,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -740,7 +740,7 @@ var tests = [
         password: PASSWORD
       };
       var servercfg = {
-        privateKey: HOST_KEY_RSA
+        hostKeys: [HOST_KEY_RSA]
       };
       var reconnect = false;
 
@@ -810,7 +810,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -870,7 +870,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -919,7 +919,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD,
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -976,7 +976,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -1016,7 +1016,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -1065,7 +1065,7 @@ var tests = [
                   password: PASSWORD,
                   sock: new net.Socket()
                 },
-                { privateKey: HOST_KEY_RSA
+                { hostKeys: [HOST_KEY_RSA]
                 });
       client = r.client;
       server = r.server;
@@ -1087,7 +1087,7 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
+      r = setup(this, { username: USER }, { hostKeys: [HOST_KEY_RSA] });
       client = r.client;
       server = r.server;
 
@@ -1133,7 +1133,7 @@ var tests = [
                 { username: USER,
                   password: PASSWORD
                 },
-                { privateKey: HOST_KEY_RSA,
+                { hostKeys: [HOST_KEY_RSA],
                   banner: 'Hello world!'
                 });
       client = r.client;
