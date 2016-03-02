@@ -1163,8 +1163,10 @@ var tests = [
 
 function setup(self, clientcfg, servercfg) {
   self.state = {
-    readies: 0,
-    ends: 0
+    clientReady: false,
+    serverReady: false,
+    clientEnd: false,
+    serverEnd: false
   };
 
   if (DEBUG) {
@@ -1199,18 +1201,30 @@ function setup(self, clientcfg, servercfg) {
     assert(false, makeMsg(self.what, 'Unexpected ' + which + ' error: ' + err));
   }
   function onReady() {
-    assert(self.state.readies < 2,
-           makeMsg(self.what, 'Saw too many ready events'));
-    if (++self.state.readies === 2)
+    if (this === client) {
+      assert(!self.state.clientReady,
+             makeMsg(self.what, 'Received multiple ready events for client'));
+      self.state.clientReady = true;
+    } else {
+      assert(!self.state.serverReady,
+             makeMsg(self.what, 'Received multiple ready events for server'));
+      self.state.serverReady = true;
+    }
+    if (self.state.clientReady && self.state.serverReady)
       self.onReady && self.onReady();
   }
   function onClose() {
-    assert(self.state.ends < 2, makeMsg(self.what, 'Saw too many end events'));
-    if (++self.state.ends === 2) {
-      assert(self.state.readies === 2,
-             makeMsg(self.what, 'Expected 2 readies'));
-      next();
+    if (this === client) {
+      assert(!self.state.clientEnd,
+             makeMsg(self.what, 'Received multiple close events for client'));
+      self.state.clientEnd = true;
+    } else {
+      assert(!self.state.serverEnd,
+             makeMsg(self.what, 'Received multiple close events for server'));
+      self.state.serverEnd = true;
     }
+    if (self.state.clientEnd && self.state.serverEnd)
+      next();
   }
 
   process.nextTick(function() {
