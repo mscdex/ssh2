@@ -1,41 +1,40 @@
-var Client = require('../lib/client'),
-    Server = require('../lib/server'),
-    OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE,
-    STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE,
-    utils = require('ssh2-streams').utils;
+var Client = require('../lib/client');
+var Server = require('../lib/server');
+var OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE;
+var STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE;
+var utils = require('ssh2-streams').utils;
 
-var net = require('net'),
-    fs = require('fs'),
-    crypto = require('crypto'),
-    path = require('path'),
-    join = path.join,
-    inspect = require('util').inspect,
-    assert = require('assert');
+var net = require('net');
+var fs = require('fs');
+var crypto = require('crypto');
+var path = require('path');
+var join = path.join;
+var inspect = require('util').inspect;
+var assert = require('assert');
 
-var t = -1,
-    group = path.basename(__filename, '.js') + '/',
-    fixturesdir = join(__dirname, 'fixtures');
+var t = -1;
+var group = path.basename(__filename, '.js') + '/';
+var fixturesdir = join(__dirname, 'fixtures');
 
-var USER = 'nodejs',
-    PASSWORD = 'FLUXCAPACITORISTHEPOWER',
-    MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64',
-    HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key')),
-    HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key')),
-    CLIENT_KEY_PPK_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk')),
-    CLIENT_KEY_PPK_RSA_PUB = utils.parseKey(CLIENT_KEY_PPK_RSA),
-    CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa')),
-    CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA)),
-    CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa')),
-    CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA)),
-    DEBUG = false;
+var USER = 'nodejs';
+var PASSWORD = 'FLUXCAPACITORISTHEPOWER';
+var MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
+var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
+var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
+var CLIENT_KEY_PPK_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
+var CLIENT_KEY_PPK_RSA_PUB = utils.parseKey(CLIENT_KEY_PPK_RSA);
+var CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa'));
+var CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA));
+var CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa'));
+var CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA));
+var DEBUG = false;
 
 var tests = [
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -58,8 +57,8 @@ var tests = [
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1'),
-                pem = CLIENT_KEY_RSA_PUB.publicOrig;
+            var verifier = crypto.createVerify('RSA-SHA1');
+            var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature, 'binary'),
                    makeMsg(what, 'Could not verify PK signature'));
@@ -74,11 +73,10 @@ var tests = [
     what: 'Authenticate with an RSA key'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -98,8 +96,8 @@ var tests = [
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1'),
-                pem = CLIENT_KEY_PPK_RSA_PUB.publicOrig;
+            var verifier = crypto.createVerify('RSA-SHA1');
+            var pem = CLIENT_KEY_PPK_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature, 'binary'),
                    makeMsg(what, 'Could not verify PK signature'));
@@ -114,11 +112,10 @@ var tests = [
     what: 'Authenticate with an RSA key (PPK)'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -141,8 +138,8 @@ var tests = [
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('DSA-SHA1'),
-                pem = CLIENT_KEY_DSA_PUB.publicOrig;
+            var verifier = crypto.createVerify('DSA-SHA1');
+            var pem = CLIENT_KEY_DSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature, 'binary'),
                    makeMsg(what, 'Could not verify PK signature'));
@@ -157,11 +154,10 @@ var tests = [
     what: 'Authenticate with a DSA key'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -189,13 +185,12 @@ var tests = [
     what: 'Server with DSA host key'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          hostname = 'foo',
-          username = 'bar',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var hostname = 'foo';
+      var username = 'bar';
 
       r = setup(this,
                 { username: USER,
@@ -224,8 +219,8 @@ var tests = [
                    makeMsg(what, 'Wrong local hostname'));
             assert(ctx.localUsername === username,
                    makeMsg(what, 'Wrong local username'));
-            var verifier = crypto.createVerify('RSA-SHA1'),
-                pem = CLIENT_KEY_RSA_PUB.publicOrig;
+            var verifier = crypto.createVerify('RSA-SHA1');
+            var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature, 'binary'),
                    makeMsg(what, 'Could not verify hostbased signature'));
@@ -240,11 +235,10 @@ var tests = [
     what: 'Authenticate with hostbased'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -272,12 +266,11 @@ var tests = [
     what: 'Authenticate with a password'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          verified = false,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var verified = false;
 
       r = setup(this,
                 { username: USER,
@@ -307,15 +300,14 @@ var tests = [
     what: 'Verify host fingerprint'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          outErr = '',
-          exitArgs,
-          closeArgs,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
+      var outErr = '';
+      var exitArgs;
+      var closeArgs;
 
       r = setup(this,
                 { username: USER,
@@ -379,12 +371,11 @@ var tests = [
     what: 'Simple exec'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
 
       r = setup(this,
                 { username: USER,
@@ -434,12 +425,11 @@ var tests = [
     what: 'Exec with environment set'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
 
       r = setup(this,
                 { username: USER,
@@ -455,8 +445,8 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept(),
-                ptyInfo;
+            var session = accept();
+            var ptyInfo;
             session.once('pty', function(accept, reject, info) {
               ptyInfo = info;
               accept && accept();
@@ -498,12 +488,11 @@ var tests = [
     what: 'Exec with pty set'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
 
       r = setup(this,
                 { username: USER,
@@ -520,8 +509,8 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept(),
-                authAgentReq = false;
+            var session = accept();
+            var authAgentReq = false;
             session.once('auth-agent', function(accept, reject) {
               authAgentReq = true;
               accept && accept();
@@ -554,12 +543,11 @@ var tests = [
     what: 'Exec with OpenSSH agent forwarding'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
 
       r = setup(this,
                 { username: USER,
@@ -575,8 +563,8 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept(),
-                x11 = false;
+            var session = accept();
+            var x11 = false;
             session.once('x11', function(accept, reject, info) {
               x11 = true;
               accept && accept();
@@ -609,12 +597,11 @@ var tests = [
     what: 'Exec with X11 forwarding'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var out = '';
 
       r = setup(this,
                 { username: USER,
@@ -630,8 +617,8 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept(),
-                sawPty = false;
+            var session = accept();
+            var sawPty = false;
             session.once('pty', function(accept, reject, info) {
               sawPty = true;
               accept && accept();
@@ -659,16 +646,15 @@ var tests = [
     what: 'Simple shell'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          expHandle = new Buffer([1, 2, 3, 4]),
-          sawOpenS = false,
-          sawCloseS = false,
-          sawOpenC = false,
-          sawCloseC = false,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var expHandle = new Buffer([1, 2, 3, 4]);
+      var sawOpenS = false;
+      var sawCloseS = false;
+      var sawOpenC = false;
+      var sawCloseC = false;
 
       r = setup(this,
                 { username: USER,
@@ -742,24 +728,21 @@ var tests = [
     what: 'Simple SFTP'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          state = {
-            readies: 0,
-            closes: 0
-          },
-          clientcfg = {
-            username: USER,
-            password: PASSWORD
-          },
-          servercfg = {
-            privateKey: HOST_KEY_RSA
-          },
-          reconnect = false,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var state = {
+        readies: 0,
+        closes: 0
+      };
+      var clientcfg = {
+        username: USER,
+        password: PASSWORD
+      };
+      var servercfg = {
+        privateKey: HOST_KEY_RSA
+      };
+      var reconnect = false;
 
       client = new Client(),
       server = new Server(servercfg);
@@ -801,14 +784,11 @@ var tests = [
     what: 'connect() on connected client'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          calledBack = 0,
-          client = new Client({
-            username: USER,
-            password: PASSWORD
-          });
+      var what = this.what;
+      var client = new Client({
+        username: USER,
+        password: PASSWORD
+      });
 
       assert.throws(function() {
         client.exec('uptime', function(err, stream) {
@@ -820,13 +800,11 @@ var tests = [
     what: 'Throw when not connected'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          calledBack = 0,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var calledBack = 0;
 
       r = setup(this,
                 { username: USER,
@@ -866,14 +844,11 @@ var tests = [
     what: 'Outstanding callbacks called on disconnect'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          calledBack = 0,
-          client = new Client({
-            username: USER,
-            password: PASSWORD
-          });
+      var what = this.what;
+      var client = new Client({
+        username: USER,
+        password: PASSWORD
+      });
 
       assert.throws(function() {
         client.exec('uptime', function(err, stream) {
@@ -885,13 +860,11 @@ var tests = [
     what: 'Throw when not connected'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          calledBack = 0,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var calledBack = 0;
 
       r = setup(this,
                 { username: USER,
@@ -936,13 +909,11 @@ var tests = [
     what: 'Pipelined requests'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          out = '',
-          calledBack = 0,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var calledBack = 0;
 
       r = setup(this,
                 { username: USER,
@@ -996,11 +967,10 @@ var tests = [
     what: 'Pipelined requests with intermediate rekeying'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -1037,11 +1007,10 @@ var tests = [
     what: 'Ignore outgoing after stream close'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -1087,11 +1056,9 @@ var tests = [
     what: 'SFTP server aborts with exit-status'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -1115,11 +1082,10 @@ var tests = [
     what: 'Double pipe on unconnected, passed in net.Socket'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
       client = r.client;
@@ -1158,11 +1124,10 @@ var tests = [
     what: 'Client auto-rejects unrequested, allows requested forwarded-tcpip'
   },
   { run: function() {
-      var self = this,
-          what = this.what,
-          client,
-          server,
-          r;
+      var what = this.what;
+      var client;
+      var server;
+      var r;
 
       r = setup(this,
                 { username: USER,
@@ -1215,8 +1180,8 @@ function setup(self, clientcfg, servercfg) {
     };
   }
 
-  var client = new Client(),
-      server = new Server(servercfg);
+  var client = new Client();
+  var server = new Server(servercfg);
 
   server.on('error', onError)
         .on('connection', function(conn) {
