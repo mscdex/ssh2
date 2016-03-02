@@ -5,13 +5,13 @@
 //   2. Install `blessed`: `npm install blessed`
 //   3. Create a server host key in this same directory and name it `host.key`
 
-var blessed = require('blessed'),
-    Server = require('ssh2').Server;
+var blessed = require('blessed');
+var Server = require('ssh2').Server;
 
-var RE_SPECIAL = /[\x00-\x1F\x7F]+|(?:\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K])/g,
-    MAX_MSG_LEN = 128,
-    MAX_NAME_LEN = 10,
-    PROMPT_NAME = 'Enter a nickname to use (max ' + MAX_NAME_LEN + ' chars): ';
+var RE_SPECIAL = /[\x00-\x1F\x7F]+|(?:\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K])/g;
+var MAX_MSG_LEN = 128;
+var MAX_NAME_LEN = 10;
+var PROMPT_NAME = 'Enter a nickname to use (max ' + MAX_NAME_LEN + ' chars): ';
 
 var users = [];
 
@@ -24,12 +24,12 @@ function formatMessage(msg, output) {
 }
 
 function userBroadcast(msg, source) {
-  var sourceMsg = '> ' + msg,
-      name = '{cyan-fg}{bold}' + source.name + '{/}';
+  var sourceMsg = '> ' + msg;
+  var name = '{cyan-fg}{bold}' + source.name + '{/}';
   msg = ': ' + msg;
   for (var i = 0; i < users.length; ++i) {
-    var user = users[i],
-        output = user.output;
+    var user = users[i];
+    var output = user.output;
     if (source === user)
       output.add(sourceMsg);
     else
@@ -45,16 +45,16 @@ function localMessage(msg, source) {
 function noop(v) {}
 
 new Server({
-  privateKey: require('fs').readFileSync('host.key'),
+  hostKeys: [require('fs').readFileSync('host.key')],
 }, function(client) {
-  var stream,
-      name;
+  var stream;
+  var name;
 
   client.on('authentication', function(ctx) {
-    var nick = ctx.username,
-        prompt = PROMPT_NAME,
-        lowered;
-    // try to use username as nickname
+    var nick = ctx.username;
+    var prompt = PROMPT_NAME;
+    var lowered;
+    // Try to use username as nickname
     if (nick.length > 0 && nick.length <= MAX_NAME_LEN) {
       lowered = nick.toLowerCase();
       var ok = true;
@@ -99,9 +99,9 @@ new Server({
       ctx.accept();
     });
   }).on('ready', function() {
-    var rows,
-        cols,
-        term;
+    var rows;
+    var cols;
+    var term;
     client.once('session', function(accept, reject) {
       accept().once('pty', function(accept, reject, info) {
         rows = info.rows;
@@ -139,7 +139,7 @@ new Server({
         });
 
         screen.title = 'SSH Chatting as ' + name;
-        // disable local echo
+        // Disable local echo
         screen.program.attr('invisible', true);
 
         var output = stream.output = new blessed.log({
@@ -173,7 +173,7 @@ new Server({
 
         input.focus();
 
-        // local greetings
+        // Local greetings
         localMessage('{blue-bg}{white-fg}{bold}Welcome to SSH Chat!{/}\n'
                      + 'There are {bold}'
                      + (users.length - 1)
@@ -181,10 +181,10 @@ new Server({
                      + 'Type /quit or /exit to exit the chat.',
                      stream);
 
-        // let everyone else know that this user just joined
+        // Let everyone else know that this user just joined
         for (var i = 0; i < users.length; ++i) {
-          var user = users[i],
-              output = user.output;
+          var user = users[i];
+          var output = user.output;
           if (user === stream)
             continue;
           output.add(formatMessage('{green-fg}*** {bold}', output)
@@ -193,11 +193,11 @@ new Server({
         }
 
         screen.render();
-        // XXX this fake resize event is needed for some terminals in order to
+        // XXX This fake resize event is needed for some terminals in order to
         // have everything display correctly
         screen.program.emit('resize');
 
-        // read a line of input from the user
+        // Read a line of input from the user
         input.on('submit', function(line) {
           input.clearValue();
           screen.render();
@@ -218,17 +218,17 @@ new Server({
   }).on('end', function() {
     if (stream !== undefined) {
       spliceOne(users, users.indexOf(stream));
-      // let everyone else know that this user just left
+      // Let everyone else know that this user just left
       for (var i = 0; i < users.length; ++i) {
-        var user = users[i],
-            output = user.output;
+        var user = users[i];
+        var output = user.output;
         output.add(formatMessage('{magenta-fg}*** {bold}', output)
                    + name
                    + formatMessage('{/bold} has left the chat{/}', output));
       }
     }
   }).on('error', function(err) {
-    // ignore errors
+    // Ignore errors
   });
 }).listen(0, function() {
   console.log('Listening on port ' + this.address().port);
