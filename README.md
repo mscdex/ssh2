@@ -424,7 +424,7 @@ var buffersEqual = require('buffer-equal-constant-time'),
 var pubKey = utils.genPublicKey(utils.parseKey(fs.readFileSync('user.pub')));
 
 new ssh2.Server({
-  privateKey: fs.readFileSync('host.key')
+  hostKeys: [fs.readFileSync('host.key')]
 }, function(client) {
   console.log('Client connected!');
 
@@ -481,7 +481,7 @@ var OPEN_MODE = ssh2.SFTP_OPEN_MODE,
     STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
 new ssh2.Server({
-  privateKey: fs.readFileSync('host.key')
+  hostKeys: [fs.readFileSync('host.key')]
 }, function(client) {
   console.log('Client connected!');
 
@@ -736,9 +736,19 @@ Server methods
 
 * **(constructor)**(< _object_ >config[, < _function_ >connectionListener]) - Creates and returns a new Server instance. Server instances also have the same methods/properties/events as [`net.Server`](http://nodejs.org/docs/latest/api/net.html#net_class_net_server). `connectionListener` if supplied, is added as a `connection` listener. Valid `config` properties:
 
-    * **privateKey** - _mixed_ - Buffer or string that contains the host private key (OpenSSH format). (**Required**) **Default:** (none)
+    * **hostKeys** - _array_ - An array of either Buffers/strings that contain host private keys or objects in the format of `{ key: <Buffer/string>, passphrase: <string> }` for encrypted private keys. (**Required**) **Default:** (none)
 
-    * **passphrase** - _string_ - For an encrypted host private key, this is the passphrase used to decrypt it. **Default:** (none)
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for incoming client connections. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2-streams` used by this module. Valid keys:
+
+        * **kex** - _array_ - Key exchange algorithms.
+
+        * **cipher** - _array_ - Ciphers.
+
+        * **serverHostKey** - _array_ - Server host key formats.
+
+        * **hmac** - _array_ - (H)MAC algorithms.
+
+        * **compress** - _array_ - Compression algorithms.
 
     * **banner** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Default:** (none)
 
