@@ -36,12 +36,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  privateKey: CLIENT_KEY_RSA
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_RSA
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -78,12 +79,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  privateKey: CLIENT_KEY_PPK_RSA
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_PPK_RSA
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -117,12 +119,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  privateKey: CLIENT_KEY_DSA
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_DSA
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -192,14 +195,15 @@ var tests = [
       var hostname = 'foo';
       var username = 'bar';
 
-      r = setup(this,
-                { username: USER,
-                  privateKey: CLIENT_KEY_RSA,
-                  localHostname: hostname,
-                  localUsername: username
-                },
-                { hostKeys: [ HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_RSA,
+          localHostname: hostname,
+          localUsername: username
+        },
+        { hostKeys: [ HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -240,12 +244,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -272,18 +277,19 @@ var tests = [
       var r;
       var verified = false;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD,
-                  hostHash: 'md5',
-                  hostVerifier: function(hash) {
-                    assert(hash === MD5_HOST_FINGERPRINT,
-                           makeMsg(what, 'Host fingerprint mismatch'));
-                    verified = true;
-                  }
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          hostHash: 'md5',
+          hostVerifier: function(hash) {
+            assert(hash === MD5_HOST_FINGERPRINT,
+                   makeMsg(what, 'Host fingerprint mismatch'));
+            verified = true;
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -309,12 +315,13 @@ var tests = [
       var exitArgs;
       var closeArgs;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -377,12 +384,13 @@ var tests = [
       var r;
       var out = '';
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -431,12 +439,13 @@ var tests = [
       var r;
       var out = '';
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -494,13 +503,14 @@ var tests = [
       var r;
       var out = '';
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD,
-                  agent: '/foo/bar/baz'
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          agent: '/foo/bar/baz'
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -549,12 +559,13 @@ var tests = [
       var r;
       var out = '';
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -603,12 +614,13 @@ var tests = [
       var r;
       var out = '';
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -656,12 +668,13 @@ var tests = [
       var sawOpenC = false;
       var sawCloseC = false;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -806,12 +819,13 @@ var tests = [
       var r;
       var calledBack = 0;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -866,12 +880,13 @@ var tests = [
       var r;
       var calledBack = 0;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -915,12 +930,13 @@ var tests = [
       var r;
       var calledBack = 0;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD,
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -972,12 +988,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -1012,12 +1029,13 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -1060,13 +1078,14 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD,
-                  sock: new net.Socket()
-                },
-                { hostKeys: [HOST_KEY_RSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          sock: new net.Socket()
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -1087,7 +1106,11 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this, { username: USER }, { hostKeys: [HOST_KEY_RSA] });
+      r = setup(
+        this,
+        { username: USER },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -1129,13 +1152,15 @@ var tests = [
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: PASSWORD
-                },
-                { hostKeys: [HOST_KEY_RSA],
-                  banner: 'Hello world!'
-                });
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA],
+          banner: 'Hello world!'
+        }
+      );
       client = r.client;
       server = r.server;
 
