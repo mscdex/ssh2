@@ -21,12 +21,15 @@ var PASSWORD = 'FLUXCAPACITORISTHEPOWER';
 var MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
 var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
 var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
+var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
 var CLIENT_KEY_PPK_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
 var CLIENT_KEY_PPK_RSA_PUB = utils.parseKey(CLIENT_KEY_PPK_RSA);
 var CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa'));
 var CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA));
 var CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa'));
 var CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA));
+var CLIENT_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
+var CLIENT_KEY_ECDSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_ECDSA));
 var DEBUG = false;
 
 var tests = [
@@ -157,17 +160,63 @@ var tests = [
     what: 'Authenticate with a DSA key'
   },
   { run: function() {
+      if (process.version < 'v0.11.14')
+        return next();
       var what = this.what;
       var client;
       var server;
       var r;
 
-      r = setup(this,
-                { username: USER,
-                  password: 'asdf'
-                },
-                { hostKeys: [HOST_KEY_DSA]
-                });
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_ECDSA
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'publickey',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
+                 makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
+          assert.deepEqual(CLIENT_KEY_ECDSA_PUB.public,
+                           ctx.key.data,
+                           makeMsg(what, 'Public key mismatch'));
+          if (ctx.signature) {
+            var verifier = crypto.createVerify('sha256');
+            var pem = CLIENT_KEY_ECDSA_PUB.publicOrig;
+            verifier.update(ctx.blob);
+            assert(verifier.verify(pem, ctx.signature),
+                   makeMsg(what, 'Could not verify PK signature'));
+            ctx.accept();
+          } else
+            ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Authenticate with a ECDSA key'
+  },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: 'asdf'
+        },
+        { hostKeys: [HOST_KEY_DSA] }
+      );
       client = r.client;
       server = r.server;
 
@@ -186,6 +235,110 @@ var tests = [
       });
     },
     what: 'Server with DSA host key'
+  },
+  { run: function() {
+      if (process.version < 'v0.11.14')
+        return next();
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: 'asdf'
+        },
+        { hostKeys: [HOST_KEY_ECDSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'password',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.password === 'asdf',
+                 makeMsg(what, 'Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server with ECDSA host key'
+  },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: 'asdf',
+          algorithms: {
+            serverHostKey: 'ssh-rsa'
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA, HOST_KEY_DSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'password',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.password === 'asdf',
+                 makeMsg(what, 'Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server with multiple host keys (RSA selected)'
+  },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: 'asdf',
+          algorithms: {
+            serverHostKey: 'ssh-dss'
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA, HOST_KEY_DSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'password',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.password === 'asdf',
+                 makeMsg(what, 'Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server with multiple host keys (DSA selected)'
   },
   { run: function() {
       var what = this.what;
