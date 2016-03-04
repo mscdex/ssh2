@@ -1165,8 +1165,8 @@ function setup(self, clientcfg, servercfg) {
   self.state = {
     clientReady: false,
     serverReady: false,
-    clientEnd: false,
-    serverEnd: false
+    clientClose: false,
+    serverClose: false
   };
 
   if (DEBUG) {
@@ -1215,15 +1215,15 @@ function setup(self, clientcfg, servercfg) {
   }
   function onClose() {
     if (this === client) {
-      assert(!self.state.clientEnd,
+      assert(!self.state.clientClose,
              makeMsg(self.what, 'Received multiple close events for client'));
-      self.state.clientEnd = true;
+      self.state.clientClose = true;
     } else {
-      assert(!self.state.serverEnd,
+      assert(!self.state.serverClose,
              makeMsg(self.what, 'Received multiple close events for server'));
-      self.state.serverEnd = true;
+      self.state.serverClose = true;
     }
-    if (self.state.clientEnd && self.state.serverEnd)
+    if (self.state.clientClose && self.state.serverClose)
       next();
   }
 
