@@ -60,7 +60,7 @@ var tests = [
             var verifier = crypto.createVerify('RSA-SHA1');
             var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature, 'binary'),
+            assert(verifier.verify(pem, ctx.signature),
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -99,7 +99,7 @@ var tests = [
             var verifier = crypto.createVerify('RSA-SHA1');
             var pem = CLIENT_KEY_PPK_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature, 'binary'),
+            assert(verifier.verify(pem, ctx.signature),
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -141,7 +141,7 @@ var tests = [
             var verifier = crypto.createVerify('DSA-SHA1');
             var pem = CLIENT_KEY_DSA_PUB.publicOrig;
             verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature, 'binary'),
+            assert(verifier.verify(pem, ctx.signature),
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -222,7 +222,7 @@ var tests = [
             var verifier = crypto.createVerify('RSA-SHA1');
             var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature, 'binary'),
+            assert(verifier.verify(pem, ctx.signature),
                    makeMsg(what, 'Could not verify hostbased signature'));
             ctx.accept();
           } else
