@@ -30,8 +30,12 @@ var CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa'));
 var CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA));
 var CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa'));
 var CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA));
-var CLIENT_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
-var CLIENT_KEY_ECDSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_ECDSA));
+if (semver.gte(process.version, '5.2.0')) {
+  var CLIENT_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
+  var CLIENT_KEY_ECDSA_PUB = utils.genPublicKey(
+    utils.parseKey(CLIENT_KEY_ECDSA)
+  );
+}
 var DEBUG = false;
 
 var tests = [
