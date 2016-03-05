@@ -4,6 +4,8 @@ var OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE;
 var STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE;
 var utils = require('ssh2-streams').utils;
 
+var semver = require('semver');
+
 var net = require('net');
 var fs = require('fs');
 var crypto = require('crypto');
@@ -160,7 +162,7 @@ var tests = [
     what: 'Authenticate with a DSA key'
   },
   { run: function() {
-      if (process.version < 'v0.11.14')
+      if (semver.lt(process.version, '5.2.0'))
         return next();
       var what = this.what;
       var client;
@@ -237,7 +239,7 @@ var tests = [
     what: 'Server with DSA host key'
   },
   { run: function() {
-      if (process.version < 'v0.11.14')
+      if (semver.lt(process.version, '5.2.0'))
         return next();
       var what = this.what;
       var client;

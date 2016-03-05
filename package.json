@@ -7,6 +7,9 @@
   "dependencies": {
     "ssh2-streams": "~0.0.5"
   },
+  "devDependencies": {
+    "semver": "^5.1.0"
+  },
   "scripts": {
     "test": "node test/test.js"
   },
