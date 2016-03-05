@@ -1343,6 +1343,59 @@ var tests = [
     },
     what: 'Server banner'
   },
+  { run: function() {
+      var self = this,
+          what = this.what,
+          client,
+          server,
+          r,
+          fastrejectSent = false;
+
+      function sendAcceptLater(accept) {
+        if (fastrejectSent)
+          accept();
+        else
+          setImmediate(sendAcceptLater, accept);
+      }
+
+      r = setup(this, { username: USER }, { privateKey: HOST_KEY_RSA });
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+
+        conn.on('request', function(accept, reject, name, info) {
+          if (info.bindAddr === 'fastreject') {
+            // Will call reject on 'fastreject' soon
+            reject();
+            fastrejectSent = true;
+          } else
+            // but accept on 'slowaccept' later
+            sendAcceptLater(accept);
+        });
+      });
+
+      client.on('ready', function() {
+        var replyCnt = 0;
+
+        client.forwardIn('slowaccept', 0, function(err) {
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          if (++replyCnt === 2)
+            client.end();
+        });
+
+        client.forwardIn('fastreject', 0, function(err) {
+          assert(err, makeMsg(what, 'Should receive error'));
+          if (++replyCnt === 2)
+            client.end();
+        });
+      });
+    },
+    what: 'server responds to global requests in the right order'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
