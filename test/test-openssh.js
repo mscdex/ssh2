@@ -34,6 +34,11 @@ if (semver.gte(process.version, '5.2.0')) {
 }
 var DEBUG = false;
 
+// Fix file modes to avoid OpenSSH client complaints about keys' permissions
+fs.readdirSync(fixturesdir).forEach(function(file) {
+  fs.chmodSync(join(fixturesdir, file), '0600');
+});
+
 var tests = [
   { run: function() {
       var what = this.what;
