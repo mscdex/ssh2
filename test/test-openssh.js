@@ -264,6 +264,49 @@ var tests = [
     },
     what: 'Server with ECDSA host key'
   },
+  { run: function() {
+      var server;
+      var what = this.what;
+
+      server = setup(
+        this,
+        { privateKeyPath: CLIENT_KEY_RSA_PATH },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+
+      server.on('_child', function(childProc) {
+        childProc.stderr.once('data', function(data) {
+          childProc.stdin.end();
+        });
+        childProc.stdin.write('ping');
+      }).on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.on('session', function(accept, reject) {
+            var session = accept();
+            assert(session, makeMsg(what, 'Missing session'));
+            session.on('exec', function(accept, reject) {
+              var stream = accept();
+              assert(stream, makeMsg(what, 'Missing exec stream'));
+              stream.stdin.on('data', function(data) {
+                stream.stdout.write('pong on stdout');
+                stream.stderr.write('pong on stderr');
+              }).on('end', function() {
+                stream.stdout.write('pong on stdout');
+                stream.stderr.write('pong on stderr');
+                stream.exit(0);
+                stream.close();
+              });
+            }).on('pty', function(accept, reject) {
+              accept && accept();
+            });
+          });
+        });
+      });
+    },
+    what: 'Server closes stdin too early'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
@@ -335,6 +378,7 @@ function setup(self, clientcfg, servercfg) {
                 'uptime');
 
       client = spawn(cmd, args);
+      server.emit('_child', client);
       if (DEBUG) {
         client.stdout.pipe(process.stdout);
         client.stderr.pipe(process.stderr);
