@@ -609,7 +609,7 @@ Client methods
 
     * **hostHash** - _string_ - 'md5' or 'sha1'. The host's key is hashed using this method and passed to the **hostVerifier** function. **Default:** (none)
 
-    * **hostVerifier** - _function_ - Function that is passed a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect. **Default:** (auto-accept)
+    * **hostVerifier** - _function_ - Function with parameters `(hashedKey[, callback])` where `hashedKey` is a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
 
     * **username** - _string_ - Username for authentication. **Default:** (none)
 
