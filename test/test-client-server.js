@@ -444,7 +444,7 @@ var tests = [
           hostVerifier: function(hash) {
             assert(hash === MD5_HOST_FINGERPRINT,
                    makeMsg(what, 'Host fingerprint mismatch'));
-            verified = true;
+            return (verified = true);
           }
         },
         { hostKeys: [HOST_KEY_RSA] }
