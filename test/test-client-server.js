@@ -1194,6 +1194,54 @@ var tests = [
     },
     what: 'Server banner'
   },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { privateKey: HOST_KEY_RSA }
+      );
+      client = r.client;
+      server = r.server;
+
+      var timer;
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.on('session', function(accept, reject) {
+            var session = accept();
+            session.once('subsystem', function(accept, reject, info) {
+              assert.equal(info.name, 'netconf');
+
+              // Prevent success reply from being sent
+              conn._sshstream.channelSuccess = function() {};
+
+              var stream = accept();
+              stream.close();
+              timer = setTimeout(function() {
+                throw new Error(makeMsg(what, 'Expected client callback'));
+              }, 50);
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.subsys('netconf', function(err, stream) {
+          clearTimeout(timer);
+          assert(err);
+          client.end();
+        });
+      });
+    },
+    what: 'Cleanup outstanding channel requests on channel close'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
