@@ -1,5 +1,5 @@
 { "name": "ssh2",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
   "main": "./lib/client",
