@@ -1446,6 +1446,61 @@ var tests = [
       });
     },
     what: 'Cleanup outstanding channel requests on channel close'
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      var timer;
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.on('session', function(accept, reject) {
+            var session = accept();
+            session.once('exec', function(accept, reject, info) {
+              var stream = accept();
+              // Write enough to bring the Client's channel window to 0
+              // (currently 1MB)
+              var buf = new Buffer(2048);
+              for (var i = 0; i < 1000; ++i)
+                stream.write(buf);
+              stream.exit(0);
+              stream.close();
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.exec('foo', function(err, stream) {
+          var sawClose = false;
+          assert(!err, makeMsg(what, 'Unexpected error'));
+          client._sshstream.on('CHANNEL_CLOSE:' + stream.incoming.id, onClose);
+          function onClose() {
+            // This handler gets called *after* the internal handler, so we
+            // should have seen `stream`'s `close` event already if the bug
+            // exists
+            assert(!sawClose, makeMsg(what, 'Premature close event'));
+            client.end();
+          }
+          stream.on('close', function() {
+            sawClose = true;
+          });
+        });
+      });
+    },
+    what: 'Channel emits close prematurely'
   },
 ];
 
