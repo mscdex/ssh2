@@ -1446,6 +1446,7 @@ var tests = [
       });
     },
     what: 'Cleanup outstanding channel requests on channel close'
+  },
   { run: function() {
       var what = this.what;
       var client;
