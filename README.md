@@ -258,8 +258,8 @@ conn.on('ready', function() {
 ```javascript
 var Client = require('ssh2').Client;
 
-var conn1 = new Client(),
-    conn2 = new Client();
+var conn1 = new Client();
+var conn2 = new Client();
 
 conn1.on('ready', function() {
   console.log('FIRST :: connection ready');
@@ -299,8 +299,9 @@ conn2.on('ready', function() {
 * Forward X11 connections (xeyes in this case):
 
 ```javascript
-var net = require('net'),
-    Client = require('ssh2').Client;
+var net = require('net');
+
+var Client = require('ssh2').Client;
 
 var conn = new Client();
 
@@ -336,8 +337,8 @@ conn.on('ready', function() {
 * Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5)):
 
 ```javascript
-var socks = require('socksv5'),
-    Client = require('ssh2').Client;
+var socks = require('socksv5');
+var Client = require('ssh2').Client;
 
 var ssh_config = {
   host: '192.168.100.1',
@@ -384,12 +385,12 @@ socks.createServer(function(info, accept, deny) {
 * Invoke an arbitrary subsystem (netconf in this case):
 
 ```javascript
-var Client = require('ssh2').Client,
-    xmlhello = '<?xml version="1.0" encoding="UTF-8"?>'+
-               '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">'+
-               '    <capabilities>'+
-               '		<capability>urn:ietf:params:netconf:base:1.0</capability>'+
-               '	</capabilities>'+
+var Client = require('ssh2').Client;
+var xmlhello = '<?xml version="1.0" encoding="UTF-8"?>' +
+               '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">' +
+               '    <capabilities>' +
+               '		<capability>urn:ietf:params:netconf:base:1.0</capability>' +
+               '	</capabilities>' +
                '</hello>]]>]]>';
 
 var conn = new Client();
@@ -416,12 +417,13 @@ Server Examples
 * Only allow password and public key authentication and non-interactive (exec) command execution:
 
 ```javascript
-var fs = require('fs'),
-    crypto = require('crypto'),
-    inspect = require('util').inspect;
-var buffersEqual = require('buffer-equal-constant-time'),
-    ssh2 = require('ssh2'),
-    utils = ssh2.utils;
+var fs = require('fs');
+var crypto = require('crypto');
+var inspect = require('util').inspect;
+
+var buffersEqual = require('buffer-equal-constant-time');
+var ssh2 = require('ssh2');
+var utils = ssh2.utils;
 
 var pubKey = utils.genPublicKey(utils.parseKey(fs.readFileSync('user.pub')));
 
@@ -478,9 +480,10 @@ new ssh2.Server({
 
 ```javascript
 var fs = require('fs');
+
 var ssh2 = require('ssh2');
-var OPEN_MODE = ssh2.SFTP_OPEN_MODE,
-    STATUS_CODE = ssh2.SFTP_STATUS_CODE;
+var OPEN_MODE = ssh2.SFTP_OPEN_MODE;
+var STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
 new ssh2.Server({
   hostKeys: [fs.readFileSync('host.key')]
