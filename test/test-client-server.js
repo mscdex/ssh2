@@ -24,6 +24,10 @@ var MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
 var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
 var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
 var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
+var CLIENT_KEY_ENC_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa_enc'));
+var CLIENT_KEY_ENC_RSA_PUB = utils.parseKey(CLIENT_KEY_ENC_RSA);
+utils.decryptKey(CLIENT_KEY_ENC_RSA_PUB, 'foobarbaz');
+CLIENT_KEY_ENC_RSA_PUB = utils.genPublicKey(CLIENT_KEY_ENC_RSA_PUB);
 var CLIENT_KEY_PPK_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
 var CLIENT_KEY_PPK_RSA_PUB = utils.parseKey(CLIENT_KEY_PPK_RSA);
 var CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa'));
@@ -81,6 +85,50 @@ var tests = [
       });
     },
     what: 'Authenticate with an RSA key'
+  },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_ENC_RSA,
+          passphrase: 'foobarbaz',
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'publickey',
+                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg(what, 'Unexpected username: ' + ctx.username));
+          assert(ctx.key.algo === 'ssh-rsa',
+                 makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
+          assert.deepEqual(CLIENT_KEY_ENC_RSA_PUB.public,
+                           ctx.key.data,
+                           makeMsg(what, 'Public key mismatch'));
+          if (ctx.signature) {
+            var verifier = crypto.createVerify('RSA-SHA1');
+            var pem = CLIENT_KEY_ENC_RSA_PUB.publicOrig;
+            verifier.update(ctx.blob);
+            assert(verifier.verify(pem, ctx.signature),
+                   makeMsg(what, 'Could not verify PK signature'));
+            ctx.accept();
+          } else
+            ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Authenticate with an encrypted RSA key'
   },
   { run: function() {
       var what = this.what;
