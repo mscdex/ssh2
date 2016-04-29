@@ -363,6 +363,11 @@ function setup(self, clientcfg, servercfg) {
                   '-o', 'IdentitiesOnly=yes',
                   '-o', 'BatchMode=yes',
                   '-o', 'VerifyHostKeyDNS=no',
+
+                  // OpenSSH 7.0 disables DSS/DSA host and user key support by
+                  // default, so we explicitly enable it here
+                  '-o', 'HostKeyAlgorithms=+ssh-dss',
+
                   '-vvvvvv',
                   '-T',
                   '-o', 'KbdInteractiveAuthentication=no',
