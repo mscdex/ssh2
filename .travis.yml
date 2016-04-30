@@ -13,4 +13,5 @@ install:
   - node --version
   - npm --version
   - npm install
+  - ssh -V
 script: npm test
