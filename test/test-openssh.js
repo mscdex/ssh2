@@ -439,11 +439,21 @@ process.once('exit', function() {
 
 // Get OpenSSH client version first
 exec('ssh -V', function(err, stdout, stderr) {
-  if (err) throw err;
-  var m = /^OpenSSH_([\d\.]+)/.exec(stdout.toString());
-  if (m && m[1])
-    opensshVer = m[1];
-  else
-    opensshVer = '';
+  if (err) {
+    console.log('OpenSSH client is required for these tests');
+    process.exitCode = 5;
+    return;
+  }
+  var re = /^OpenSSH_([\d\.]+)/;
+  var m = re.exec(stdout.toString());
+  if (!m || !m[1]) {
+    m = re.exec(stderr.toString());
+    if (!m || !m[1]) {
+      console.log('OpenSSH client is required for these tests');
+      process.exitCode = 5;
+      return;
+    }
+  }
+  opensshVer = m[1];
   next();
 });
