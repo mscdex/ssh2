@@ -2,11 +2,11 @@ var constants = require('constants');
 var fs = require('fs');
 
 var ssh2 = require('ssh2');
-var OPEN_MODE = ssh2.SFTP_OPEN_MODE,
-    STATUS_CODE = ssh2.SFTP_STATUS_CODE;
+var OPEN_MODE = ssh2.SFTP_OPEN_MODE;
+var STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
 new ssh2.Server({
-  privateKey: fs.readFileSync('host.key')
+  hostKeys: [fs.readFileSync('host.key')]
 }, function(client) {
   console.log('Client connected!');
 
@@ -16,7 +16,7 @@ new ssh2.Server({
         && ctx.password === 'bar')
       ctx.accept();
     else
-      ctx.reject();
+      ctx.reject(['password']);
   }).on('ready', function() {
     console.log('Client authenticated!');
 
