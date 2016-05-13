@@ -5,6 +5,8 @@
 //   2. Install `blessed`: `npm install blessed`
 //   3. Create a server host key in this same directory and name it `host.key`
 
+var fs = require('fs');
+
 var blessed = require('blessed');
 var Server = require('ssh2').Server;
 
@@ -45,7 +47,7 @@ function localMessage(msg, source) {
 function noop(v) {}
 
 new Server({
-  hostKeys: [require('fs').readFileSync('host.key')],
+  hostKeys: [fs.readFileSync('host.key')],
 }, function(client) {
   var stream;
   var name;
