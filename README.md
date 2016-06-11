@@ -883,6 +883,12 @@ Session events
 
     * **screen** - _integer_ - The screen number to forward X11 connections for.
 
+* **env**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested an environment variable to be set for this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+
+    * **key** - _string_ - The environment variable's name.
+
+    * **value** - _string_ - The environment variable's value.
+
 * **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
 
     * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
