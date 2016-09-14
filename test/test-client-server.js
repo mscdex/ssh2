@@ -1551,6 +1551,56 @@ var tests = [
     },
     what: 'Channel emits close prematurely'
   },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER },
+        { hostKeys: [HOST_KEY_RSA], ident: 'OpenSSH_5.3' }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+        conn.once('request', function(accept, reject, name, info) {
+          assert(name === 'tcpip-forward',
+                 makeMsg(what, 'Unexpected request: ' + name));
+          accept(1337);
+          conn.forwardOut('good', 0, 'remote', 12345, function(err, ch) {
+            assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+            client.end();
+          });
+        });
+      });
+
+      client.on('ready', function() {
+        // request forwarding
+        client.forwardIn('good', 0, function(err, port) {
+          assert(!err, makeMsg(what, 'Unexpected error: ' + err));
+          assert(port === 1337, makeMsg(what, 'Bad bound port: ' + port));
+        });
+      });
+      client.on('tcp connection', function(details, accept, reject) {
+        assert(details.destIP === 'good',
+               makeMsg(what, 'Bad incoming destIP: ' + details.destIP));
+        assert(details.destPort === 1337,
+               makeMsg(what, 'Bad incoming destPort: ' + details.destPort));
+        assert(details.srcIP === 'remote',
+               makeMsg(what, 'Bad incoming srcIP: ' + details.srcIP));
+        assert(details.srcPort === 12345,
+               makeMsg(what, 'Bad incoming srcPort: ' + details.srcPort));
+        accept();
+      });
+    },
+    what: 'OpenSSH 5.x workaround for binding on port 0'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
