@@ -253,7 +253,7 @@ conn.on('ready', function() {
 //        mtime: 1353269007 } } ]
 ```
 
-* Connection via SOCKS5 proxy(using [socksv5](https://github.com/mscdex/socksv5)):
+* Connection via SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5)):
 
 ```javascript
 var socks = require('socksv5'),
