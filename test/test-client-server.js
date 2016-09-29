@@ -267,7 +267,10 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          password: 'asdf'
+          password: 'asdf',
+          algorithms: {
+            serverHostKey: ['ssh-dss']
+          }
         },
         { hostKeys: [HOST_KEY_DSA] }
       );
@@ -1600,6 +1603,71 @@ var tests = [
       });
     },
     what: 'OpenSSH 5.x workaround for binding on port 0'
+  },
+  { run: function() {
+      var what = this.what;
+      var client;
+      var server;
+      var r;
+      var srvError;
+      var cliError;
+
+      r = setup(
+        this,
+        { username: USER,
+          algorithms: {
+            cipher: [ 'aes128-cbc' ]
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA],
+          algorithms: {
+            cipher: [ 'aes128-ctr' ]
+          }
+        }
+      );
+      client = r.client;
+      server = r.server;
+
+      // Remove default client error handler added by `setup()` since we are
+      // expecting an error in this case
+      client.removeAllListeners('error');
+
+      function onError(err) {
+        if (this === client) {
+          assert(!cliError, makeMsg(what, 'Unexpected multiple client errors'));
+          cliError = err;
+        } else {
+          assert(!srvError, makeMsg(what, 'Unexpected multiple server errors'));
+          srvError = err;
+        }
+        assert(/handshake failed/i.test(err.message),
+               makeMsg(what, 'Wrong error message'));
+      }
+
+      server.on('connection', function(conn) {
+        // Remove default server connection error handler added by `setup()`
+        // since we are expecting an error in this case
+        conn.removeAllListeners('error');
+
+        function onGoodHandshake() {
+          assert(false, makeMsg(what, 'Handshake should have failed'));
+        }
+        conn.on('authentication', onGoodHandshake);
+        conn.on('ready', onGoodHandshake);
+
+        conn.on('error', onError);
+      });
+
+      client.on('ready', function() {
+        assert(false, makeMsg(what, 'Handshake should have failed'));
+      });
+      client.on('error', onError);
+      client.on('close', function() {
+        assert(cliError, makeMsg(what, 'Expected client error'));
+        assert(srvError, makeMsg(what, 'Expected client error'));
+      });
+    },
+    what: 'Handshake errors are emitted'
   },
 ];
 
