@@ -756,7 +756,9 @@ Server methods
 
         * **compress** - _array_ - Compression algorithms.
 
-    * **banner** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Default:** (none)
+    * **greeting** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Note:** Most clients usually ignore this. **Default:** (none)
+
+    * **banner** - _string_ - A message that is sent to clients once, right before authentication begins. **Default:** (none)
 
     * **ident** - _string_ - A custom server software name/version identifier. **Default:** `'ssh2js' + moduleVersion + 'srv'`
 

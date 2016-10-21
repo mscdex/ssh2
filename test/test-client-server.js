@@ -1336,18 +1336,69 @@ var tests = [
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA],
+          greeting: 'Hello world!'
+        }
+      );
+      client = r.client;
+      server = r.server;
+
+      var sawGreeting = false;
+
+      client.on('greeting', function(greeting) {
+        assert.strictEqual(greeting, 'Hello world!\r\n');
+        sawGreeting = true;
+      });
+      client.on('banner', function(message) {
+        assert.fail(null, null, makeMsg('Unexpected banner'));
+      });
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(sawGreeting, makeMsg('Client did not see greeting'));
+          assert(ctx.method === 'password',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg('Unexpected username: ' + ctx.username));
+          assert(ctx.password === PASSWORD,
+                 makeMsg('Unexpected password: ' + ctx.password));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Server greeting'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA],
           banner: 'Hello world!'
         }
       );
       client = r.client;
       server = r.server;
 
+      var sawBanner = false;
+
       client.on('greeting', function(greeting) {
-        assert.strictEqual(greeting, 'Hello world!\r\n');
+        assert.fail(null, null, makeMsg('Unexpected greeting'));
+      });
+      client.on('banner', function(message) {
+        assert.strictEqual(message, 'Hello world!\r\n');
+        sawBanner = true;
       });
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          assert(sawBanner, makeMsg('Client did not see banner'));
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
