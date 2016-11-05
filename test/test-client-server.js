@@ -21,6 +21,7 @@ var fixturesdir = join(__dirname, 'fixtures');
 var USER = 'nodejs';
 var PASSWORD = 'FLUXCAPACITORISTHEPOWER';
 var MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
+var KEY_RSA_BAD = fs.readFileSync(join(fixturesdir, 'bad_rsa_private_key'));
 var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
 var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
 var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
@@ -1682,6 +1683,108 @@ var tests = [
       });
     },
     what: 'Handshake errors are emitted'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var cliError;
+
+      r = setup(
+        this,
+        { username: USER, privateKey: KEY_RSA_BAD },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      // Remove default client error handler added by `setup()` since we are
+      // expecting an error in this case
+      client.removeAllListeners('error');
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(ctx.method === 'publickey' || ctx.method === 'none',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          assert(!ctx.signature, makeMsg('Unexpected signature'));
+          if (ctx.method === 'none')
+            return ctx.reject();
+          ctx.accept();
+        });
+        conn.on('ready', function() {
+          assert(false, makeMsg('Authentication should have failed'));
+        });
+      });
+
+      client.on('ready', function() {
+        assert(false, makeMsg('Authentication should have failed'));
+      });
+      client.on('error', function(err) {
+        if (cliError) {
+          assert(/all configured/i.test(err.message),
+                 makeMsg('Wrong error message'));
+        } else {
+          cliError = err;
+          assert(/signing/i.test(err.message), makeMsg('Wrong error message'));
+        }
+      });
+      client.on('close', function() {
+        assert(cliError, makeMsg('Expected client error'));
+      });
+    },
+    what: 'Client signing errors are caught and emitted'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var srvError;
+      var cliError;
+
+      r = setup(
+        this,
+        { username: USER, password: 'foo' },
+        { hostKeys: [KEY_RSA_BAD] }
+      );
+      client = r.client;
+      server = r.server;
+
+      // Remove default client error handler added by `setup()` since we are
+      // expecting an error in this case
+      client.removeAllListeners('error');
+
+      server.on('connection', function(conn) {
+        // Remove default server connection error handler added by `setup()`
+        // since we are expecting an error in this case
+        conn.removeAllListeners('error');
+
+        conn.once('error', function(err) {
+          assert(/signing/i.test(err.message), makeMsg('Wrong error message'));
+          srvError = err;
+        });
+        conn.on('authentication', function(ctx) {
+          assert(false, makeMsg('Handshake should have failed'));
+        });
+        conn.on('ready', function() {
+          assert(false, makeMsg('Authentication should have failed'));
+        });
+      });
+
+      client.on('ready', function() {
+        assert(false, makeMsg('Handshake should have failed'));
+      });
+      client.on('error', function(err) {
+        assert(!cliError, makeMsg('Unexpected multiple client errors'));
+        assert(/KEY_EXCHANGE_FAILED/.test(err.message),
+               makeMsg('Wrong error message'));
+        cliError = err;
+      });
+      client.on('close', function() {
+        assert(srvError, makeMsg('Expected server error'));
+        assert(cliError, makeMsg('Expected client error'));
+      });
+    },
+    what: 'Server signing errors are caught and emitted'
   },
 ];
 
