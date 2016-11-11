@@ -61,6 +61,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'publickey',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -104,6 +106,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'publickey',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -146,6 +150,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'publickey',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -185,6 +191,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'publickey',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -229,6 +237,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'publickey',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -274,6 +284,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -307,6 +319,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -341,6 +355,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -375,6 +391,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -410,28 +428,29 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
-          if (ctx.method === 'hostbased') {
-            assert(ctx.username === USER,
-                   makeMsg('Unexpected username: ' + ctx.username));
-            assert(ctx.key.algo === 'ssh-rsa',
-                   makeMsg('Unexpected key algo: ' + ctx.key.algo));
-            assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
-                             ctx.key.data,
-                             makeMsg('Public key mismatch'));
-            assert(ctx.signature,
-                   makeMsg('Expected signature'));
-            assert(ctx.localHostname === hostname,
-                   makeMsg('Wrong local hostname'));
-            assert(ctx.localUsername === username,
-                   makeMsg('Wrong local username'));
-            var verifier = crypto.createVerify('RSA-SHA1');
-            var pem = CLIENT_KEY_RSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
-                   makeMsg('Could not verify hostbased signature'));
-            ctx.accept();
-          } else
-            ctx.reject();
+          if (ctx.method !== 'hostbased')
+            return ctx.reject();
+          assert(ctx.method === 'hostbased',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg('Unexpected username: ' + ctx.username));
+          assert(ctx.key.algo === 'ssh-rsa',
+                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
+          assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
+                           ctx.key.data,
+                           makeMsg('Public key mismatch'));
+          assert(ctx.signature,
+                 makeMsg('Expected signature'));
+          assert(ctx.localHostname === hostname,
+                 makeMsg('Wrong local hostname'));
+          assert(ctx.localUsername === username,
+                 makeMsg('Wrong local username'));
+          var verifier = crypto.createVerify('RSA-SHA1');
+          var pem = CLIENT_KEY_RSA_PUB.publicOrig;
+          verifier.update(ctx.blob);
+          assert(verifier.verify(pem, ctx.signature),
+                 makeMsg('Could not verify hostbased signature'));
+          ctx.accept();
         }).on('ready', function() {
           conn.end();
         });
@@ -456,6 +475,8 @@ var tests = [
 
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -1356,6 +1377,8 @@ var tests = [
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
           assert(sawGreeting, makeMsg('Client did not see greeting'));
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
@@ -1400,6 +1423,8 @@ var tests = [
       server.on('connection', function(conn) {
         conn.on('authentication', function(ctx) {
           assert(sawBanner, makeMsg('Client did not see banner'));
+          if (ctx.method === 'none')
+            return ctx.reject();
           assert(ctx.method === 'password',
                  makeMsg('Unexpected auth method: ' + ctx.method));
           assert(ctx.username === USER,
