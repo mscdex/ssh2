@@ -253,6 +253,39 @@ conn.on('ready', function() {
 //        mtime: 1353269007 } } ]
 ```
 
+* Connection via SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5)):
+
+```javascript
+var socks = require('socksv5'),
+    SSHClient = require('ssh2').Client;
+
+socks.connect({
+  host: 'ssh.example.org', // destination
+  port: 22,
+  proxyHost: '127.0.0.1',
+  proxyPort: 1080,
+  auths: [ socks.auth.None() ]
+}, function(socket) {
+  var conn = new SSHClient();
+  conn.on('ready', function() {
+    conn.exec('uptime', function(err, stream) {
+      if (err) throw err;
+      stream.on('close', function(code, signal) {
+      conn.end();
+      }).on('data', function(data) {
+        console.log('STDOUT: ' + data);
+      }).stderr.on('data', function(data) {
+        console.log('STDERR: ' + data);
+      });
+    });
+  }).connect({
+    sock: socket,
+    username: 'frylock',
+    privateKey: require('fs').readFileSync('/here/is/my/key')
+  });
+});
+```
+
 * Connection hopping:
 
 ```javascript
