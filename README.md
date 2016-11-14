@@ -434,6 +434,10 @@ new ssh2.Server({
 
   client.on('authentication', function(ctx) {
     if (ctx.method === 'password'
+        // Note: Don't do this in production code, see
+        // https://www.brendanlong.com/timing-attacks-and-usernames.html
+        // In node v6.0.0+, you can use `crypto.timingSafeEqual()` to safely
+        // compare two values.
         && ctx.username === 'foo'
         && ctx.password === 'bar')
       ctx.accept();
@@ -492,6 +496,10 @@ new ssh2.Server({
 
   client.on('authentication', function(ctx) {
     if (ctx.method === 'password'
+        // Note: Don't do this in production code, see
+        // https://www.brendanlong.com/timing-attacks-and-usernames.html
+        // In node v6.0.0+, you can use `crypto.timingSafeEqual()` to safely
+        // compare two values.
         && ctx.username === 'foo'
         && ctx.password === 'bar')
       ctx.accept();
