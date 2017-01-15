@@ -8,6 +8,7 @@ Development/testing is done against OpenSSH (7.1 currently).
 [Changes from v0.4.x-v0.5.x](https://github.com/mscdex/ssh2/wiki/Changes-from-0.4.x-to-0.5.x)
 
 [![Build Status](https://travis-ci.org/mscdex/ssh2.svg?branch=master)](https://travis-ci.org/mscdex/ssh2)
+[![Known Vulnerabilities](https://snyk.io/test/github/mscdex/ssh2/badge.svg)](https://snyk.io/test/github/mscdex/ssh2)
 
 
 Requirements
