@@ -599,7 +599,8 @@ var tests = [
       var client;
       var server;
       var r;
-      var out = '';
+      var serverEnv = {};
+      var clientEnv = { SSH2NODETEST: 'foo' };
 
       r = setup(
         this,
@@ -616,16 +617,14 @@ var tests = [
           ctx.accept();
         }).on('ready', function() {
           conn.once('session', function(accept, reject) {
-            var session = accept(),
-                env = {};
+            var session = accept();
             session.once('env', function(accept, reject, info) {
-              env[info.key] = info.val;
+              serverEnv[info.key] = info.val;
               accept && accept();
             }).once('exec', function(accept, reject, info) {
               assert(info.command === 'foo --bar',
                      makeMsg('Wrong exec command: ' + info.command));
               var stream = accept();
-              stream.write(''+env.SSH2NODETEST);
               stream.exit(100);
               stream.end();
               conn.end();
@@ -635,16 +634,14 @@ var tests = [
       });
       client.on('ready', function() {
         client.exec('foo --bar',
-                    { env: { SSH2NODETEST: 'foo' } },
+                    { env: clientEnv },
                     function(err, stream) {
           assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
-            out += d;
-          });
+          stream.resume();
         });
       }).on('end', function() {
-        assert(out === 'foo',
-               makeMsg('Wrong stdout data: ' + inspect(out)));
+        assert.deepEqual(serverEnv, clientEnv,
+                         makeMsg('Environment mismatch'));
       });
     },
     what: 'Exec with environment set'
@@ -858,7 +855,7 @@ var tests = [
       });
       client.on('ready', function() {
         client.shell(function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
+          assert(!err, makeMsg('Unexpected shell error: ' + err));
           stream.on('data', function(d) {
             out += d;
           });
@@ -869,6 +866,57 @@ var tests = [
       });
     },
     what: 'Simple shell'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var serverEnv = {};
+      var clientEnv = { SSH2NODETEST: 'foo' };
+      var sawPty = false;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.once('session', function(accept, reject) {
+            var session = accept();
+            session.once('env', function(accept, reject, info) {
+              serverEnv[info.key] = info.val;
+              accept && accept();
+            }).once('pty', function(accept, reject, info) {
+              sawPty = true;
+              accept && accept();
+            }).once('shell', function(accept, reject) {
+              var stream = accept();
+              stream.end();
+              conn.end();
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.shell({ env: clientEnv }, function(err, stream) {
+          assert(!err, makeMsg('Unexpected shell error: ' + err));
+          stream.resume();
+        });
+      }).on('end', function() {
+        assert.deepEqual(serverEnv, clientEnv,
+                         makeMsg('Environment mismatch'));
+        assert.strictEqual(sawPty, true);
+      });
+    },
+    what: 'Shell with environment set'
   },
   { run: function() {
       var client;
