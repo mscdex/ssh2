@@ -1859,6 +1859,70 @@ var tests = [
     },
     what: 'Server signing errors are caught and emitted'
   },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var sawReady = false;
+
+      r = setup(
+        this,
+        { username: '', password: 'foo' },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert.strictEqual(ctx.username, '',
+                             makeMsg('Expected empty username'));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+
+      client.on('ready', function() {
+        sawReady = true;
+      }).on('close', function() {
+        assert.strictEqual(sawReady, true, makeMsg('Expected ready event'));
+      });
+    },
+    what: 'Empty username string works'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var sawReady = false;
+
+      r = setup(
+        this,
+        { user: '', password: 'foo' },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert.strictEqual(ctx.username, '',
+                             makeMsg('Expected empty username'));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+
+      client.on('ready', function() {
+        sawReady = true;
+      }).on('close', function() {
+        assert.strictEqual(sawReady, true, makeMsg('Expected ready event'));
+      });
+    },
+    what: 'Empty user string works'
+  },
 ];
 
 function setup(self, clientcfg, servercfg) {
