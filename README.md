@@ -1,5 +1,4 @@
-Description
-===========
+# Description
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
@@ -9,25 +8,50 @@ Development/testing is done against OpenSSH (7.1 currently).
 
 [![Build Status](https://travis-ci.org/mscdex/ssh2.svg?branch=master)](https://travis-ci.org/mscdex/ssh2)
 
+# Table of Contents
 
-Requirements
-============
+* [Requirements](#requirements)
+* [Installation](#installation)
+* [Client Examples](#client-examples)
+  * [Execute `uptime` on a server](#execute-uptime-on-a-server)
+  * [Start an interactive shell session](#start-an-interactive-shell-session)
+  * [Send a raw HTTP request to port 80 on the server](#send-a-raw-http-request-to-port-80-on-the-server)
+  * [Forward local connections to port 8000 on the server to us](#forward-local-connections-to-port-8000-on-the-server-to-us)
+  * [Get a directory listing via SFTP](#get-a-directory-listing-via-sftp)
+  * [Connection hopping](#connection-hopping)
+  * [Forward remote X11 connections](#forward-remote-x11-connections)
+  * [Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using `socksv5`)](#dynamic-11-port-forwarding-using-a-socksv5-proxy-using-socksv5)
+  * [Invoke an arbitrary subsystem (e.g. netconf)](#invoke-an-arbitrary-subsystem)
+* [Server Examples](#server-examples)
+  * [Password and public key authentication and non-interactive (exec) command execution](#password-and-public-key-authentication-and-non-interactive-exec-command-execution)
+  * [SFTP-only server](#sftp-only-server)
+* [API](#api)
+  * [Client](#client)
+      * [Client events](#client-events)
+      * [Client methods](#client-methods)
+  * [Server](#server)
+      * [Server events](#server-events)
+      * [Server methods](#server-methods)
+      * [Connection events](#connection-events)
+      * [Connection methods](#connection-methods)
+      * [Session events](#session-events)
+  * [Channel](#channel)
+  * [Pseudo-TTY settings](#pseudo-tty-settings)
+  * [Terminal modes](#terminal-modes)
+
+## Requirements
 
 * [node.js](http://nodejs.org/) -- v0.10 or newer
 
-
-Install
-=======
+## Installation
 
     npm install ssh2
 
+## Client Examples
 
-Client Examples
-===============
+### Execute `uptime` on a server
 
-* Execute `uptime` on a server:
-
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn = new Client();
@@ -59,9 +83,9 @@ conn.on('ready', function() {
 // Stream :: close
 ```
 
-* Start an interactive shell session:
+### Start an interactive shell session
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn = new Client();
@@ -108,9 +132,9 @@ conn.on('ready', function() {
 // Stream :: close
 ```
 
-* Send a raw HTTP request to port 80 on the server:
+### Send a raw HTTP request to port 80 on the server
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn = new Client();
@@ -156,9 +180,9 @@ conn.on('ready', function() {
 // TCP :: CLOSED
 ```
 
-* Forward connections to 127.0.0.1:8000 on the server to us:
+### Forward local connections to port 8000 on the server to us
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn = new Client();
@@ -208,9 +232,9 @@ conn.on('ready', function() {
 // TCP :: CLOSED
 ```
 
-* Get a directory listing via SFTP:
+### Get a directory listing via SFTP
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn = new Client();
@@ -253,9 +277,9 @@ conn.on('ready', function() {
 //        mtime: 1353269007 } } ]
 ```
 
-* Connection hopping:
+### Connection hopping
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 
 var conn1 = new Client();
@@ -296,9 +320,9 @@ conn2.on('ready', function() {
 });
 ```
 
-* Forward X11 connections (xeyes in this case):
+### Forward remote X11 connections
 
-```javascript
+```js
 var net = require('net');
 
 var Client = require('ssh2').Client;
@@ -334,9 +358,9 @@ conn.on('ready', function() {
 });
 ```
 
-* Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5)):
+### Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5))
 
-```javascript
+```js
 var socks = require('socksv5');
 var Client = require('ssh2').Client;
 
@@ -382,9 +406,9 @@ socks.createServer(function(info, accept, deny) {
 //   curl -i --socks5 localhost:1080 google.com
 ```
 
-* Invoke an arbitrary subsystem (netconf in this case):
+### Invoke an arbitrary subsystem
 
-```javascript
+```js
 var Client = require('ssh2').Client;
 var xmlhello = '<?xml version="1.0" encoding="UTF-8"?>' +
                '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">' +
@@ -411,12 +435,11 @@ conn.on('ready', function() {
 });
 ```
 
-Server Examples
-===============
+## Server Examples
 
-* Only allow password and public key authentication and non-interactive (exec) command execution:
+### Password and public key authentication and non-interactive (exec) command execution
 
-```javascript
+```js
 var fs = require('fs');
 var crypto = require('crypto');
 var inspect = require('util').inspect;
@@ -480,9 +503,9 @@ new ssh2.Server({
 });
 ```
 
-* SFTP only server:
+### SFTP-only server
 
-```javascript
+```js
 var fs = require('fs');
 
 var ssh2 = require('ssh2');
@@ -554,10 +577,9 @@ new ssh2.Server({
 });
 ```
 
-* You can find more examples in the `examples` directory of this repository.
+You can find more examples in the `examples` directory of this repository.
 
-API
-===
+## API
 
 `require('ssh2').Client` returns a **_Client_** constructor.
 
@@ -569,8 +591,9 @@ API
 
 `require('ssh2').SFTP_OPEN_MODE` returns the [`SFTPStream.OPEN_MODE` from `ssh2-streams`](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md#sftpstream-static-constants).
 
-Client events
--------------
+### Client
+
+#### Client events
 
 * **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
 
@@ -604,9 +627,7 @@ Client events
 
 * **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to `true` if this was due to error.
 
-
-Client methods
---------------
+#### Client methods
 
 * **(constructor)**() - Creates and returns a new Client instance.
 
@@ -714,9 +735,9 @@ Client methods
 
 * **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
+### Server
 
-Server events
--------------
+#### Server events
 
 * **connection**(< _Connection_ >client, < _object_ >info) - A new client has connected. `info` contains the following properties:
 
@@ -736,7 +757,7 @@ Server events
 
     Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
 
-```javascript
+```js
         { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
           version: {
             protocol: '2.0',
@@ -745,8 +766,7 @@ Server events
           comments: 'Ubuntu-2ubuntu2' }
 ```
 
-Server methods
---------------
+#### Server methods
 
 * **(constructor)**(< _object_ >config[, < _function_ >connectionListener]) - Creates and returns a new Server instance. Server instances also have the same methods/properties/events as [`net.Server`](http://nodejs.org/docs/latest/api/net.html#net_class_net_server). `connectionListener` if supplied, is added as a `connection` listener. Valid `config` properties:
 
@@ -774,9 +794,7 @@ Server methods
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
-
-Connection events
------------------
+#### Connection events
 
 * **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
 
@@ -844,8 +862,7 @@ Connection events
 
 * **close**(< _boolean_ >hadError) - The client socket was closed. `hadError` is set to `true` if this was due to error.
 
-Connection methods
-------------------
+#### Connection methods
 
 * **end**() - _boolean_ - Closes the client connection. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
@@ -857,9 +874,7 @@ Connection methods
 
 * **rekey**([< _function_ >callback]) - _boolean_ - Initiates a rekeying with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
-
-Session events
---------------
+#### Session events
 
 * **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
 
@@ -919,18 +934,15 @@ Session events
 
 * **close**() - The session was closed.
 
+### Channel
 
-Channel
--------
-
-This is a normal **streams2** Duplex Stream, with the following changes:
+This is a normal **streams2** Duplex Stream (used both by clients and servers), with the following changes:
 
 * A boolean property `allowHalfOpen` exists and behaves similarly to the property of the same name for `net.Socket`. When the stream's end() is called, if `allowHalfOpen` is `true`, only EOF will be sent (the server can still send data if they have not already sent EOF). The default value for this property is `true`.
 
 * A `close` event is emitted once the channel is completely closed on both the client and server.
 
-* Client-only:
-
+* Client-specific:
 
     * For exec():
 
@@ -948,7 +960,7 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
         * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _boolean_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
-* Server-only:
+* Server-specific:
 
     * For exec-enabled channel instances there is an additional method available that may be called right before you close the channel. It has two different signatures:
 
@@ -958,19 +970,17 @@ This is a normal **streams2** Duplex Stream, with the following changes:
 
     * For exec and shell-enabled channel instances, `channel.stderr` is a writable stream.
 
+### Pseudo-TTY settings
 
-Pseudo-TTY settings
--------------------
+* **rows** - < _integer_ > - Number of rows. **Default:** `24`
 
-* **rows** - < _integer_ > - Number of rows **Default:** `24`
+* **cols** - < _integer_ > - Number of columns. **Default:** `80`
 
-* **cols** - < _integer_ > - Number of columns **Default:** `80`
+* **height** - < _integer_ > - Height in pixels. **Default:** `480`
 
-* **height** - < _integer_ > - Height in pixels **Default:** `480`
+* **width** - < _integer_ > - Width in pixels. **Default:** `640`
 
-* **width** - < _integer_ > - Width in pixels **Default:** `640`
-
-* **term** - < _string_ > - The value to use for $TERM **Default:** `'vt100'`
+* **term** - < _string_ > - The value to use for $TERM. **Default:** `'vt100'`
 
 `rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
 
@@ -978,84 +988,62 @@ Pixel dimensions refer to the drawable area of the window.
 
 Zero dimension parameters are ignored.
 
+### Terminal modes
 
-Terminal modes
---------------
-
-<pre>
-Name           Description
-------------------------------------------------------------
-VINTR          Interrupt character; 255 if none.  Similarly
-               for the other characters.  Not all of these
-               characters are supported on all systems.
-VQUIT          The quit character (sends SIGQUIT signal on
-               POSIX systems).
-VERASE         Erase the character to left of the cursor.
-VKILL          Kill the current input line.
-VEOF           End-of-file character (sends EOF from the
-               terminal).
-VEOL           End-of-line character in addition to
-               carriage return and/or linefeed.
-VEOL2          Additional end-of-line character.
-VSTART         Continues paused output (normally
-               control-Q).
-VSTOP          Pauses output (normally control-S).
-VSUSP          Suspends the current program.
-VDSUSP         Another suspend character.
-VREPRINT       Reprints the current input line.
-VWERASE        Erases a word left of cursor.
-VLNEXT         Enter the next character typed literally,
-               even if it is a special character
-VFLUSH         Character to flush output.
-VSWTCH         Switch to a different shell layer.
-VSTATUS        Prints system status line (load, command,
-               pid, etc).
-VDISCARD       Toggles the flushing of terminal output.
-IGNPAR         The ignore parity flag.  The parameter
-               SHOULD be 0 if this flag is FALSE,
-               and 1 if it is TRUE.
-PARMRK         Mark parity and framing errors.
-INPCK          Enable checking of parity errors.
-ISTRIP         Strip 8th bit off characters.
-INLCR          Map NL into CR on input.
-IGNCR          Ignore CR on input.
-ICRNL          Map CR to NL on input.
-IUCLC          Translate uppercase characters to
-               lowercase.
-IXON           Enable output flow control.
-IXANY          Any char will restart after stop.
-IXOFF          Enable input flow control.
-IMAXBEL        Ring bell on input queue full.
-ISIG           Enable signals INTR, QUIT, [D]SUSP.
-ICANON         Canonicalize input lines.
-XCASE          Enable input and output of uppercase
-               characters by preceding their lowercase
-               equivalents with "\".
-ECHO           Enable echoing.
-ECHOE          Visually erase chars.
-ECHOK          Kill character discards current line.
-ECHONL         Echo NL even if ECHO is off.
-NOFLSH         Don't flush after interrupt.
-TOSTOP         Stop background jobs from output.
-IEXTEN         Enable extensions.
-ECHOCTL        Echo control characters as ^(Char).
-ECHOKE         Visual erase for line kill.
-PENDIN         Retype pending input.
-OPOST          Enable output processing.
-OLCUC          Convert lowercase to uppercase.
-ONLCR          Map NL to CR-NL.
-OCRNL          Translate carriage return to newline
-               (output).
-ONOCR          Translate newline to carriage
-               return-newline (output).
-ONLRET         Newline performs a carriage return
-               (output).
-CS7            7 bit mode.
-CS8            8 bit mode.
-PARENB         Parity enable.
-PARODD         Odd parity, else even.
-TTY_OP_ISPEED  Specifies the input baud rate in
-               bits per second.
-TTY_OP_OSPEED  Specifies the output baud rate in
-               bits per second.
-</pre>
+Name           | Description
+-------------- | ------------
+VINTR          | Interrupt character; 255 if none. Similarly for the other characters. Not all of these characters are supported on all systems.
+VQUIT          | The quit character (sends SIGQUIT signal on POSIX systems).
+VERASE         | Erase the character to left of the cursor.
+VKILL          | Kill the current input line.
+VEOF           | End-of-file character (sends EOF from the terminal).
+VEOL           | End-of-line character in addition to carriage return and/or linefeed.
+VEOL2          | Additional end-of-line character.
+VSTART         | Continues paused output (normally control-Q).
+VSTOP          | Pauses output (normally control-S).
+VSUSP          | Suspends the current program.
+VDSUSP         | Another suspend character.
+VREPRINT       | Reprints the current input line.
+VWERASE        | Erases a word left of cursor.
+VLNEXT         | Enter the next character typed literally, even if it is a special character
+VFLUSH         | Character to flush output.
+VSWTCH         | Switch to a different shell layer.
+VSTATUS        | Prints system status line (load, command, pid, etc).
+VDISCARD       | Toggles the flushing of terminal output.
+IGNPAR         | The ignore parity flag. The parameter SHOULD be 0 if this flag is FALSE, and 1 if it is TRUE.
+PARMRK         | Mark parity and framing errors.
+INPCK          | Enable checking of parity errors.
+ISTRIP         | Strip 8th bit off characters.
+INLCR          | Map NL into CR on input.
+IGNCR          | Ignore CR on input.
+ICRNL          | Map CR to NL on input.
+IUCLC          | Translate uppercase characters to lowercase.
+IXON           | Enable output flow control.
+IXANY          | Any char will restart after stop.
+IXOFF          | Enable input flow control.
+IMAXBEL        | Ring bell on input queue full.
+ISIG           | Enable signals INTR, QUIT, [D]SUSP.
+ICANON         | Canonicalize input lines.
+XCASE          | Enable input and output of uppercase characters by preceding their lowercase equivalents with "\".
+ECHO           | Enable echoing.
+ECHOE          | Visually erase chars.
+ECHOK          | Kill character discards current line.
+ECHONL         | Echo NL even if ECHO is off.
+NOFLSH         | Don't flush after interrupt.
+TOSTOP         | Stop background jobs from output.
+IEXTEN         | Enable extensions.
+ECHOCTL        | Echo control characters as ^(Char).
+ECHOKE         | Visual erase for line kill.
+PENDIN         | Retype pending input.
+OPOST          | Enable output processing.
+OLCUC          | Convert lowercase to uppercase.
+ONLCR          | Map NL to CR-NL.
+OCRNL          | Translate carriage return to newline (output).
+ONOCR          | Translate newline to carriage return-newline (output).
+ONLRET         | Newline performs a carriage return (output).
+CS7            | 7 bit mode.
+CS8            | 8 bit mode.
+PARENB         | Parity enable.
+PARODD         | Odd parity, else even.
+TTY_OP_ISPEED  | Specifies the input baud rate in bits per second.
+TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
