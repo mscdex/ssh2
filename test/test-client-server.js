@@ -42,6 +42,7 @@ if (semver.gte(process.version, '5.2.0')) {
   );
 }
 var DEBUG = false;
+var DEFAULT_TEST_TIMEOUT = 5 * 1000;
 
 var tests = [
   { run: function() {
@@ -1925,7 +1926,7 @@ var tests = [
   },
 ];
 
-function setup(self, clientcfg, servercfg) {
+function setup(self, clientcfg, servercfg, timeout) {
   self.state = {
     clientReady: false,
     serverReady: false,
@@ -1948,6 +1949,9 @@ function setup(self, clientcfg, servercfg) {
 
   var client = new Client();
   var server = new Server(servercfg);
+  if (timeout === undefined)
+    timeout = DEFAULT_TEST_TIMEOUT;
+  var timer;
 
   server.on('error', onError)
         .on('connection', function(conn) {
@@ -1987,12 +1991,19 @@ function setup(self, clientcfg, servercfg) {
              makeMsg('Received multiple close events for server'));
       self.state.serverClose = true;
     }
-    if (self.state.clientClose && self.state.serverClose)
+    if (self.state.clientClose && self.state.serverClose) {
+      clearTimeout(timer);
       next();
+    }
   }
 
   process.nextTick(function() {
     server.listen(0, 'localhost', function() {
+      if (timeout >= 0) {
+        timer = setTimeout(function() {
+          assert(false, makeMsg('Test timed out'));
+        }, timeout);
+      }
       if (clientcfg.sock)
         clientcfg.sock.connect(server.address().port, 'localhost');
       else {
