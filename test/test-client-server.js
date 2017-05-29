@@ -1924,6 +1924,91 @@ var tests = [
     },
     what: 'Empty user string works'
   },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var socketPath = '/foo';
+      var events = [];
+      var expected = [
+        ['client', 'openssh_forwardInStreamLocal'],
+        ['server',
+          'streamlocal-forward@openssh.com',
+          { socketPath: socketPath }],
+        ['client', 'forward callback'],
+        ['client', 'unix connection', { socketPath: socketPath }],
+        ['client', 'socket data', '1'],
+        ['server', 'socket data', '2'],
+        ['client', 'socket end'],
+        ['server',
+         'cancel-streamlocal-forward@openssh.com',
+         { socketPath: socketPath }],
+        ['client', 'cancel callback']
+      ];
+
+      r = setup(
+        this,
+        { username: USER },
+        { hostKeys: [HOST_KEY_RSA], ident: 'OpenSSH_7.1' }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        });
+        conn.on('request', function(accept, reject, name, info) {
+          events.push(['server', name, info]);
+          if (name === 'streamlocal-forward@openssh.com') {
+            accept();
+            conn.openssh_forwardOutStreamLocal(socketPath, function(err, ch) {
+              assert(!err, makeMsg('Unexpected error: ' + err));
+              ch.write('1');
+              ch.on('data', function(data) {
+                events.push(['server', 'socket data', data.toString()]);
+                ch.close();
+              });
+            });
+          } else if (name === 'cancel-streamlocal-forward@openssh.com') {
+            accept();
+          } else {
+            reject();
+          }
+        });
+      });
+
+      client.on('ready', function() {
+        // request forwarding
+        events.push(['client', 'openssh_forwardInStreamLocal']);
+        client.openssh_forwardInStreamLocal(socketPath, function(err) {
+          assert(!err, makeMsg('Unexpected error: ' + err));
+          events.push(['client', 'forward callback']);
+        });
+        client.on('unix connection', function(info, accept, reject) {
+          events.push(['client', 'unix connection', info]);
+          var stream = accept();
+          stream.on('data', function(data) {
+            events.push(['client', 'socket data', data.toString()]);
+            stream.write('2');
+          }).on('end', function() {
+            events.push(['client', 'socket end']);
+            client.openssh_unforwardInStreamLocal(socketPath, function(err) {
+              assert(!err, makeMsg('Unexpected error: ' + err));
+              events.push(['client', 'cancel callback']);
+              client.end();
+            });
+          });
+        });
+      });
+      client.on('end', function() {
+        var msg = 'Events mismatch\nActual:\n' + inspect(events)
+                  + '\nExpected:\n' + inspect(expected);
+        assert.deepEqual(events, expected, makeMsg(msg));
+      });
+    },
+    what: 'OpenSSH forwarded UNIX socket connection'
+  },
 ];
 
 function setup(self, clientcfg, servercfg, timeout) {
