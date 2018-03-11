@@ -5,7 +5,7 @@
   "main": "./lib/client",
   "engines": { "node": ">=4.5.0" },
   "dependencies": {
-    "ssh2-streams": "~0.1.18"
+    "ssh2-streams": "~0.2.0"
   },
   "devDependencies": {
     "semver": "^5.1.0"
