@@ -923,7 +923,7 @@ var tests = [
       var client;
       var server;
       var r;
-      var expHandle = new Buffer([1, 2, 3, 4]);
+      var expHandle = Buffer.from([1, 2, 3, 4]);
       var sawOpenS = false;
       var sawCloseS = false;
       var sawOpenC = false;
@@ -1616,7 +1616,7 @@ var tests = [
               var stream = accept();
               // Write enough to bring the Client's channel window to 0
               // (currently 1MB)
-              var buf = new Buffer(2048);
+              var buf = Buffer.allocUnsafe(2048);
               for (var i = 0; i < 1000; ++i)
                 stream.write(buf);
               stream.exit(0);
