@@ -41,7 +41,7 @@ Development/testing is done against OpenSSH (7.1 currently).
 
 ## Requirements
 
-* [node.js](http://nodejs.org/) -- v0.10 or newer
+* [node.js](http://nodejs.org/) -- v4.5.0 or newer
 
 ## Installation
 

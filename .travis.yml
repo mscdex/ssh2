@@ -4,11 +4,10 @@ notifications:
   email: false
 env:
   matrix:
-  - TRAVIS_NODE_VERSION="0.10"
-  - TRAVIS_NODE_VERSION="0.12"
   - TRAVIS_NODE_VERSION="4"
   - TRAVIS_NODE_VERSION="6"
-  - TRAVIS_NODE_VERSION="7"
+  - TRAVIS_NODE_VERSION="8"
+  - TRAVIS_NODE_VERSION="9"
 install:
   - rm -rf ~/.nvm && git clone https://github.com/creationix/nvm.git ~/.nvm && source ~/.nvm/nvm.sh && nvm install $TRAVIS_NODE_VERSION
   - node --version
