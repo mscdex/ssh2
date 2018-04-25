@@ -66,7 +66,7 @@ var tests = [
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
@@ -118,7 +118,7 @@ var tests = [
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('DSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_DSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
