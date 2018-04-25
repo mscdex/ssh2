@@ -74,7 +74,7 @@ var tests = [
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
@@ -119,7 +119,7 @@ var tests = [
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_ENC_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
@@ -160,7 +160,7 @@ var tests = [
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('RSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_PPK_RSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
@@ -204,7 +204,7 @@ var tests = [
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('DSA-SHA1');
+            var verifier = crypto.createVerify('sha1');
             var pem = CLIENT_KEY_DSA_PUB.publicOrig;
             verifier.update(ctx.blob);
             assert(verifier.verify(pem, ctx.signature),
@@ -446,7 +446,7 @@ var tests = [
                  makeMsg('Wrong local hostname'));
           assert(ctx.localUsername === username,
                  makeMsg('Wrong local username'));
-          var verifier = crypto.createVerify('RSA-SHA1');
+          var verifier = crypto.createVerify('sha1');
           var pem = CLIENT_KEY_RSA_PUB.publicOrig;
           verifier.update(ctx.blob);
           assert(verifier.verify(pem, ctx.signature),
