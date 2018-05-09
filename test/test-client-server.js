@@ -1729,6 +1729,7 @@ var tests = [
           assert(!srvError, makeMsg('Unexpected multiple server errors'));
           srvError = err;
         }
+        assert.strictEqual(err.level, 'handshake');
         assert(/handshake failed/i.test(err.message),
                makeMsg('Wrong error message'));
       }
