@@ -42,7 +42,7 @@ if (semver.gte(process.version, '5.2.0')) {
   );
 }
 var DEBUG = false;
-var DEFAULT_TEST_TIMEOUT = 5 * 1000;
+var DEFAULT_TEST_TIMEOUT = 30 * 1000;
 
 var tests = [
   { run: function() {
