@@ -480,7 +480,7 @@ new ssh2.Server({
         ctx.accept();
       }
     } else
-      ctx.reject();
+      ctx.reject(['publickey','password']);
   }).on('ready', function() {
     console.log('Client authenticated!');
 
@@ -527,7 +527,7 @@ new ssh2.Server({
         && ctx.password === 'bar')
       ctx.accept();
     else
-      ctx.reject();
+      ctx.reject(['password']);
   }).on('ready', function() {
     console.log('Client authenticated!');
 
