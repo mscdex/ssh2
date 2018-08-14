@@ -709,7 +709,7 @@ You can find more examples in the `examples` directory of this repository.
 
         * **protocol** - _string_ - The name of the X11 authentication method used **Default:** `MIT-MAGIC-COOKIE-1`
 
-        * **cookie** - _string_ - The X11 authentication cookie encoded in hexadecimal. **Default:** random 16 byte hex string in ASCII `crypto.randomBytes(16).toString('hex')`
+        * **cookie** - _string_ - The X11 authentication cookie encoded in hexadecimal. **Default:** random 16 byte hex string in ASCII
 
 * **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _boolean_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
