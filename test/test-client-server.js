@@ -2072,7 +2072,7 @@ var tests = [
       client.on('error', onError);
       client.on('close', function() {
         assert(cliError, makeMsg('Expected client error'));
-        assert(srvError, makeMsg('Expected client error'));
+        assert(srvError, makeMsg('Expected server error'));
       });
     },
     what: 'Handshake errors are emitted'
