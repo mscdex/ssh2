@@ -790,6 +790,10 @@ var tests = [
             var x11 = false;
             session.once('x11', function(accept, reject, info) {
               x11 = true;
+              assert(info.protocol === 'MIT-MAGIC-COOKIE-1',
+                makeMsg('Wrong protocol: ' + info.protocol))
+              assert(info.screen === 0,
+                makeMsg('Wrong screen: ' + info.screen))
               accept && accept();
             }).once('exec', function(accept, reject, info) {
               assert(info.command === 'foo --bar',
@@ -818,6 +822,71 @@ var tests = [
       });
     },
     what: 'Exec with X11 forwarding'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var out = '';
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.once('session', function(accept, reject) {
+            var session = accept();
+            var x11 = false;
+            session.once('x11', function(accept, reject, info) {
+              x11 = true;
+              assert(info.cookie === '3765633933623366653637646565663736356563643163396632333466656137',
+                makeMsg('Wrong cookie: ' + info.cookie))
+              assert(info.protocol === 'NOT-magic',
+                makeMsg('Wrong protocol: ' + info.protocol))
+              assert(info.screen === 2,
+                makeMsg('Wrong screen: ' + info.screen))
+              accept && accept();
+            }).once('exec', function(accept, reject, info) {
+              assert(info.command === 'foo --bar',
+                     makeMsg('Wrong exec command: ' + info.command));
+              var stream = accept();
+              stream.write(inspect(x11));
+              stream.exit(100);
+              stream.end();
+              conn.end();
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.exec('foo --bar',
+                    { x11: {
+                      protocol: 'NOT-magic',
+                      cookie: '7ec93b3fe67deef765ecd1c9f234fea7',
+                      screen: 2
+                      }
+                    },
+                    function(err, stream) {
+          assert(!err, makeMsg('Unexpected exec error: ' + err));
+          stream.on('data', function(d) {
+            out += d;
+          });
+        });
+      }).on('end', function() {
+        assert(out === 'true',
+               makeMsg('Wrong stdout data: ' + inspect(out)));
+      });
+    },
+    what: 'X11 with custom screen, cookie, and protocol'
   },
   { run: function() {
       var client;
