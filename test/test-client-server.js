@@ -794,6 +794,8 @@ var tests = [
                 makeMsg('Wrong protocol: ' + info.protocol))
               assert(info.screen === 0,
                 makeMsg('Wrong screen: ' + info.screen))
+              assert(info.cookie.length === 64, 
+                makeMsg('Wrong cookie'))
               accept && accept();
             }).once('exec', function(accept, reject, info) {
               assert(info.command === 'foo --bar',
