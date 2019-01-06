@@ -4,8 +4,6 @@ var OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE;
 var STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE;
 var utils = require('ssh2-streams').utils;
 
-var semver = require('semver');
-
 var net = require('net');
 var fs = require('fs');
 var crypto = require('crypto');
@@ -25,22 +23,16 @@ var KEY_RSA_BAD = fs.readFileSync(join(fixturesdir, 'bad_rsa_private_key'));
 var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
 var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
 var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
-var CLIENT_KEY_ENC_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa_enc'));
-var CLIENT_KEY_ENC_RSA_PUB = utils.parseKey(CLIENT_KEY_ENC_RSA);
-utils.decryptKey(CLIENT_KEY_ENC_RSA_PUB, 'foobarbaz');
-CLIENT_KEY_ENC_RSA_PUB = utils.genPublicKey(CLIENT_KEY_ENC_RSA_PUB);
-var CLIENT_KEY_PPK_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
-var CLIENT_KEY_PPK_RSA_PUB = utils.parseKey(CLIENT_KEY_PPK_RSA);
-var CLIENT_KEY_RSA = fs.readFileSync(join(fixturesdir, 'id_rsa'));
-var CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA));
-var CLIENT_KEY_DSA = fs.readFileSync(join(fixturesdir, 'id_dsa'));
-var CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA));
-if (semver.gte(process.version, '5.2.0')) {
-  var CLIENT_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
-  var CLIENT_KEY_ECDSA_PUB = utils.genPublicKey(
-    utils.parseKey(CLIENT_KEY_ECDSA)
-  );
-}
+var CLIENT_KEY_ENC_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa_enc'));
+var CLIENT_KEY_ENC_RSA = utils.parseKey(CLIENT_KEY_ENC_RSA_RAW, 'foobarbaz');
+var CLIENT_KEY_PPK_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
+var CLIENT_KEY_PPK_RSA = utils.parseKey(CLIENT_KEY_PPK_RSA_RAW);
+var CLIENT_KEY_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa'));
+var CLIENT_KEY_RSA = utils.parseKey(CLIENT_KEY_RSA_RAW);
+var CLIENT_KEY_DSA_RAW = fs.readFileSync(join(fixturesdir, 'id_dsa'));
+var CLIENT_KEY_DSA = utils.parseKey(CLIENT_KEY_DSA_RAW);
+var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
+var CLIENT_KEY_ECDSA = utils.parseKey(CLIENT_KEY_ECDSA_RAW);
 var DEBUG = false;
 var DEFAULT_TEST_TIMEOUT = 30 * 1000;
 
@@ -53,7 +45,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_RSA
+          privateKey: CLIENT_KEY_RSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
@@ -70,14 +62,11 @@ var tests = [
                  makeMsg('Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_RSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg('Could not verify PK signature'));
             ctx.accept();
           } else
@@ -97,7 +86,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_ENC_RSA,
+          privateKey: CLIENT_KEY_ENC_RSA_RAW,
           passphrase: 'foobarbaz',
         },
         { hostKeys: [HOST_KEY_RSA] }
@@ -115,14 +104,11 @@ var tests = [
                  makeMsg('Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ENC_RSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_ENC_RSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_ENC_RSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_ENC_RSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg('Could not verify PK signature'));
             ctx.accept();
           } else
@@ -142,7 +128,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_PPK_RSA
+          privateKey: CLIENT_KEY_PPK_RSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
@@ -160,10 +146,7 @@ var tests = [
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_PPK_RSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_PPK_RSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg('Could not verify PK signature'));
             ctx.accept();
           } else
@@ -183,7 +166,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_DSA
+          privateKey: CLIENT_KEY_DSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
@@ -200,14 +183,11 @@ var tests = [
                  makeMsg('Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-dss',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_DSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_DSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_DSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg('Could not verify PK signature'));
             ctx.accept();
           } else
@@ -220,8 +200,6 @@ var tests = [
     what: 'Authenticate with a DSA key'
   },
   { run: function() {
-      if (semver.lt(process.version, '5.2.0'))
-        return next();
       var client;
       var server;
       var r;
@@ -229,7 +207,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_ECDSA
+          privateKey: CLIENT_KEY_ECDSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
@@ -246,14 +224,11 @@ var tests = [
                  makeMsg('Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ECDSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha256');
-            var pem = CLIENT_KEY_ECDSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_ECDSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg('Could not verify PK signature'));
             ctx.accept();
           } else
@@ -302,8 +277,6 @@ var tests = [
     what: 'Server with DSA host key'
   },
   { run: function() {
-      if (semver.lt(process.version, '5.2.0'))
-        return next();
       var client;
       var server;
       var r;
@@ -418,7 +391,7 @@ var tests = [
       r = setup(
         this,
         { username: USER,
-          privateKey: CLIENT_KEY_RSA,
+          privateKey: CLIENT_KEY_RSA_RAW,
           localHostname: hostname,
           localUsername: username
         },
@@ -437,7 +410,7 @@ var tests = [
                  makeMsg('Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg('Public key mismatch'));
           assert(ctx.signature,
@@ -446,10 +419,7 @@ var tests = [
                  makeMsg('Wrong local hostname'));
           assert(ctx.localUsername === username,
                  makeMsg('Wrong local username'));
-          var verifier = crypto.createVerify('sha1');
-          var pem = CLIENT_KEY_RSA_PUB.publicOrig;
-          verifier.update(ctx.blob);
-          assert(verifier.verify(pem, ctx.signature),
+          assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
                  makeMsg('Could not verify hostbased signature'));
           ctx.accept();
         }).on('ready', function() {

@@ -1,10 +1,7 @@
 var Server = require('../lib/server');
 var utils = require('ssh2-streams').utils;
 
-var semver = require('semver');
-
 var fs = require('fs');
-var crypto = require('crypto');
 var path = require('path');
 var join = path.join;
 var assert = require('assert');
@@ -21,18 +18,15 @@ var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
 var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
 var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
 var CLIENT_KEY_RSA_PATH = join(fixturesdir, 'id_rsa');
-var CLIENT_KEY_RSA = fs.readFileSync(CLIENT_KEY_RSA_PATH);
-var CLIENT_KEY_RSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_RSA));
+var CLIENT_KEY_RSA_RAW = fs.readFileSync(CLIENT_KEY_RSA_PATH);
+var CLIENT_KEY_RSA = utils.parseKey(CLIENT_KEY_RSA_RAW);
 var CLIENT_KEY_DSA_PATH = join(fixturesdir, 'id_dsa');
-var CLIENT_KEY_DSA = fs.readFileSync(CLIENT_KEY_DSA_PATH);
-var CLIENT_KEY_DSA_PUB = utils.genPublicKey(utils.parseKey(CLIENT_KEY_DSA));
-if (semver.gte(process.version, '5.2.0')) {
-  var CLIENT_KEY_ECDSA_PATH = join(fixturesdir, 'id_ecdsa');
-  var CLIENT_KEY_ECDSA = fs.readFileSync(CLIENT_KEY_ECDSA_PATH);
-  var CLIENT_KEY_ECDSA_PUB = utils.genPublicKey(
-    utils.parseKey(CLIENT_KEY_ECDSA)
-  );
-}
+var CLIENT_KEY_DSA_RAW = fs.readFileSync(CLIENT_KEY_DSA_PATH);
+var CLIENT_KEY_DSA = utils.parseKey(CLIENT_KEY_DSA_RAW);
+var CLIENT_KEY_ECDSA_PATH = join(fixturesdir, 'id_ecdsa');
+var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(CLIENT_KEY_ECDSA_PATH);
+var CLIENT_KEY_ECDSA = utils.parseKey(CLIENT_KEY_ECDSA_RAW);
+
 var opensshVer;
 var DEBUG = false;
 
@@ -62,14 +56,11 @@ var tests = [
                  makeMsg(what, 'Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-rsa',
                  makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_RSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -114,14 +105,11 @@ var tests = [
                  makeMsg(what, 'Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ssh-dss',
                  makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_DSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha1');
-            var pem = CLIENT_KEY_DSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_DSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -147,8 +135,6 @@ var tests = [
     what: 'Authenticate with a DSA key'
   },
   { run: function() {
-      if (semver.lt(process.version, '5.2.0'))
-        return next();
       var what = this.what;
       var server;
 
@@ -168,14 +154,11 @@ var tests = [
                  makeMsg(what, 'Unexpected username: ' + ctx.username));
           assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
                  makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ECDSA_PUB.public,
+          assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
                            ctx.key.data,
                            makeMsg(what, 'Public key mismatch'));
           if (ctx.signature) {
-            var verifier = crypto.createVerify('sha256');
-            var pem = CLIENT_KEY_ECDSA_PUB.publicOrig;
-            verifier.update(ctx.blob);
-            assert(verifier.verify(pem, ctx.signature),
+            assert(CLIENT_KEY_ECDSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg(what, 'Could not verify PK signature'));
             ctx.accept();
           } else
@@ -233,8 +216,6 @@ var tests = [
     what: 'Server with DSA host key'
   },
   { run: function() {
-      if (semver.lt(process.version, '5.2.0'))
-        return next();
       var server;
 
       server = setup(
