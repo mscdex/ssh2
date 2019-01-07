@@ -466,6 +466,199 @@ var tests = [
       var client;
       var server;
       var r;
+      var calls = 0;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          privateKey: CLIENT_KEY_RSA_RAW,
+          authHandler: function(methodsLeft, partial, cb) {
+            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
+            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
+            assert(partial === null, makeMsg('expected null partial'));
+            return 'none';
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      var attempts = 0;
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(++attempts === 1, makeMsg('too many auth attempts'));
+          assert(ctx.method === 'none',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Custom authentication order (sync)'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var calls = 0;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          privateKey: CLIENT_KEY_RSA_RAW,
+          authHandler: function(methodsLeft, partial, cb) {
+            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
+            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
+            assert(partial === null, makeMsg('expected null partial'));
+            process.nextTick(cb, 'none');
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      var attempts = 0;
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(++attempts === 1, makeMsg('too many auth attempts'));
+          assert(ctx.method === 'none',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Custom authentication order (async)'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var cliError;
+      var calls = 0;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          privateKey: CLIENT_KEY_RSA_RAW,
+          authHandler: function(methodsLeft, partial, cb) {
+            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
+            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
+            assert(partial === null, makeMsg('expected null partial'));
+            return false;
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      // Remove default client error handler added by `setup()` since we are
+      // expecting an error in this case
+      client.removeAllListeners('error');
+
+      client.on('error', function(err) {
+        cliError = err;
+        assert.strictEqual(err.level, 'client-authentication');
+        assert(/configured authentication methods failed/i.test(err.message),
+               makeMsg('Wrong error message'));
+      }).on('close', function() {
+        assert(cliError, makeMsg('Expected client error'));
+      });
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(false, makeMsg('should not see auth attempt'));
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Custom authentication order (no methods)'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var calls = 0;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          privateKey: CLIENT_KEY_RSA_RAW,
+          authHandler: function(methodsLeft, partial, cb) {
+            switch (calls++) {
+              case 0:
+                assert(methodsLeft === null,
+                       makeMsg('expected null methodsLeft'));
+                assert(partial === null, makeMsg('expected null partial'));
+                return 'publickey';
+              case 1:
+                assert.deepStrictEqual(methodsLeft,
+                                       ['password'],
+                                       makeMsg('expected password method left'
+                                               + ', saw: ' + methodsLeft));
+                assert(partial === true, makeMsg('expected partial success'));
+                return 'password';
+              default:
+                assert(false, makeMsg('authHandler called too many times'));
+            }
+          }
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      var attempts = 0;
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          assert(++attempts === calls,
+                 makeMsg('server<->client state mismatch'));
+          switch (calls) {
+            case 1:
+              assert(ctx.method === 'publickey',
+                     makeMsg('Unexpected auth method: ' + ctx.method));
+              assert(ctx.username === USER,
+                     makeMsg('Unexpected username: ' + ctx.username));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     makeMsg('Unexpected key algo: ' + ctx.key.algo));
+              assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               makeMsg('Public key mismatch'));
+              ctx.reject(['password'], true);
+              break;
+            case 2:
+              assert(ctx.method === 'password',
+                     makeMsg('Unexpected auth method: ' + ctx.method));
+              assert(ctx.username === USER,
+                     makeMsg('Unexpected username: ' + ctx.username));
+              assert(ctx.password === PASSWORD,
+                     makeMsg('Unexpected password: ' + ctx.password));
+              ctx.accept();
+              break;
+            default:
+              assert(false, makeMsg('bad client auth state'));
+          }
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Custom authentication order (multi-step)'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
       var verified = false;
 
       r = setup(
