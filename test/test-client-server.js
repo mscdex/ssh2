@@ -29,6 +29,9 @@ var CLIENT_KEY_PPK_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
 var CLIENT_KEY_PPK_RSA = utils.parseKey(CLIENT_KEY_PPK_RSA_RAW);
 var CLIENT_KEY_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa'));
 var CLIENT_KEY_RSA = utils.parseKey(CLIENT_KEY_RSA_RAW);
+var CLIENT_KEY_RSA_NEW_RAW =
+    fs.readFileSync(join(fixturesdir, 'openssh_new_rsa'));
+var CLIENT_KEY_RSA_NEW = utils.parseKey(CLIENT_KEY_RSA_NEW_RAW)[0];
 var CLIENT_KEY_DSA_RAW = fs.readFileSync(join(fixturesdir, 'id_dsa'));
 var CLIENT_KEY_DSA = utils.parseKey(CLIENT_KEY_DSA_RAW);
 var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
@@ -76,7 +79,48 @@ var tests = [
         });
       });
     },
-    what: 'Authenticate with an RSA key'
+    what: 'Authenticate with an RSA key (old OpenSSH)'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+
+      r = setup(
+        this,
+        { username: USER,
+          privateKey: CLIENT_KEY_RSA_NEW_RAW
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          if (ctx.method === 'none')
+            return ctx.reject();
+          assert(ctx.method === 'publickey',
+                 makeMsg('Unexpected auth method: ' + ctx.method));
+          assert(ctx.username === USER,
+                 makeMsg('Unexpected username: ' + ctx.username));
+          assert(ctx.key.algo === 'ssh-rsa',
+                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
+          assert.deepEqual(CLIENT_KEY_RSA_NEW.getPublicSSH(),
+                           ctx.key.data,
+                           makeMsg('Public key mismatch'));
+          if (ctx.signature) {
+            assert(CLIENT_KEY_RSA_NEW.verify(ctx.blob, ctx.signature) === true,
+                   makeMsg('Could not verify PK signature'));
+            ctx.accept();
+          } else
+            ctx.accept();
+        }).on('ready', function() {
+          conn.end();
+        });
+      });
+    },
+    what: 'Authenticate with an RSA key (new OpenSSH)'
   },
   { run: function() {
       var client;
