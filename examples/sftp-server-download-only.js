@@ -1,3 +1,4 @@
+var crypto = require('crypto');
 var constants = require('constants');
 var fs = require('fs');
 
@@ -5,18 +6,34 @@ var ssh2 = require('ssh2');
 var OPEN_MODE = ssh2.SFTP_OPEN_MODE;
 var STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
+var allowedUser = Buffer.from('foo');
+var allowedPassword = Buffer.from('bar');
+
 new ssh2.Server({
   hostKeys: [fs.readFileSync('host.key')]
 }, function(client) {
   console.log('Client connected!');
 
   client.on('authentication', function(ctx) {
-    if (ctx.method === 'password'
-        && ctx.username === 'foo'
-        && ctx.password === 'bar')
-      ctx.accept();
-    else
-      ctx.reject(['password']);
+    var user = Buffer.from(ctx.username);
+    if (user.length !== allowedUser.length
+        || !crypto.timingSafeEqual(user, allowedUser)) {
+      return ctx.reject(['password']);
+    }
+
+    switch (ctx.method) {
+      case 'password':
+        var password = Buffer.from(ctx.password);
+        if (password.length !== allowedPassword.length
+            || !crypto.timingSafeEqual(password, allowedPassword)) {
+          return ctx.reject(['password']);
+        }
+        break;
+      default:
+        return ctx.reject(['password']);
+    }
+
+    ctx.accept();
   }).on('ready', function() {
     console.log('Client authenticated!');
 

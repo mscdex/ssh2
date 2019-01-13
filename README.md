@@ -442,11 +442,12 @@ var fs = require('fs');
 var crypto = require('crypto');
 var inspect = require('util').inspect;
 
-var buffersEqual = require('buffer-equal-constant-time');
 var ssh2 = require('ssh2');
 var utils = ssh2.utils;
 
-var pubKey = utils.genPublicKey(utils.parseKey(fs.readFileSync('user.pub')));
+var allowedUser = Buffer.from('foo');
+var allowedPassword = Buffer.from('bar');
+var allowedPubKey = utils.parseKey(fs.readFileSync('foo.pub'));
 
 new ssh2.Server({
   hostKeys: [fs.readFileSync('host.key')]
@@ -454,31 +455,34 @@ new ssh2.Server({
   console.log('Client connected!');
 
   client.on('authentication', function(ctx) {
-    if (ctx.method === 'password'
-        // Note: Don't do this in production code, see
-        // https://www.brendanlong.com/timing-attacks-and-usernames.html
-        // In node v6.0.0+, you can use `crypto.timingSafeEqual()` to safely
-        // compare two values.
-        && ctx.username === 'foo'
-        && ctx.password === 'bar')
-      ctx.accept();
-    else if (ctx.method === 'publickey'
-             && ctx.key.algo === pubKey.fulltype
-             && buffersEqual(ctx.key.data, pubKey.public)) {
-      if (ctx.signature) {
-        var verifier = crypto.createVerify(ctx.sigAlgo);
-        verifier.update(ctx.blob);
-        if (verifier.verify(pubKey.publicOrig, ctx.signature))
-          ctx.accept();
-        else
-          ctx.reject();
-      } else {
-        // if no signature present, that means the client is just checking
-        // the validity of the given public key
-        ctx.accept();
-      }
-    } else
-      ctx.reject();
+    var user = Buffer.from(ctx.username);
+    if (user.length !== allowedUser.length
+        || !crypto.timingSafeEqual(user, allowedUser)) {
+      return ctx.reject();
+    }
+
+    switch (ctx.method) {
+      case 'password':
+        var password = Buffer.from(ctx.password);
+        if (password.length !== allowedPassword.length
+            || !crypto.timingSafeEqual(password, allowedPassword)) {
+          return ctx.reject();
+        }
+        break;
+      case 'publickey':
+        var allowedPubSSHKey = allowedPubKey.getPublicSSH();
+        if (ctx.key.algo !== allowedPubKey.type
+            || ctx.key.data.length !== allowedPubSSHKey.length
+            || !crypto.timingSafeEqual(ctx.key.data, allowedPubSSHKey)
+            || (ctx.signature && !allowedPubKey.verify(ctx.blob, ctx.signature))) {
+          return ctx.reject();
+        }
+        break;
+      default:
+        return ctx.reject();
+    }
+
+    ctx.accept();
   }).on('ready', function() {
     console.log('Client authenticated!');
 
@@ -505,10 +509,14 @@ new ssh2.Server({
 
 ```js
 var fs = require('fs');
+var crypto = require('crypto');
 
 var ssh2 = require('ssh2');
 var OPEN_MODE = ssh2.SFTP_OPEN_MODE;
 var STATUS_CODE = ssh2.SFTP_STATUS_CODE;
+
+var allowedUser = Buffer.from('foo');
+var allowedPassword = Buffer.from('bar');
 
 new ssh2.Server({
   hostKeys: [fs.readFileSync('host.key')]
@@ -516,16 +524,24 @@ new ssh2.Server({
   console.log('Client connected!');
 
   client.on('authentication', function(ctx) {
-    if (ctx.method === 'password'
-        // Note: Don't do this in production code, see
-        // https://www.brendanlong.com/timing-attacks-and-usernames.html
-        // In node v6.0.0+, you can use `crypto.timingSafeEqual()` to safely
-        // compare two values.
-        && ctx.username === 'foo'
-        && ctx.password === 'bar')
-      ctx.accept();
-    else
-      ctx.reject();
+    var user = Buffer.from(ctx.username);
+    if (user.length !== allowedUser.length
+        || !crypto.timingSafeEqual(user, allowedUser)) {
+      return ctx.reject();
+    }
+
+    switch (ctx.method) {
+      case 'password':
+        var password = Buffer.from(ctx.password);
+        if (password.length !== allowedPassword.length
+            || !crypto.timingSafeEqual(password, allowedPassword)) {
+          return ctx.reject();
+        }
+      default:
+        return ctx.reject();
+    }
+
+    ctx.accept();
   }).on('ready', function() {
     console.log('Client authenticated!');
 
