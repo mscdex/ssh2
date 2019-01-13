@@ -996,22 +996,54 @@ var tests = [
             var session = accept();
             var x11 = false;
             session.once('x11', function(accept, reject, info) {
+              assert.strictEqual(info.single,
+                                 false,
+                                 makeMsg('Wrong client x11.single: '
+                                         + info.single));
+              assert.strictEqual(info.screen,
+                                 0,
+                                 makeMsg('Wrong client x11.screen: '
+                                         + info.screen));
+              assert.strictEqual(info.protocol,
+                                 'MIT-MAGIC-COOKIE-1',
+                                 makeMsg('Wrong client x11.protocol: '
+                                         + info.protocol));
+              assert.strictEqual(info.cookie.length,
+                                 32,
+                                 makeMsg('Invalid client x11.cookie: '
+                                         + info.cookie));
               x11 = true;
               accept && accept();
             }).once('exec', function(accept, reject, info) {
               assert(info.command === 'foo --bar',
                      makeMsg('Wrong exec command: ' + info.command));
               var stream = accept();
-              stream.write(inspect(x11));
-              stream.exit(100);
-              stream.end();
-              conn.end();
+              conn.x11('127.0.0.1', 4321, function(err, xstream) {
+                assert(!err, makeMsg('Unexpected x11() error: ' + err));
+                xstream.resume();
+                xstream.on('end', function() {
+                  stream.write(JSON.stringify(x11));
+                  stream.exit(100);
+                  stream.end();
+                  conn.end();
+                }).end();
+              });
             });
           });
         });
       });
       client.on('ready', function() {
-        client.exec('foo --bar',
+        client.on('x11', function(info, accept, reject) {
+          assert.strictEqual(info.srcIP,
+                             '127.0.0.1',
+                             makeMsg('Invalid server x11.srcIP: '
+                                     + info.srcIP));
+          assert.strictEqual(info.srcPort,
+                             4321,
+                             makeMsg('Invalid server x11.srcPort: '
+                                     + info.srcPort));
+          accept();
+        }).exec('foo --bar',
                     { x11: true },
                     function(err, stream) {
           assert(!err, makeMsg('Unexpected exec error: ' + err));
@@ -1025,6 +1057,100 @@ var tests = [
       });
     },
     what: 'Exec with X11 forwarding'
+  },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var out = '';
+      var x11ClientConfig = {
+        single: true,
+        screen: 1234,
+        protocol: 'YUMMY-MAGIC-COOKIE-1',
+        cookie: '00112233445566778899001122334455'
+      };
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          conn.once('session', function(accept, reject) {
+            var session = accept();
+            var x11 = false;
+            session.once('x11', function(accept, reject, info) {
+              assert.strictEqual(info.single,
+                                 true,
+                                 makeMsg('Wrong client x11.single: '
+                                         + info.single));
+              assert.strictEqual(info.screen,
+                                 1234,
+                                 makeMsg('Wrong client x11.screen: '
+                                         + info.screen));
+              assert.strictEqual(info.protocol,
+                                 'YUMMY-MAGIC-COOKIE-1',
+                                 makeMsg('Wrong client x11.protocol: '
+                                         + info.protocol));
+              assert.strictEqual(info.cookie,
+                                 '00112233445566778899001122334455',
+                                 makeMsg('Wrong client x11.cookie: '
+                                         + info.cookie));
+              x11 = info;
+              accept && accept();
+            }).once('exec', function(accept, reject, info) {
+              assert(info.command === 'foo --bar',
+                     makeMsg('Wrong exec command: ' + info.command));
+              var stream = accept();
+              conn.x11('127.0.0.1', 4321, function(err, xstream) {
+                assert(!err, makeMsg('Unexpected x11() error: ' + err));
+                xstream.resume();
+                xstream.on('end', function() {
+                  stream.write(JSON.stringify(x11));
+                  stream.exit(100);
+                  stream.end();
+                  conn.end();
+                }).end();
+              });
+            });
+          });
+        });
+      });
+      client.on('ready', function() {
+        client.on('x11', function(info, accept, reject) {
+          assert.strictEqual(info.srcIP,
+                             '127.0.0.1',
+                             makeMsg('Invalid server x11.srcIP: '
+                                     + info.srcIP));
+          assert.strictEqual(info.srcPort,
+                             4321,
+                             makeMsg('Invalid server x11.srcPort: '
+                                     + info.srcPort));
+          accept();
+        }).exec('foo --bar',
+                    { x11: x11ClientConfig },
+                    function(err, stream) {
+          assert(!err, makeMsg('Unexpected exec error: ' + err));
+          stream.on('data', function(d) {
+            out += d;
+          });
+        });
+      }).on('end', function() {
+        var result = JSON.parse(out);
+        assert.deepStrictEqual(result,
+                               x11ClientConfig,
+                               makeMsg('Wrong stdout data: ' + result));
+      });
+    },
+    what: 'Exec with X11 forwarding (custom X11 settings)'
   },
   { run: function() {
       var client;
