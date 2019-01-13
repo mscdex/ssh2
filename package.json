@@ -5,7 +5,7 @@
   "main": "./lib/client",
   "engines": { "node": ">=5.2.0" },
   "dependencies": {
-    "ssh2-streams": "~0.3.1"
+    "ssh2-streams": "~0.3.2"
   },
   "scripts": {
     "test": "node test/test.js"
