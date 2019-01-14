@@ -655,6 +655,10 @@ You can find more examples in the `examples` directory of this repository.
 
     * **port** - _integer_ - Port number of the server. **Default:** `22`
 
+    * **localAddress** - _string_ - IP address of the network interface to use to connect to the server. **Default:** (none -- determined by OS)
+
+    * **localPort** - _string_ - The local port number to connect from. **Default:** (none -- determined by OS)
+
     * **forceIPv4** - _boolean_ - Only connect via resolved IPv4 address for `host`. **Default:** `false`
 
     * **forceIPv6** - _boolean_ - Only connect via resolved IPv6 address for `host`. **Default:** `false`
