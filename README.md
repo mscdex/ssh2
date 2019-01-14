@@ -765,7 +765,11 @@ You can find more examples in the `examples` directory of this repository.
 
 * **connection**(< _Connection_ >client, < _object_ >info) - A new client has connected. `info` contains the following properties:
 
-    * **ip** - _string_ - The remoteAddress of the connection.
+    * **ip** - _string_ - The `remoteAddress` of the connection.
+
+    * **family** - _string_ - The `remoteFamily` of the connection.
+
+    * **port** - _integer_ - The `remotePort` of the connection.
 
     * **header** - _object_ - Information about the client's header:
 
