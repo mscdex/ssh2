@@ -95,9 +95,7 @@ conn.on('ready', function() {
       console.log('Stream :: close');
       conn.end();
     }).on('data', function(data) {
-      console.log('STDOUT: ' + data);
-    }).stderr.on('data', function(data) {
-      console.log('STDERR: ' + data);
+      console.log('OUTPUT: ' + data);
     });
     stream.end('ls -l\nexit\n');
   });
@@ -982,11 +980,11 @@ This is a normal **streams2** Duplex Stream (used both by clients and servers), 
 
         * If there was an `exit` event, the `close` event will be passed the same arguments for convenience.
 
+        * A `stderr` property contains a Readable stream that represents output from stderr.
+
     * For shell() and exec():
 
         * The readable side represents stdout and the writable side represents stdin.
-
-        * A `stderr` property contains a Readable stream that represents output from stderr.
 
         * **signal**(< _string_ >signalName) - _boolean_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead. Returns `false` if you should wait for the `continue` event before sending any more traffic.
 
