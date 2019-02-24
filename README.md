@@ -536,6 +536,7 @@ new ssh2.Server({
             || !crypto.timingSafeEqual(password, allowedPassword)) {
           return ctx.reject();
         }
+        break;
       default:
         return ctx.reject();
     }
