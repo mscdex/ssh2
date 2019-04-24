@@ -2,7 +2,7 @@
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (7.1 currently).
+Development/testing is done against OpenSSH (7.6 currently).
 
 [![Build Status](https://travis-ci.org/mscdex/ssh2.svg?branch=master)](https://travis-ci.org/mscdex/ssh2)
 
@@ -40,6 +40,7 @@ Development/testing is done against OpenSSH (7.1 currently).
 ## Requirements
 
 * [node.js](http://nodejs.org/) -- v5.2.0 or newer
+  * node v12.0.0 or newer for Ed25519 key support
 
 ## Installation
 
