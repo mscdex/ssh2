@@ -478,7 +478,7 @@ new ssh2.Server({
         }
         break;
       default:
-        return ctx.reject();
+        return ctx.reject(['password', 'publickey']);
     }
 
     ctx.accept();
@@ -537,7 +537,7 @@ new ssh2.Server({
           return ctx.reject();
         }
       default:
-        return ctx.reject();
+        return ctx.reject(['password']);
     }
 
     ctx.accept();
