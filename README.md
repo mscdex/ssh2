@@ -1013,6 +1013,8 @@ This is a normal **streams2** Duplex Stream (used both by clients and servers), 
 
 * **term** - < _string_ > - The value to use for $TERM. **Default:** `'vt100'`
 
+* **modes** - < _object_ > - An object containing [Terminal Modes](#terminal-modes) as keys, with each value set to each mode argument. **Default:** `null`
+
 `rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
 
 Pixel dimensions refer to the drawable area of the window.
