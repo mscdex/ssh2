@@ -19,6 +19,7 @@ Development/testing is done against OpenSSH (7.6 currently).
   * [Connection hopping](#connection-hopping)
   * [Forward remote X11 connections](#forward-remote-x11-connections)
   * [Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using `socksv5`)](#dynamic-11-port-forwarding-using-a-socksv5-proxy-using-socksv5)
+  * [Make HTTP(S) connections easily using a custom http(s).Agent](#make-https-connections-easily-using-a-custom-httpsagent)
   * [Invoke an arbitrary subsystem (e.g. netconf)](#invoke-an-arbitrary-subsystem)
 * [Server Examples](#server-examples)
   * [Password and public key authentication and non-interactive (exec) command execution](#password-and-public-key-authentication-and-non-interactive-exec-command-execution)
@@ -36,6 +37,8 @@ Development/testing is done against OpenSSH (7.6 currently).
   * [Channel](#channel)
   * [Pseudo-TTY settings](#pseudo-tty-settings)
   * [Terminal modes](#terminal-modes)
+  * [HTTPAgent](#httpagent)
+      * [HTTPAgent methods](#httpagent-methods)
 
 ## Requirements
 
@@ -403,6 +406,34 @@ socks.createServer(function(info, accept, deny) {
 //   curl -i --socks5 localhost:1080 google.com
 ```
 
+### Make HTTP(S) connections easily using a custom http(s).Agent
+
+```js
+var http = require('http');
+
+var HTTPAgent = require('ssh2').HTTPAgent;
+var Client = require('ssh2').Client;
+
+var ssh_config = {
+  host: '192.168.100.1',
+  port: 22,
+  username: 'nodejs',
+  password: 'rules'
+};
+
+var agent = new HTTPAgent(ssh_config);
+http.get({
+  host: '192.168.200.1',
+  agent,
+  headers: { Connection: 'close' }
+}, (res) => {
+  console.log(res.statusCode);
+  console.dir(res.headers);
+  res.resume();
+});
+```
+
+
 ### Invoke an arbitrary subsystem
 
 ```js
@@ -600,6 +631,10 @@ You can find more examples in the `examples` directory of this repository.
 `require('ssh2').Server` returns a **_Server_** constructor.
 
 `require('ssh2').utils` returns the [utility methods from `ssh2-streams`](https://github.com/mscdex/ssh2-streams#utility-methods).
+
+`require('ssh2').HTTPAgent` returns an [`http.Agent`](https://nodejs.org/docs/latest/api/http.html#http_class_http_agent) constructor.
+
+`require('ssh2').HTTPSAgent` returns an [`https.Agent`](https://nodejs.org/docs/latest/api/https.html#https_class_https_agent) constructor. Its API is the same as `HTTPAgent` except it's for HTTPS connections.
 
 `require('ssh2').SFTP_STATUS_CODE` returns the [`SFTPStream.STATUS_CODE` from `ssh2-streams`](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md#sftpstream-static-constants).
 
@@ -1081,3 +1116,9 @@ PARENB         | Parity enable.
 PARODD         | Odd parity, else even.
 TTY_OP_ISPEED  | Specifies the input baud rate in bits per second.
 TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
+
+### HTTPAgent
+
+#### HTTPAgent methods
+
+* **(constructor)**(< _object_ >sshConfig[, < _object_ >agentConfig]) - Creates and returns a new `http.Agent` instance used to tunnel an HTTP connection over SSH. `sshConfig` is what is passed to `client.connect()` and `agentOptions` is passed to the `http.Agent` constructor.
