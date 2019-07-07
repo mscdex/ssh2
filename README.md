@@ -285,11 +285,15 @@ var Client = require('ssh2').Client;
 var conn1 = new Client();
 var conn2 = new Client();
 
+// Checks uptime on 10.1.1.40 via 192.168.1.1
+
 conn1.on('ready', function() {
   console.log('FIRST :: connection ready');
-  conn1.exec('nc 192.168.1.2 22', function(err, stream) {
+  // Alternatively, you could use netcat or socat with exec() instead of
+  // forwardOut()
+  conn1.forwardOut('127.0.0.1', 12345, '10.1.1.40', 22, function(err, stream) {
     if (err) {
-      console.log('FIRST :: exec error: ' + err);
+      console.log('FIRST :: forwardOut error: ' + err);
       return conn1.end();
     }
     conn2.connect({
