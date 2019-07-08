@@ -27,6 +27,7 @@ var CLIENT_KEY_ECDSA_PATH = join(fixturesdir, 'id_ecdsa');
 var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(CLIENT_KEY_ECDSA_PATH);
 var CLIENT_KEY_ECDSA = utils.parseKey(CLIENT_KEY_ECDSA_RAW);
 
+var opensshPath = 'ssh';
 var opensshVer;
 var DEBUG = false;
 
@@ -111,9 +112,8 @@ var tests = [
           if (ctx.signature) {
             assert(CLIENT_KEY_DSA.verify(ctx.blob, ctx.signature) === true,
                    makeMsg(what, 'Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
+          }
+          ctx.accept();
         }).on('ready', function() {
           conn.on('session', function(accept, reject) {
             var session = accept();
@@ -336,7 +336,7 @@ function setup(self, clientcfg, servercfg) {
 
   process.nextTick(function() {
     server.listen(0, 'localhost', function() {
-      var cmd = 'ssh';
+      var cmd = opensshPath;
       var args = ['-o', 'UserKnownHostsFile=/dev/null',
                   '-o', 'StrictHostKeyChecking=no',
                   '-o', 'CheckHostIP=no',
@@ -419,7 +419,7 @@ process.once('exit', function() {
 
 
 // Get OpenSSH client version first
-exec('ssh -V', function(err, stdout, stderr) {
+exec(opensshPath + ' -V', function(err, stdout, stderr) {
   if (err) {
     console.log('OpenSSH client is required for these tests');
     process.exitCode = 5;
