@@ -360,6 +360,7 @@ function setup(self, clientcfg, servercfg) {
         // OpenSSH 7.0+ disables DSS/DSA host (and user) key support by
         // default, so we explicitly enable it here
         args.push('-o', 'HostKeyAlgorithms=+ssh-dss');
+        args.push('-o', 'PubkeyAcceptedKeyTypes=+ssh-dss');
       }
       args.push('-p', server.address().port.toString(),
                 '-l', USER,
