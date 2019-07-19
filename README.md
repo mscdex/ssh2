@@ -21,6 +21,7 @@ Development/testing is done against OpenSSH (7.6 currently).
   * [Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using `socksv5`)](#dynamic-11-port-forwarding-using-a-socksv5-proxy-using-socksv5)
   * [Make HTTP(S) connections easily using a custom http(s).Agent](#make-https-connections-easily-using-a-custom-httpsagent)
   * [Invoke an arbitrary subsystem (e.g. netconf)](#invoke-an-arbitrary-subsystem)
+  * [Forward remote Unix socket to local Unix socket](#forward-remote-unix-socket-to-local-unix-socket)
 * [Server Examples](#server-examples)
   * [Password and public key authentication and non-interactive (exec) command execution](#password-and-public-key-authentication-and-non-interactive-exec-command-execution)
   * [SFTP-only server](#sftp-only-server)
@@ -465,6 +466,40 @@ conn.on('ready', function() {
   username: 'blargh',
   password: 'honk'
 });
+```
+
+### Forward remote Unix socket to local Unix socket
+
+```js
+var Client = require('ssh2').Client;
+var net = require('net');
+
+net.createServer(function(sock) {
+  var Client = require('ssh2').Client;
+  var conn = new Client();
+  conn.on('ready', function() {
+    conn.openssh_forwardOutStreamLocal('/var/run/docker.sock', (err, stream) => {
+      if (err) {
+        conn.end();
+        return sock.writable && sock.end();
+      }
+      if (sock.readable && sock.writable) {
+        stream.pipe(sock).pipe(stream).on('close', function() {
+          conn.end();
+        });
+      } 
+      else {
+        conn.end();
+      }
+    });
+  }).on('error', function(err) {
+    sock.writable && sock.end();
+  }).connect({
+    host: '192.168.1.1',
+    username: 'foo',
+    password: 'bar'
+  });
+}).listen('/var/run/remotedocker.sock');
 ```
 
 ## Server Examples
