@@ -716,6 +716,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **privateKey** - _mixed_ - _Buffer_ or _string_ that contains a private key for either key-based or hostbased user authentication (OpenSSH format). **Default:** (none)
 
+    * **publicKey** - _mixed_ - _Buffer_ or _string_ that contains a public key or SSH certificate for either key-based or hostbased user authentication (OpenSSH format). **Default:** (derived from private key)
+
     * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
 
     * **localHostname** - _string_ - Along with **localUsername** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
