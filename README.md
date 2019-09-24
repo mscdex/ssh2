@@ -682,7 +682,7 @@ You can find more examples in the `examples` directory of this repository.
 
 * **end**() - The socket was disconnected.
 
-* **close**(< _boolean_ >hadError) - The socket was closed. `hadError` is set to `true` if this was due to error.
+* **close**() - The socket was closed.
 
 #### Client methods
 
@@ -931,7 +931,7 @@ You can find more examples in the `examples` directory of this repository.
 
 * **end**() - The client socket disconnected.
 
-* **close**(< _boolean_ >hadError) - The client socket was closed. `hadError` is set to `true` if this was due to error.
+* **close**() - The client socket was closed.
 
 #### Connection methods
 
