@@ -500,7 +500,7 @@ new ssh2.Server({
         var password = Buffer.from(ctx.password);
         if (password.length !== allowedPassword.length
             || !crypto.timingSafeEqual(password, allowedPassword)) {
-          return ctx.reject();
+          return ctx.reject(['password', 'publickey']);
         }
         break;
       case 'publickey':
@@ -509,11 +509,11 @@ new ssh2.Server({
             || ctx.key.data.length !== allowedPubSSHKey.length
             || !crypto.timingSafeEqual(ctx.key.data, allowedPubSSHKey)
             || (ctx.signature && !allowedPubKey.verify(ctx.blob, ctx.signature))) {
-          return ctx.reject();
+          return ctx.reject(['password', 'publickey']);
         }
         break;
       default:
-        return ctx.reject();
+        return ctx.reject(['password', 'publickey']);
     }
 
     ctx.accept();
