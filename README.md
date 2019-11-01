@@ -508,7 +508,7 @@ new ssh2.Server({
         if (ctx.key.algo !== allowedPubKey.type
             || ctx.key.data.length !== allowedPubSSHKey.length
             || !crypto.timingSafeEqual(ctx.key.data, allowedPubSSHKey)
-            || (ctx.signature && !allowedPubKey.verify(ctx.blob, ctx.signature))) {
+            || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature) !== true)) {
           return ctx.reject();
         }
         break;
