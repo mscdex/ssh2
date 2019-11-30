@@ -2296,6 +2296,71 @@ var tests = [
     },
     what: 'OpenSSH forwarded UNIX socket connection'
   },
+  { run: function() {
+      var client;
+      var server;
+      var r;
+      var calledBack = 0;
+
+      r = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          algorithms: {
+            cipher: [ 'aes128-gcm@openssh.com' ],
+          },
+        },
+        { hostKeys: [HOST_KEY_RSA],
+          algorithms: {
+            cipher: [ 'aes128-gcm@openssh.com' ],
+          },
+        }
+      );
+      client = r.client;
+      server = r.server;
+
+      server.on('connection', function(conn) {
+        conn.on('authentication', function(ctx) {
+          ctx.accept();
+        }).on('ready', function() {
+          var reqs = [];
+          conn.on('session', function(accept, reject) {
+            if (reqs.length === 0) {
+              conn.rekey(function(err) {
+                assert(!err, makeMsg('Unexpected rekey error: ' + err));
+                reqs.forEach(function(accept) {
+                  var session = accept();
+                  session.once('exec', function(accept, reject, info) {
+                    var stream = accept();
+                    stream.exit(0);
+                    stream.end();
+                  });
+                });
+              });
+            }
+            reqs.push(accept);
+          });
+        });
+      });
+      client.on('ready', function() {
+        function callback(err, stream) {
+          assert(!err, makeMsg('Unexpected error: ' + err));
+          stream.resume();
+          if (++calledBack === 3)
+            client.end();
+        }
+        client.exec('foo', callback);
+        client.exec('bar', callback);
+        client.exec('baz', callback);
+      }).on('end', function() {
+        assert(calledBack === 3,
+               makeMsg('Only '
+                             + calledBack
+                             + '/3 callbacks called'));
+      });
+    },
+    what: 'Rekeying with AES-GCM'
+  },
 ];
 
 function setup(self, clientcfg, servercfg, timeout) {
@@ -2311,11 +2376,19 @@ function setup(self, clientcfg, servercfg, timeout) {
                 + '[TEST] '
                 + self.what
                 + '\n========================================================');
-    clientcfg.debug = function(str) {
-      console.log('[CLIENT] ' + str);
+    clientcfg.debug = function() {
+      var args = new Array(arguments.length + 1);
+      args[0] = '[CLIENT]';
+      for (var i = 0; i < arguments.length; ++i)
+        args[i + 1] = arguments[i];
+      console.log.apply(null, args);
     };
-    servercfg.debug = function(str) {
-      console.log('[SERVER] ' + str);
+    servercfg.debug = function() {
+      var args = new Array(arguments.length + 1);
+      args[0] = '[SERVER]';
+      for (var i = 0; i < arguments.length; ++i)
+        args[i + 1] = arguments[i];
+      console.log.apply(null, args);
     };
   }
 
