@@ -1617,6 +1617,8 @@ var tests = [
               var sftp = accept();
               // XXX: hack to get channel ...
               var channel = sftp._readableState.pipes;
+              if (Array.isArray(channel))
+                channel = channel[0];
 
               channel.unpipe(sftp);
               sftp.unpipe(channel);
