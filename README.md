@@ -1,8 +1,10 @@
+# WARNING: This documentation is for an upcoming, unreleased version of `ssh2`. You are probably looking for documentation for `ssh2` v0.8.x [here](https://github.com/mscdex/ssh2/blob/v0.8.x/README.md)
+
 # Description
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (7.6 currently).
+Development/testing is done against OpenSSH (8.0 currently).
 
 [![Build Status](https://travis-ci.org/mscdex/ssh2.svg?branch=master)](https://travis-ci.org/mscdex/ssh2)
 
@@ -11,7 +13,7 @@ Development/testing is done against OpenSSH (7.6 currently).
 * [Requirements](#requirements)
 * [Installation](#installation)
 * [Client Examples](#client-examples)
-  * [Execute `uptime` on a server](#execute-uptime-on-a-server)
+  * [Execute 'uptime' on a server](#execute-uptime-on-a-server)
   * [Start an interactive shell session](#start-an-interactive-shell-session)
   * [Send a raw HTTP request to port 80 on the server](#send-a-raw-http-request-to-port-80-on-the-server)
   * [Forward local connections to port 8000 on the server to us](#forward-local-connections-to-port-8000-on-the-server-to-us)
@@ -39,10 +41,12 @@ Development/testing is done against OpenSSH (7.6 currently).
   * [Terminal modes](#terminal-modes)
   * [HTTPAgent](#httpagent)
       * [HTTPAgent methods](#httpagent-methods)
+  * [HTTPSAgent](#httpsagent)
+      * [HTTPSAgent methods](#httpsagent-methods)
 
 ## Requirements
 
-* [node.js](http://nodejs.org/) -- v5.10.0 or newer
+* [node.js](http://nodejs.org/) -- v10.16.0 or newer
   * node v12.0.0 or newer for Ed25519 key support
 
 ## Installation
@@ -51,22 +55,24 @@ Development/testing is done against OpenSSH (7.6 currently).
 
 ## Client Examples
 
-### Execute `uptime` on a server
+### Execute 'uptime' on a server
 
 ```js
-var Client = require('ssh2').Client;
+const { readFileSync } = require('fs');
 
-var conn = new Client();
-conn.on('ready', function() {
+const { Client } = require('ssh2');
+
+const conn = new Client();
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.exec('uptime', function(err, stream) {
+  conn.exec('uptime', (err, stream) => {
     if (err) throw err;
-    stream.on('close', function(code, signal) {
+    stream.on('close', (code, signal) => {
       console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
       conn.end();
-    }).on('data', function(data) {
+    }).on('data', (data) => {
       console.log('STDOUT: ' + data);
-    }).stderr.on('data', function(data) {
+    }).stderr.on('data', (data) => {
       console.log('STDERR: ' + data);
     });
   });
@@ -74,7 +80,7 @@ conn.on('ready', function() {
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
-  privateKey: require('fs').readFileSync('/here/is/my/key')
+  privateKey: readFileSync('/path/to/my/key')
 });
 
 // example output:
@@ -88,17 +94,19 @@ conn.on('ready', function() {
 ### Start an interactive shell session
 
 ```js
-var Client = require('ssh2').Client;
+const { readFileSync } = require('fs');
 
-var conn = new Client();
-conn.on('ready', function() {
+const { Client } = require('ssh2');
+
+const conn = new Client();
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.shell(function(err, stream) {
+  conn.shell((err, stream) => {
     if (err) throw err;
-    stream.on('close', function() {
+    stream.on('close', () => {
       console.log('Stream :: close');
       conn.end();
-    }).on('data', function(data) {
+    }).on('data', (data) => {
       console.log('OUTPUT: ' + data);
     });
     stream.end('ls -l\nexit\n');
@@ -107,7 +115,7 @@ conn.on('ready', function() {
   host: '192.168.100.100',
   port: 22,
   username: 'frylock',
-  privateKey: require('fs').readFileSync('/here/is/my/key')
+  privateKey: readFileSync('/path/to/my/key')
 });
 
 // example output:
@@ -135,17 +143,17 @@ conn.on('ready', function() {
 ### Send a raw HTTP request to port 80 on the server
 
 ```js
-var Client = require('ssh2').Client;
+const { Client } = require('ssh2');
 
-var conn = new Client();
-conn.on('ready', function() {
+const conn = new Client();
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, function(err, stream) {
+  conn.forwardOut('192.168.100.102', 8000, '127.0.0.1', 80, (err, stream) => {
     if (err) throw err;
-    stream.on('close', function() {
+    stream.on('close', () => {
       console.log('TCP :: CLOSED');
       conn.end();
-    }).on('data', function(data) {
+    }).on('data', (data) => {
       console.log('TCP :: DATA: ' + data);
     }).end([
       'HEAD / HTTP/1.1',
@@ -183,21 +191,21 @@ conn.on('ready', function() {
 ### Forward local connections to port 8000 on the server to us
 
 ```js
-var Client = require('ssh2').Client;
+const { Client } = require('ssh2');
 
-var conn = new Client();
-conn.on('ready', function() {
+const conn = new Client();
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.forwardIn('127.0.0.1', 8000, function(err) {
+  conn.forwardIn('127.0.0.1', 8000, (err) => {
     if (err) throw err;
     console.log('Listening for connections on server on port 8000!');
   });
-}).on('tcp connection', function(info, accept, reject) {
+}).on('tcp connection', (info, accept, reject) => {
   console.log('TCP :: INCOMING CONNECTION:');
   console.dir(info);
-  accept().on('close', function() {
+  accept().on('close', () => {
     console.log('TCP :: CLOSED');
-  }).on('data', function(data) {
+  }).on('data', (data) => {
     console.log('TCP :: DATA: ' + data);
   }).end([
     'HTTP/1.1 404 Not Found',
@@ -235,14 +243,14 @@ conn.on('ready', function() {
 ### Get a directory listing via SFTP
 
 ```js
-var Client = require('ssh2').Client;
+const { Client } = require('ssh2');
 
-var conn = new Client();
-conn.on('ready', function() {
+const conn = new Client();
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.sftp(function(err, sftp) {
+  conn.sftp((err, sftp) => {
     if (err) throw err;
-    sftp.readdir('foo', function(err, list) {
+    sftp.readdir('foo', (err, list) => {
       if (err) throw err;
       console.dir(list);
       conn.end();
@@ -280,18 +288,18 @@ conn.on('ready', function() {
 ### Connection hopping
 
 ```js
-var Client = require('ssh2').Client;
+const { Client } = require('ssh2');
 
-var conn1 = new Client();
-var conn2 = new Client();
+const conn1 = new Client();
+const conn2 = new Client();
 
 // Checks uptime on 10.1.1.40 via 192.168.1.1
 
-conn1.on('ready', function() {
+conn1.on('ready', () => {
   console.log('FIRST :: connection ready');
-  // Alternatively, you could use netcat or socat with exec() instead of
-  // forwardOut()
-  conn1.forwardOut('127.0.0.1', 12345, '10.1.1.40', 22, function(err, stream) {
+  // Alternatively, you could use something like netcat or socat with exec()
+  // instead of forwardOut(), depending on what the server allows
+  conn1.forwardOut('127.0.0.1', 12345, '10.1.1.40', 22, (err, stream) => {
     if (err) {
       console.log('FIRST :: forwardOut error: ' + err);
       return conn1.end();
@@ -308,16 +316,18 @@ conn1.on('ready', function() {
   password: 'password1',
 });
 
-conn2.on('ready', function() {
+conn2.on('ready', () => {
+  // This connection is the one to 10.1.1.40
+
   console.log('SECOND :: connection ready');
-  conn2.exec('uptime', function(err, stream) {
+  conn2.exec('uptime', (err, stream) => {
     if (err) {
       console.log('SECOND :: exec error: ' + err);
       return conn1.end();
     }
-    stream.on('end', function() {
+    stream.on('close', () => {
       conn1.end(); // close parent (and this) connection
-    }).on('data', function(data) {
+    }).on('data', (data) => {
       console.log(data.toString());
     });
   });
@@ -327,31 +337,31 @@ conn2.on('ready', function() {
 ### Forward remote X11 connections
 
 ```js
-var net = require('net');
+const { Socket } = require('net');
 
-var Client = require('ssh2').Client;
+const { Client } = require('ssh2');
 
-var conn = new Client();
+const conn = new Client();
 
-conn.on('x11', function(info, accept, reject) {
-  var xserversock = new net.Socket();
-  xserversock.on('connect', function() {
-    var xclientsock = accept();
+conn.on('x11', (info, accept, reject) => {
+  const xserversock = new net.Socket();
+  xserversock.on('connect', () => {
+    const xclientsock = accept();
     xclientsock.pipe(xserversock).pipe(xclientsock);
   });
   // connects to localhost:0.0
   xserversock.connect(6000, 'localhost');
 });
 
-conn.on('ready', function() {
-  conn.exec('xeyes', { x11: true }, function(err, stream) {
+conn.on('ready', () => {
+  conn.exec('xeyes', { x11: true }, (err, stream) => {
     if (err) throw err;
-    var code = 0;
-    stream.on('end', function() {
+    let code = 0;
+    stream.on('close', () => {
       if (code !== 0)
         console.log('Do you have X11 forwarding enabled on your SSH server?');
       conn.end();
-    }).on('exit', function(exitcode) {
+    }).on('exit', (exitcode) => {
       code = exitcode;
     });
   });
@@ -365,44 +375,45 @@ conn.on('ready', function() {
 ### Dynamic (1:1) port forwarding using a SOCKSv5 proxy (using [socksv5](https://github.com/mscdex/socksv5))
 
 ```js
-var socks = require('socksv5');
-var Client = require('ssh2').Client;
+const socks = require('socksv5');
+const { Client } = require('ssh2');
 
-var ssh_config = {
+const sshConfig = {
   host: '192.168.100.1',
   port: 22,
   username: 'nodejs',
   password: 'rules'
 };
 
-socks.createServer(function(info, accept, deny) {
+socks.createServer((info, accept, deny) => {
   // NOTE: you could just use one ssh2 client connection for all forwards, but
   // you could run into server-imposed limits if you have too many forwards open
   // at any given time
-  var conn = new Client();
-  conn.on('ready', function() {
+  const conn = new Client();
+  conn.on('ready', () => {
     conn.forwardOut(info.srcAddr,
                     info.srcPort,
                     info.dstAddr,
                     info.dstPort,
-                    function(err, stream) {
+                    (err, stream) => {
       if (err) {
         conn.end();
         return deny();
       }
 
-      var clientSocket;
-      if (clientSocket = accept(true)) {
-        stream.pipe(clientSocket).pipe(stream).on('close', function() {
+      const clientSocket = accept(true);
+      if (clientSocket) {
+        stream.pipe(clientSocket).pipe(stream).on('close', () => {
           conn.end();
         });
-      } else
+      } else {
         conn.end();
+      }
     });
-  }).on('error', function(err) {
+  }).on('error', (err) => {
     deny();
-  }).connect(ssh_config);
-}).listen(1080, 'localhost', function() {
+  }).connect(sshConfig);
+}).listen(1080, 'localhost', () => {
   console.log('SOCKSv5 proxy server started on port 1080');
 }).useAuth(socks.auth.None());
 
@@ -413,19 +424,19 @@ socks.createServer(function(info, accept, deny) {
 ### Make HTTP(S) connections easily using a custom http(s).Agent
 
 ```js
-var http = require('http');
+const http = require('http');
 
-var HTTPAgent = require('ssh2').HTTPAgent;
-var Client = require('ssh2').Client;
+const { Client, HTTPAgent, HTTPSAgent } = require('ssh2');
 
-var ssh_config = {
+const sshConfig = {
   host: '192.168.100.1',
   port: 22,
   username: 'nodejs',
   password: 'rules'
 };
 
-var agent = new HTTPAgent(ssh_config);
+// Use `HTTPSAgent` instead for an HTTPS request
+const agent = new HTTPAgent(sshConfig);
 http.get({
   host: '192.168.200.1',
   agent,
@@ -441,21 +452,23 @@ http.get({
 ### Invoke an arbitrary subsystem
 
 ```js
-var Client = require('ssh2').Client;
-var xmlhello = '<?xml version="1.0" encoding="UTF-8"?>' +
-               '<hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">' +
-               '    <capabilities>' +
-               '		<capability>urn:ietf:params:netconf:base:1.0</capability>' +
-               '	</capabilities>' +
-               '</hello>]]>]]>';
+const { Client } = require('ssh2');
 
-var conn = new Client();
+const xmlhello = `
+  <?xml version="1.0" encoding="UTF-8"?>
+  <hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+    <capabilities>
+      <capability>urn:ietf:params:netconf:base:1.0</capability>
+    </capabilities>
+  </hello>]]>]]>`;
 
-conn.on('ready', function() {
+const conn = new Client();
+
+conn.on('ready', () => {
   console.log('Client :: ready');
-  conn.subsys('netconf', function(err, stream) {
+  conn.subsys('netconf', (err, stream) => {
     if (err) throw err;
-    stream.on('data', function(data) {
+    stream.on('data', (data) => {
       console.log(data);
     }).write(xmlhello);
   });
@@ -472,42 +485,45 @@ conn.on('ready', function() {
 ### Password and public key authentication and non-interactive (exec) command execution
 
 ```js
-var fs = require('fs');
-var crypto = require('crypto');
-var inspect = require('util').inspect;
+const { timingSafeEqual } = require('crypto');
+const { readFileSync } = require('fs');
+const { inspect } = require('util');
 
-var ssh2 = require('ssh2');
-var utils = ssh2.utils;
+const { parseKey, Server } = require('ssh2');
 
-var allowedUser = Buffer.from('foo');
-var allowedPassword = Buffer.from('bar');
-var allowedPubKey = utils.parseKey(fs.readFileSync('foo.pub'));
+const allowedUser = Buffer.from('foo');
+const allowedPassword = Buffer.from('bar');
+const allowedPubKey = parseKey(readFileSync('foo.pub'));
 
-new ssh2.Server({
-  hostKeys: [fs.readFileSync('host.key')]
-}, function(client) {
+function checkValue(input, allowed) {
+  const autoReject = (input.length !== allowed.length);
+  if (autoReject) {
+    // Prevent leaking length information by always making a comparison with the
+    // same input when lengths don't match what we expect ...
+    allowed = input;
+  }
+  const isMatch = timingSafeEqual(input, allowed);
+  return (!autoReject && isMatch);
+}
+
+new Server({
+  hostKeys: [readFileSync('host.key')]
+}, (client) => {
   console.log('Client connected!');
 
-  client.on('authentication', function(ctx) {
-    var user = Buffer.from(ctx.username);
-    if (user.length !== allowedUser.length
-        || !crypto.timingSafeEqual(user, allowedUser)) {
-      return ctx.reject();
-    }
+  client.on('authentication', (ctx) => {
+    let allowed = true;
+    if (!checkValue(Buffer.from(ctx.username), allowedUser))
+      allowed = false;
 
     switch (ctx.method) {
       case 'password':
-        var password = Buffer.from(ctx.password);
-        if (password.length !== allowedPassword.length
-            || !crypto.timingSafeEqual(password, allowedPassword)) {
+        if (!checkValue(Buffer.from(ctx.password), allowedPassword))
           return ctx.reject();
-        }
         break;
       case 'publickey':
-        var allowedPubSSHKey = allowedPubKey.getPublicSSH();
         if (ctx.key.algo !== allowedPubKey.type
-            || ctx.key.data.length !== allowedPubSSHKey.length
-            || !crypto.timingSafeEqual(ctx.key.data, allowedPubSSHKey)
+            || !checkValue(ctx.key.data, allowedPubKey.getPublicSSH())
             || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature) !== true)) {
           return ctx.reject();
         }
@@ -516,22 +532,25 @@ new ssh2.Server({
         return ctx.reject();
     }
 
-    ctx.accept();
-  }).on('ready', function() {
+    if (allowed)
+      ctx.accept();
+    else
+      ctx.reject();
+  }).on('ready', () => {
     console.log('Client authenticated!');
 
-    client.on('session', function(accept, reject) {
-      var session = accept();
-      session.once('exec', function(accept, reject, info) {
+    client.on('session', (accept, reject) => {
+      const session = accept();
+      session.once('exec', (accept, reject, info) => {
         console.log('Client wants to execute: ' + inspect(info.command));
-        var stream = accept();
+        const stream = accept();
         stream.stderr.write('Oh no, the dreaded errors!\n');
         stream.write('Just kidding about the errors!\n');
         stream.exit(0);
         stream.end();
       });
     });
-  }).on('end', function() {
+  }).on('close', () => {
     console.log('Client disconnected');
   });
 }).listen(0, '127.0.0.1', function() {
@@ -542,83 +561,107 @@ new ssh2.Server({
 ### SFTP-only server
 
 ```js
-var fs = require('fs');
-var crypto = require('crypto');
+const { timingSafeEqual } = require('crypto');
+const { readFileSync } = require('fs');
+const { inspect } = require('util');
 
-var ssh2 = require('ssh2');
-var OPEN_MODE = ssh2.SFTP_OPEN_MODE;
-var STATUS_CODE = ssh2.SFTP_STATUS_CODE;
+const {
+  Server,
+  sftp: {
+    OPEN_MODE,
+    STATUS_CODE,
+  },
+} = require('ssh2');
 
-var allowedUser = Buffer.from('foo');
-var allowedPassword = Buffer.from('bar');
+const allowedUser = Buffer.from('foo');
+const allowedPassword = Buffer.from('bar');
+
+function checkValue(input, allowed) {
+  const autoReject = (input.length !== allowed.length);
+  if (autoReject) {
+    // Prevent leaking length information by always making a comparison with the
+    // same input when lengths don't match what we expect ...
+    allowed = input;
+  }
+  const isMatch = timingSafeEqual(input, allowed);
+  return (!autoReject && isMatch);
+}
+
+// This simple SFTP server implements file uploading where the contents get
+// ignored ...
 
 new ssh2.Server({
-  hostKeys: [fs.readFileSync('host.key')]
-}, function(client) {
+  hostKeys: [readFileSync('host.key')]
+}, (client) => {
   console.log('Client connected!');
 
-  client.on('authentication', function(ctx) {
-    var user = Buffer.from(ctx.username);
-    if (user.length !== allowedUser.length
-        || !crypto.timingSafeEqual(user, allowedUser)) {
-      return ctx.reject();
-    }
+  client.on('authentication', (ctx) => {
+    let allowed = true;
+    if (!checkValue(Buffer.from(ctx.username), allowedUser))
+      allowed = false;
 
     switch (ctx.method) {
       case 'password':
-        var password = Buffer.from(ctx.password);
-        if (password.length !== allowedPassword.length
-            || !crypto.timingSafeEqual(password, allowedPassword)) {
+        if (!checkValue(Buffer.from(ctx.password), allowedPassword))
           return ctx.reject();
-        }
         break;
       default:
         return ctx.reject();
     }
 
-    ctx.accept();
-  }).on('ready', function() {
+    if (allowed)
+      ctx.accept();
+    else
+      ctx.reject();
+  }).on('ready', () => {
     console.log('Client authenticated!');
 
-    client.on('session', function(accept, reject) {
-      var session = accept();
-      session.on('sftp', function(accept, reject) {
+    client.on('session', (accept, reject) => {
+      const session = accept();
+      session.on('sftp', (accept, reject) => {
         console.log('Client SFTP session');
-        var openFiles = {};
-        var handleCount = 0;
-        // `sftpStream` is an `SFTPStream` instance in server mode
-        // see: https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md
-        var sftpStream = accept();
-        sftpStream.on('OPEN', function(reqid, filename, flags, attrs) {
-          // only allow opening /tmp/foo.txt for writing
+        const openFiles = new Map();
+        let handleCount = 0;
+        const sftp = accept();
+        sftp.on('OPEN', (reqid, filename, flags, attrs) => {
+          // Only allow opening /tmp/foo.txt for writing
           if (filename !== '/tmp/foo.txt' || !(flags & OPEN_MODE.WRITE))
-            return sftpStream.status(reqid, STATUS_CODE.FAILURE);
-          // create a fake handle to return to the client, this could easily
+            return sftp.status(reqid, STATUS_CODE.FAILURE);
+
+          // Create a fake handle to return to the client, this could easily
           // be a real file descriptor number for example if actually opening
-          // the file on the disk
-          var handle = new Buffer(4);
-          openFiles[handleCount] = true;
-          handle.writeUInt32BE(handleCount++, 0, true);
-          sftpStream.handle(reqid, handle);
+          // a file on disk
+          const handle = Buffer.alloc(4);
+          openFiles.set(handleCount, true);
+          handle.writeUInt32BE(handleCount++, 0);
+
           console.log('Opening file for write')
-        }).on('WRITE', function(reqid, handle, offset, data) {
-          if (handle.length !== 4 || !openFiles[handle.readUInt32BE(0, true)])
-            return sftpStream.status(reqid, STATUS_CODE.FAILURE);
-          // fake the write
-          sftpStream.status(reqid, STATUS_CODE.OK);
-          var inspected = require('util').inspect(data);
-          console.log('Write to file at offset %d: %s', offset, inspected);
-        }).on('CLOSE', function(reqid, handle) {
-          var fnum;
-          if (handle.length !== 4 || !openFiles[(fnum = handle.readUInt32BE(0, true))])
-            return sftpStream.status(reqid, STATUS_CODE.FAILURE);
-          delete openFiles[fnum];
-          sftpStream.status(reqid, STATUS_CODE.OK);
+          sftp.handle(reqid, handle);
+        }).on('WRITE', (reqid, handle, offset, data) => {
+          if (handle.length !== 4
+              || !openFiles.has(handle.readUInt32BE(0))) {
+            return sftp.status(reqid, STATUS_CODE.FAILURE);
+          }
+
+          // Fake the write operation
+          sftp.status(reqid, STATUS_CODE.OK);
+
+          console.log('Write to file at offset ${offset}: ${inspect(data)}');
+        }).on('CLOSE', (reqid, handle) => {
+          let fnum;
+          if (handle.length !== 4
+              || !openFiles.has(fnum = handle.readUInt32BE(0))) {
+            return sftp.status(reqid, STATUS_CODE.FAILURE);
+          }
+
           console.log('Closing file');
+          openFiles.delete(fnum);
+
+          sftp.status(reqid, STATUS_CODE.OK);
         });
       });
     });
-  }).on('end', function() {
+  }).on('close', () => {
     console.log('Client disconnected');
   });
 }).listen(0, '127.0.0.1', function() {
@@ -630,19 +673,15 @@ You can find more examples in the `examples` directory of this repository.
 
 ## API
 
-`require('ssh2').Client` returns a **_Client_** constructor.
+`require('ssh2').Client` returns the **_Client_** constructor.
 
-`require('ssh2').Server` returns a **_Server_** constructor.
+`require('ssh2').Server` returns the **_Server_** constructor.
 
-`require('ssh2').utils` returns the [utility methods from `ssh2-streams`](https://github.com/mscdex/ssh2-streams#utility-methods).
+`require('ssh2').utils` returns an object containing some useful [utilities](#utilities).
 
 `require('ssh2').HTTPAgent` returns an [`http.Agent`](https://nodejs.org/docs/latest/api/http.html#http_class_http_agent) constructor.
 
 `require('ssh2').HTTPSAgent` returns an [`https.Agent`](https://nodejs.org/docs/latest/api/https.html#https_class_https_agent) constructor. Its API is the same as `HTTPAgent` except it's for HTTPS connections.
-
-`require('ssh2').SFTP_STATUS_CODE` returns the [`SFTPStream.STATUS_CODE` from `ssh2-streams`](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md#sftpstream-static-constants).
-
-`require('ssh2').SFTP_OPEN_MODE` returns the [`SFTPStream.OPEN_MODE` from `ssh2-streams`](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md#sftpstream-static-constants).
 
 ### Client
 
@@ -676,7 +715,29 @@ You can find more examples in the `examples` directory of this repository.
 
 * **change password**(< _string_ >message, < _string_ >language, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
 
-* **continue**() - Emitted when more requests/data can be sent to the server (after a `Client` method returned `false`).
+* **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
+
+```js
+    // In this particular case `mac` is empty because there is no separate MAC
+    // because it's integrated into AES in GCM mode
+    { kex: 'ecdh-sha2-nistp256',
+      srvHostKey: 'rsa-sha2-512',
+      cs: { // Client to server algorithms
+        cipher: 'aes128-gcm',
+        mac: '',
+        compress: 'none',
+        lang: ''
+      },
+      sc: { // Server to client algorithms
+        cipher: 'aes128-gcm',
+        mac: '',
+        compress: 'none',
+        lang: ''
+      }
+    }
+```   
+
+* **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
 * **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'client-socket' for socket-level errors and 'client-ssh' for SSH disconnection messages. In the case of 'client-ssh' messages, there may be a 'description' property that provides more detail.
 
@@ -702,7 +763,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **forceIPv6** - _boolean_ - Only connect via resolved IPv6 address for `host`. **Default:** `false`
 
-    * **hostHash** - _string_ - Any valid hash algorithm supported by node. The host's key is hashed using this algorithm and passed to the **hostVerifier** function. **Default:** (none)
+    * **hostHash** - _string_ - Any valid hash algorithm supported by node. The host's key is hashed using this algorithm and passed to the **hostVerifier** function as a hex string. **Default:** (none)
 
     * **hostVerifier** - _function_ - Function with parameters `(hashedKey[, callback])` where `hashedKey` is a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
 
@@ -736,25 +797,86 @@ You can find more examples in the `examples` directory of this repository.
 
     * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
 
-    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2-streams` used by this module. Valid keys:
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. For arrays, the order of the algorithm names matters, with the most favorable being first. Valid keys:
 
-        * **kex** - _array_ - Key exchange algorithms.
+        * **kex** - _mixed_ - Key exchange algorithms.
+            * Default list (in order from most to least preferrable):
+              * `curve25519-sha256 (node v14.0.0+)`
+              * `curve25519-sha256@libssh.org (node v14.0.0+)`
+              * `ecdh-sha2-nistp256`
+              * `ecdh-sha2-nistp384`
+              * `ecdh-sha2-nistp521`
+              * `diffie-hellman-group-exchange-sha256`
+              * `diffie-hellman-group14-sha256`
+              * `diffie-hellman-group15-sha512`
+              * `diffie-hellman-group16-sha512`
+              * `diffie-hellman-group17-sha512`
+              * `diffie-hellman-group18-sha512`
+            * Other supported names:
+              * `diffie-hellman-group-exchange-sha1`
+              * `diffie-hellman-group14-sha1`
+              * `diffie-hellman-group1-sha1`
 
-        * **cipher** - _array_ - Ciphers.
+        * **serverHostKey** - _mixed_ - Server host key formats.
+            * Default list (in order from most to least preferrable):
+              * `ssh-ed25519` (node v12.0.0+)
+              * `ecdsa-sha2-nistp256`
+              * `ecdsa-sha2-nistp384`
+              * `ecdsa-sha2-nistp521`
+              * `rsa-sha2-512`
+              * `rsa-sha2-256`
+              * `ssh-rsa`
+            * Other supported names:
+              * `ssh-dss`
 
-        * **serverHostKey** - _array_ - Server host key formats.
+        * **cipher** - _mixed_ - Ciphers.
+            * Default list (in order from most to least preferrable):
+              * `chacha20-poly1305@openssh.com` (priority of chacha20-poly1305 may vary depending upon CPU and/or optional binding availability)
+              * `aes128-gcm`
+              * `aes128-gcm@openssh.com`
+              * `aes256-gcm`
+              * `aes256-gcm@openssh.com`
+              * `aes128-ctr`
+              * `aes192-ctr`
+              * `aes256-ctr`
+            * Other supported names:
+              * `3des-cbc`
+              * `aes256-cbc`
+              * `aes192-cbc`
+              * `aes128-cbc`
+              * `arcfour256`
+              * `arcfour128`
+              * `arcfour`
+              * `blowfish-cbc`
+              * `cast128-cbc`
 
-        * **hmac** - _array_ - (H)MAC algorithms.
+        * **hmac** - _mixed_ - (H)MAC algorithms.
+            * Default list (in order from most to least preferrable):
+              * `hmac-sha2-256-etm@openssh.com`
+              * `hmac-sha2-512-etm@openssh.com`
+              * `hmac-sha1-etm@openssh.com`
+              * `hmac-sha2-256`
+              * `hmac-sha2-512`
+              * `hmac-sha1`
+            * Other supported names:
+              * hmac-md5
+              * hmac-sha2-256-96
+              * hmac-sha2-512-96
+              * hmac-ripemd160
+              * hmac-sha1-96
+              * hmac-md5-96
 
-        * **compress** - _array_ - Compression algorithms.
+        * **compress** - _mixed_ - Compression algorithms.
+            * Default list (in order from most to least preferrable):
+              * `none`
+              * `zlib@openssh.com`
+              * `zlib`
+            * Other supported names:
 
-    * **compress** - _mixed_ - Set to `true` to enable compression if server supports it, `'force'` to force compression (disconnecting if server does not support it), or `false` to explicitly opt out of compression all of the time. Note: this setting is overridden when explicitly setting a compression algorithm in the `algorithms` configuration option. **Default:** (only use compression if that is only what the server supports)
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
-**Default authentication method order:** None -> Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased
-
-* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _boolean_ - Executes `command` on the server. Returns `false` if you should wait for the `continue` event before sending any more traffic. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Valid `options` properties are:
+* **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Valid `options` properties are:
 
     * **env** - _object_ - An environment to use for the execution of the command.
 
@@ -770,9 +892,9 @@ You can find more examples in the `examples` directory of this repository.
 
         * **cookie** - _mixed_ - The authentication cookie. Can be a hex _string_ or a _Buffer_ containing the raw cookie value (which will be converted to a hex string). **Default:** (random 16 byte value)
 
-* **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _boolean_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming TCP connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Returns `false` if you should wait for the `continue` event before sending any more traffic. Here are some special values for `remoteAddr` and their associated binding behaviors:
+* **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming TCP connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
     * '' - Connections are to be accepted on all protocol families supported by the server.
 
@@ -784,23 +906,25 @@ You can find more examples in the `examples` directory of this repository.
 
     * '127.0.0.1' and '::1' - Listen on the loopback interfaces for IPv4 and IPv6, respectively.
 
-* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Unbind from `remoteAddr` on `remotePort` on the server and stop forwarding incoming TCP connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Unbind from `remoteAddr` on `remotePort` on the server and stop forwarding incoming TCP connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
 
-* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _boolean_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **sftp**(< _function_ >callback) - _boolean_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTPStream_ >sftp. For methods available on `sftp`, see the [`SFTPStream` client documentation](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md) (except `read()` and `write()` are used instead of `readData()` and `writeData()` respectively, for convenience). Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
 
-* **subsys**(< _string_ >subsystem, < _function_ >callback) - _boolean_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+
+* **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the server. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
 * **end**() - _(void)_ - Disconnects the socket.
 
-* **openssh_noMoreSessions**(< _function_ >callback) - _boolean_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **openssh_noMoreSessions**(< _function_ >callback) - _(void)_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err.
 
-* **openssh_forwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that binds to a UNIX domain socket at `socketPath` on the server and forwards incoming connections. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **openssh_forwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that binds to a UNIX domain socket at `socketPath` on the server and forwards incoming connections. `callback` has 1 parameter: < _Error_ >err.
 
-* **openssh_unforwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that unbinds from a UNIX domain socket at `socketPath` on the server and stops forwarding incoming connections. `callback` has 1 parameter: < _Error_ >err. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **openssh_unforwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that unbinds from a UNIX domain socket at `socketPath` on the server and stops forwarding incoming connections. `callback` has 1 parameter: < _Error_ >err.
 
-* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 ### Server
 
@@ -843,7 +967,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **hostKeys** - _array_ - An array of either Buffers/strings that contain host private keys or objects in the format of `{ key: <Buffer/string>, passphrase: <string> }` for encrypted private keys. (**Required**) **Default:** (none)
 
-    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for incoming client connections. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2-streams` used by this module. Valid keys:
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for incoming client connections. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2` used by this module. Valid keys:
 
         * **kex** - _array_ - Key exchange algorithms.
 
@@ -891,13 +1015,13 @@ You can find more examples in the `examples` directory of this repository.
 
         * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
 
-        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _boolean_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(err, responses)`, where `responses` is an array of string responses matching up to the `prompts`.
+        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(err, responses)`, where `responses` is an array of string responses matching up to the `prompts`.
 
 * **ready**() - Emitted when the client has been successfully authenticated.
 
-* **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance.
 
-* **tcpip**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic. `info` contains:
+* **tcpip**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
 
     * **srcIP** - _string_ - Source IP address of outgoing connection.
 
@@ -907,7 +1031,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **destPort** - _string_ - Destination port of outgoing connection.
 
-* **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic. `info` contains:
+* **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
 
     * **socketPath** - _string_ - Destination socket path of outgoing connection.
 
@@ -923,9 +1047,29 @@ You can find more examples in the `examples` directory of this repository.
 
         * **socketPath** - _string_ - The socket path to start/stop binding to.
 
-* **rekey**() - Emitted when the client has finished rekeying (either client or server initiated).
+* **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
 
-* **continue**() - Emitted when more requests/data can be sent to the client (after a `Connection` method returned `false`).
+```js
+    // In this particular case `mac` is empty because there is no separate MAC
+    // because it's integrated into AES in GCM mode
+    { kex: 'ecdh-sha2-nistp256',
+      srvHostKey: 'rsa-sha2-512',
+      cs: { // Client to server algorithms
+        cipher: 'aes128-gcm',
+        mac: '',
+        compress: 'none',
+        lang: ''
+      },
+      sc: { // Server to client algorithms
+        cipher: 'aes128-gcm',
+        mac: '',
+        compress: 'none',
+        lang: ''
+      }
+    }
+```   
+
+* **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
 * **error**(< _Error_ >err) - An error occurred.
 
@@ -935,19 +1079,19 @@ You can find more examples in the `examples` directory of this repository.
 
 #### Connection methods
 
-* **end**() - _boolean_ - Closes the client connection. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **end**() - _(void)_ - Closes the client connection.
 
-* **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _boolean_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _(void)_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _boolean_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _boolean_ - Alert the client of an incoming UNIX domain socket connection on `socketPath`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - Alert the client of an incoming UNIX domain socket connection on `socketPath`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
-* **rekey**([< _function_ >callback]) - _boolean_ - Initiates a rekeying with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
 #### Session events
 
-* **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
     * **cols** - _integer_ - The number of columns for the pseudo-TTY.
 
@@ -959,7 +1103,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **modes** - _object_ - Contains the requested terminal modes of the pseudo-TTY keyed on the mode name with the value being the mode argument. (See the table at the end for valid names).
 
-* **window-change**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client reported a change in window dimensions during this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **window-change**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client reported a change in window dimensions during this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
     * **cols** - _integer_ - The new number of columns for the client window.
 
@@ -969,7 +1113,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **height** - _integer_ - The new height of the client window in pixels.
 
-* **x11**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested X11 forwarding. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **x11**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested X11 forwarding. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
     * **single** - _boolean_ - `true` if only a single connection should be forwarded.
 
@@ -979,27 +1123,27 @@ You can find more examples in the `examples` directory of this repository.
 
     * **screen** - _integer_ - The screen number to forward X11 connections for.
 
-* **env**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested an environment variable to be set for this session. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **env**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested an environment variable to be set for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
     * **key** - _string_ - The environment variable's name.
 
     * **value** - _string_ - The environment variable's value.
 
-* **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
     * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
 
-* **auth-agent**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested incoming ssh-agent requests be forwarded to them. `accept` and `reject` are functions if the client requested a response and return `false` if you should wait for the `continue` event before sending any more traffic.
+* **auth-agent**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested incoming ssh-agent requests be forwarded to them. `accept` and `reject` are functions if the client requested a response.
 
-* **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic.
+* **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell.
 
-* **exec**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested execution of a command string. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the command execution. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **exec**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested execution of a command string. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the command execution. `info` has these properties:
 
     * **command** - _string_ - The command line to be executed.
 
-* **sftp**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested the SFTP subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns an _SFTPStream_ in server mode (see the [`SFTPStream` documentation](https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md) for details). `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **sftp**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested the SFTP subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns an _SFTP_ instance in server mode (see the [`SFTP` documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md) for details). `info` has these properties:
 
-* **subsystem**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested an arbitrary subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the subsystem. `reject()` Returns `false` if you should wait for the `continue` event before sending any more traffic. `info` has these properties:
+* **subsystem**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested an arbitrary subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the subsystem. `info` has these properties:
 
     * **name** - _string_ - The name of the subsystem.
 
@@ -1027,17 +1171,17 @@ This is a normal **streams2** Duplex Stream (used both by clients and servers), 
 
         * The readable side represents stdout and the writable side represents stdin.
 
-        * **signal**(< _string_ >signalName) - _boolean_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+        * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead.
 
-        * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _boolean_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+        * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section.
 
 * Server-specific:
 
     * For exec-enabled channel instances there is an additional method available that may be called right before you close the channel. It has two different signatures:
 
-        * **exit**(< _integer_ >exitCode) - _boolean_ - Sends an exit status code to the client. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+        * **exit**(< _integer_ >exitCode) - _(void)_ - Sends an exit status code to the client.
 
-        * **exit**(< _string_ >signalName[, < _boolean_ >coreDumped[, < _string_ >errorMsg]]) - _boolean_ - Sends an exit status code to the client. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+        * **exit**(< _string_ >signalName[, < _boolean_ >coreDumped[, < _string_ >errorMsg]]) - _(void)_ - Sends an exit status code to the client.
 
     * For exec and shell-enabled channel instances, `channel.stderr` is a writable stream.
 
@@ -1126,3 +1270,35 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 #### HTTPAgent methods
 
 * **(constructor)**(< _object_ >sshConfig[, < _object_ >agentConfig]) - Creates and returns a new `http.Agent` instance used to tunnel an HTTP connection over SSH. `sshConfig` is what is passed to `client.connect()` and `agentOptions` is passed to the `http.Agent` constructor.
+
+### HTTPSAgent
+
+#### HTTPSAgent methods
+
+* **(constructor)**(< _object_ >sshConfig[, < _object_ >agentConfig]) - Creates and returns a new `https.Agent` instance used to tunnel an HTTP connection over SSH. `sshConfig` is what is passed to `client.connect()` and `agentOptions` is passed to the `https.Agent` constructor.
+
+### Utilities
+
+* **parseKey**(< _mixed_ >keyData[, < _string_ >passphrase]) - _mixed_ - Parses a private/public key in OpenSSH, RFC4716, or PPK format. For encrypted private keys, the key will be decrypted with the given `passphrase`. `keyData` can be a _Buffer_ or _string_ value containing the key contents. The returned value will be an array of objects (currently in the case of modern OpenSSH keys) or an object with these properties and methods:
+
+    * **type** - _string_ - The full key type (e.g. `'ssh-rsa'`)
+
+    * **comment** - _string_ - The comment for the key
+
+    * **getPrivatePEM**() - _string_ - This returns the PEM version of a private key
+
+    * **getPublicPEM**() - _string_ - This returns the PEM version of a public key (for either public key or derived from a private key)
+
+    * **getPublicSSH**() - _string_ - This returns the SSH version of a public key (for either public key or derived from a private key)
+
+    * **sign**(< _mixed_ >data) - _mixed_ - This signs the given `data` using this key and returns a _Buffer_ containing the signature on success. On failure, an _Error_ will be returned. `data` can be anything accepted by node's [`sign.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_sign_update_data_inputencoding).
+
+    * **verify**(< _mixed_ >data, < _Buffer_ >signature) - _mixed_ - This verifies a `signature` of the given `data` using this key and returns `true` if the signature could be verified. On failure, either `false` will be returned or an _Error_ will be returned upon a more critical failure. `data` can be anything accepted by node's [`verify.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_verify_update_data_inputencoding).
+
+* **sftp.OPEN_MODE** - [`OPEN_MODE`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-data-structures)
+
+* **sftp.STATUS_CODE** - [`STATUS_CODE`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-data-structures)
+
+* **sftp.flagsToString** - [`flagsToString()`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-methods)
+
+* **sftp.stringToFlags** - [`stringToFlags()`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-methods)

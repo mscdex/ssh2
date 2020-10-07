@@ -1,133 +1,137 @@
-var Client = require('../lib/client');
-var Server = require('../lib/server');
-var OPEN_MODE = require('ssh2-streams').SFTPStream.OPEN_MODE;
-var STATUS_CODE = require('ssh2-streams').SFTPStream.STATUS_CODE;
-var utils = require('ssh2-streams').utils;
+// TODO: DRY shared code across tests and test files
+'use strict';
 
-var net = require('net');
-var fs = require('fs');
-var crypto = require('crypto');
-var path = require('path');
-var join = path.join;
-var inspect = require('util').inspect;
-var assert = require('assert');
+const assert = require('assert');
+const { readFileSync } = require('fs');
+const { Socket } = require('net');
+const { join, basename } = require('path');
+const { inspect } = require('util');
 
-var t = -1;
-var group = path.basename(__filename, '.js') + '/';
-var fixturesdir = join(__dirname, 'fixtures');
+const Client = require('../lib/client.js');
+const Server = require('../lib/server.js');
+const { parseKey } = require('../lib/protocol/keyParser.js');
+const { OPEN_MODE, STATUS_CODE } = require('../lib/protocol/SFTP.js');
 
-var USER = 'nodejs';
-var PASSWORD = 'FLUXCAPACITORISTHEPOWER';
-var MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
-var KEY_RSA_BAD = fs.readFileSync(join(fixturesdir, 'bad_rsa_private_key'));
-var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
-var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
-var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
-var CLIENT_KEY_ENC_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa_enc'));
-var CLIENT_KEY_ENC_RSA = utils.parseKey(CLIENT_KEY_ENC_RSA_RAW, 'foobarbaz');
-var CLIENT_KEY_PPK_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa.ppk'));
-var CLIENT_KEY_PPK_RSA = utils.parseKey(CLIENT_KEY_PPK_RSA_RAW);
-var CLIENT_KEY_RSA_RAW = fs.readFileSync(join(fixturesdir, 'id_rsa'));
-var CLIENT_KEY_RSA = utils.parseKey(CLIENT_KEY_RSA_RAW);
-var CLIENT_KEY_RSA_NEW_RAW =
-    fs.readFileSync(join(fixturesdir, 'openssh_new_rsa'));
-var CLIENT_KEY_RSA_NEW = utils.parseKey(CLIENT_KEY_RSA_NEW_RAW)[0];
-var CLIENT_KEY_DSA_RAW = fs.readFileSync(join(fixturesdir, 'id_dsa'));
-var CLIENT_KEY_DSA = utils.parseKey(CLIENT_KEY_DSA_RAW);
-var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(join(fixturesdir, 'id_ecdsa'));
-var CLIENT_KEY_ECDSA = utils.parseKey(CLIENT_KEY_ECDSA_RAW);
-var DEBUG = false;
-var DEFAULT_TEST_TIMEOUT = 30 * 1000;
+const { mustCall, mustCallAtLeast, mustNotCall } = require('./common.js');
 
-var tests = [
-  { run: function() {
-      var client;
-      var server;
-      var r;
+let t = -1;
+const THIS_FILE = basename(__filename, '.js');
+const fixturesDir = join(__dirname, 'fixtures');
+const fixture = (file) => readFileSync(join(fixturesDir, file));
 
-      r = setup(
+const USER = 'nodejs';
+const PASSWORD = 'FLUXCAPACITORISTHEPOWER';
+const MD5_HOST_FINGERPRINT = '64254520742d3d0792e918f3ce945a64';
+const KEY_RSA_BAD = fixture('bad_rsa_private_key');
+const HOST_KEY_RSA = fixture('ssh_host_rsa_key');
+const HOST_KEY_DSA = fixture('ssh_host_dsa_key');
+const HOST_KEY_ECDSA = fixture('ssh_host_ecdsa_key');
+const CLIENT_KEY_ENC_RSA_RAW = fixture('id_rsa_enc');
+const CLIENT_KEY_ENC_RSA = parseKey(CLIENT_KEY_ENC_RSA_RAW, 'foobarbaz');
+const CLIENT_KEY_PPK_RSA_RAW = fixture('id_rsa.ppk');
+const CLIENT_KEY_PPK_RSA = parseKey(CLIENT_KEY_PPK_RSA_RAW);
+const CLIENT_KEY_RSA_RAW = fixture('id_rsa');
+const CLIENT_KEY_RSA = parseKey(CLIENT_KEY_RSA_RAW);
+const CLIENT_KEY_RSA_NEW_RAW = fixture('openssh_new_rsa');
+const CLIENT_KEY_RSA_NEW = parseKey(CLIENT_KEY_RSA_NEW_RAW)[0];
+const CLIENT_KEY_DSA_RAW = fixture('id_dsa');
+const CLIENT_KEY_DSA = parseKey(CLIENT_KEY_DSA_RAW);
+const CLIENT_KEY_ECDSA_RAW = fixture('id_ecdsa');
+const CLIENT_KEY_ECDSA = parseKey(CLIENT_KEY_ECDSA_RAW);
+const DEBUG = false;
+const DEFAULT_TEST_TIMEOUT = 30 * 1000;
+
+const tests = [
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_RSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with an RSA key (old OpenSSH)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_RSA_NEW_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA_NEW.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_RSA_NEW.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_RSA_NEW.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with an RSA key (new OpenSSH)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_ENC_RSA_RAW,
@@ -135,161 +139,176 @@ var tests = [
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ENC_RSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_ENC_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_ENC_RSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with an encrypted RSA key'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_PPK_RSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_PPK_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_PPK_RSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with an RSA key (PPK)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_DSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-dss',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-dss',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_DSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with a DSA key'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_ECDSA_RAW
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature, msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_ECDSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg('Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with a ECDSA key'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: 'asdf',
@@ -299,66 +318,71 @@ var tests = [
         },
         { hostKeys: [HOST_KEY_DSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.password === 'asdf',
-                 makeMsg('Unexpected password: ' + ctx.password));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'password',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.password === 'asdf',
+                     msg(`Unexpected password: ${ctx.password}`));
+              ctx.accept();
+              break;
+          }
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server with DSA host key'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
-          password: 'asdf'
+          password: 'asdf',
+          algorithms: {
+            serverHostKey: ['ecdsa-sha2-nistp256']
+          },
         },
         { hostKeys: [HOST_KEY_ECDSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.password === 'asdf',
-                 makeMsg('Unexpected password: ' + ctx.password));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'password',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.password === 'asdf',
+                     msg(`Unexpected password: ${ctx.password}`));
+              ctx.accept();
+              break;
+          }
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server with ECDSA host key'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: 'asdf',
@@ -368,33 +392,34 @@ var tests = [
         },
         { hostKeys: [HOST_KEY_RSA, HOST_KEY_DSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.password === 'asdf',
-                 makeMsg('Unexpected password: ' + ctx.password));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'password',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.password === 'asdf',
+                     msg(`Unexpected password: ${ctx.password}`));
+              ctx.accept();
+              break;
+          }
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server with multiple host keys (RSA selected)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: 'asdf',
@@ -404,35 +429,36 @@ var tests = [
         },
         { hostKeys: [HOST_KEY_RSA, HOST_KEY_DSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.password === 'asdf',
-                 makeMsg('Unexpected password: ' + ctx.password));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'password',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.password === 'asdf',
+                     msg(`Unexpected password: ${ctx.password}`));
+              ctx.accept();
+              break;
+          }
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server with multiple host keys (DSA selected)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var hostname = 'foo';
-      var username = 'bar';
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const hostname = 'foo';
+      const username = 'bar';
+      const { server } = setup(
         this,
         { username: USER,
           privateKey: CLIENT_KEY_RSA_RAW,
@@ -441,458 +467,397 @@ var tests = [
         },
         { hostKeys: [ HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method !== 'hostbased')
-            return ctx.reject();
-          assert(ctx.method === 'hostbased',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg('Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg('Public key mismatch'));
-          assert(ctx.signature,
-                 makeMsg('Expected signature'));
-          assert(ctx.localHostname === hostname,
-                 makeMsg('Wrong local hostname'));
-          assert(ctx.localUsername === username,
-                 makeMsg('Wrong local username'));
-          assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
-                 makeMsg('Could not verify hostbased signature'));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              return ctx.reject();
+            case 3:
+              assert(ctx.method === 'hostbased',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              assert(ctx.signature,
+                     msg('Expected signature'));
+              assert(ctx.localHostname === hostname,
+                     msg('Wrong local hostname'));
+              assert(ctx.localUsername === username,
+                     msg('Wrong local username'));
+              assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
+                     msg('Could not verify hostbased signature'));
+              ctx.accept();
+              break;
+          }
+        }, 3)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with hostbased'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
-          assert(ctx.password === PASSWORD,
-                 makeMsg('Unexpected password: ' + ctx.password));
-          ctx.accept();
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong auth method: ${ctx.method}`);
+              return ctx.reject();
+            case 2:
+              assert(ctx.method === 'password',
+                     msg(`Wrong auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.password === PASSWORD,
+                     msg(`Unexpected password: ${ctx.password}`));
+              ctx.accept();
+              break;
+          }
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Authenticate with a password'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calls = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
           privateKey: CLIENT_KEY_RSA_RAW,
-          authHandler: function(methodsLeft, partial, cb) {
-            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
-            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
-            assert(partial === null, makeMsg('expected null partial'));
+          authHandler: mustCall((methodsLeft, partial, cb) => {
+            assert(methodsLeft === null, msg('expected null methodsLeft'));
+            assert(partial === null, msg('expected null partial'));
             return 'none';
-          }
+          })
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      var attempts = 0;
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          assert(++attempts === 1, makeMsg('too many auth attempts'));
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           assert(ctx.method === 'none',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
+                 msg(`Wrong auth method: ${ctx.method}`));
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Custom authentication order (sync)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calls = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
           privateKey: CLIENT_KEY_RSA_RAW,
-          authHandler: function(methodsLeft, partial, cb) {
-            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
-            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
-            assert(partial === null, makeMsg('expected null partial'));
-            process.nextTick(cb, 'none');
-          }
+          authHandler: mustCall((methodsLeft, partial, cb) => {
+            assert(methodsLeft === null, msg('expected null methodsLeft'));
+            assert(partial === null, msg('expected null partial'));
+            process.nextTick(mustCall(cb), 'none');
+          })
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      var attempts = 0;
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          assert(++attempts === 1, makeMsg('too many auth attempts'));
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           assert(ctx.method === 'none',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
+                 msg(`Wrong auth method: ${ctx.method}`));
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Custom authentication order (async)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var cliError;
-      var calls = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let cliError;
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
           privateKey: CLIENT_KEY_RSA_RAW,
-          authHandler: function(methodsLeft, partial, cb) {
-            assert(calls++ === 0, makeMsg('authHandler called multiple times'));
-            assert(methodsLeft === null, makeMsg('expected null methodsLeft'));
-            assert(partial === null, makeMsg('expected null partial'));
+          authHandler: mustCall((methodsLeft, partial, cb) => {
+            assert(methodsLeft === null, msg('expected null methodsLeft'));
+            assert(partial === null, msg('expected null partial'));
             return false;
-          }
+          })
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
       // Remove default client error handler added by `setup()` since we are
       // expecting an error in this case
       client.removeAllListeners('error');
 
-      client.on('error', function(err) {
+      client.on('error', mustCall((err) => {
         cliError = err;
         assert.strictEqual(err.level, 'client-authentication');
         assert(/configured authentication methods failed/i.test(err.message),
-               makeMsg('Wrong error message'));
-      }).on('close', function() {
-        assert(cliError, makeMsg('Expected client error'));
-      });
+               msg('Wrong error message'));
+      })).on('close', mustCall(() => {
+        assert(cliError, msg('Expected client error'));
+      }));
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          assert(false, makeMsg('should not see auth attempt'));
-        }).on('ready', function() {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustNotCall())
+            .on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Custom authentication order (no methods)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calls = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let calls = 0;
+      const { server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
           privateKey: CLIENT_KEY_RSA_RAW,
-          authHandler: function(methodsLeft, partial, cb) {
-            switch (calls++) {
-              case 0:
-                assert(methodsLeft === null,
-                       makeMsg('expected null methodsLeft'));
-                assert(partial === null, makeMsg('expected null partial'));
-                return 'publickey';
+          authHandler: mustCall((methodsLeft, partial, cb) => {
+            switch (++calls) {
               case 1:
+                assert(methodsLeft === null,
+                       msg('expected null methodsLeft'));
+                assert(partial === null, msg('expected null partial'));
+                return 'publickey';
+              case 2:
                 assert.deepStrictEqual(methodsLeft,
                                        ['password'],
-                                       makeMsg('expected password method left'
-                                               + ', saw: ' + methodsLeft));
-                assert(partial === true, makeMsg('expected partial success'));
+                                       msg('expected password method left'
+                                           + `, saw: ${methodsLeft}`));
+                assert(partial === true, msg('expected partial success'));
                 return 'password';
-              default:
-                assert(false, makeMsg('authHandler called too many times'));
             }
-          }
+          }, 2)
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      var attempts = 0;
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        let attempts = 0;
+        conn.on('authentication', mustCall((ctx) => {
           assert(++attempts === calls,
-                 makeMsg('server<->client state mismatch'));
+                 msg('server<->client state mismatch'));
           switch (calls) {
             case 1:
               assert(ctx.method === 'publickey',
-                     makeMsg('Unexpected auth method: ' + ctx.method));
+                     msg(`Wrong auth method: ${ctx.method}`));
               assert(ctx.username === USER,
-                     makeMsg('Unexpected username: ' + ctx.username));
+                     msg(`Unexpected username: ${ctx.username}`));
               assert(ctx.key.algo === 'ssh-rsa',
-                     makeMsg('Unexpected key algo: ' + ctx.key.algo));
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
               assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
                                ctx.key.data,
-                               makeMsg('Public key mismatch'));
+                               msg('Public key mismatch'));
               ctx.reject(['password'], true);
               break;
             case 2:
               assert(ctx.method === 'password',
-                     makeMsg('Unexpected auth method: ' + ctx.method));
+                     msg(`Wrong auth method: ${ctx.method}`));
               assert(ctx.username === USER,
-                     makeMsg('Unexpected username: ' + ctx.username));
+                     msg(`Unexpected username: ${ctx.username}`));
               assert(ctx.password === PASSWORD,
-                     makeMsg('Unexpected password: ' + ctx.password));
+                     msg(`Unexpected password: ${ctx.password}`));
               ctx.accept();
               break;
-            default:
-              assert(false, makeMsg('bad client auth state'));
           }
-        }).on('ready', function() {
+        }, 2)).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Custom authentication order (multi-step)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var verified = false;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let verified = false;
+      const { server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
           hostHash: 'md5',
-          hostVerifier: function(hash) {
+          hostVerifier: (hash) => {
             assert(hash === MD5_HOST_FINGERPRINT,
-                   makeMsg('Host fingerprint mismatch'));
+                   msg('Host fingerprint mismatch'));
             return (verified = true);
           }
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      }).on('close', function() {
-        assert(verified, makeMsg('Failed to verify host fingerprint'));
-      });
-    },
+        }));
+      })).on('close', mustCall(() => {
+        assert(verified, msg('Failed to verify host fingerprint'));
+      }));
+    }),
     what: 'Verify host fingerprint'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-      var outErr = '';
-      var exitArgs;
-      var closeArgs;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let out = '';
+      let outErr = '';
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            session.once('exec', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
               stream.stderr.write('stderr data!\n');
               stream.write('stdout data!\n');
               stream.exit(100);
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.exec('foo --bar', function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.exec('foo --bar', mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          }).on('exit', function(code) {
-            exitArgs = new Array(arguments.length);
-            for (var i = 0; i < exitArgs.length; ++i)
-              exitArgs[i] = arguments[i];
-          }).on('close', function(code) {
-            closeArgs = new Array(arguments.length);
-            for (var i = 0; i < closeArgs.length; ++i)
-              closeArgs[i] = arguments[i];
-          }).stderr.on('data', function(d) {
+          })).on('exit', mustCall((...args) => {
+            assert.deepStrictEqual(args,
+                             [100],
+                             msg(`Wrong exit args: ${inspect(args)}`));
+          })).on('close', mustCall((...args) => {
+            assert.deepStrictEqual(args,
+                             [100],
+                             msg(`Wrong close args: ${inspect(args)}`));
+          })).stderr.on('data', mustCallAtLeast((d) => {
             outErr += d;
-          });
-        });
-      }).on('end', function() {
-        assert.deepEqual(exitArgs,
-                         [100],
-                         makeMsg('Wrong exit args: ' + inspect(exitArgs)));
-        assert.deepEqual(closeArgs,
-                         [100],
-                         makeMsg('Wrong close args: ' + inspect(closeArgs)));
+          }));
+        }));
+      })).on('end', mustCall(() => {
         assert(out === 'stdout data!\n',
-               makeMsg('Wrong stdout data: ' + inspect(out)));
+               msg(`Wrong stdout data: ${inspect(out)}`));
         assert(outErr === 'stderr data!\n',
-               makeMsg('Wrong stderr data: ' + inspect(outErr)));
-      });
-    },
+               msg(`Wrong stderr data: ${inspect(outErr)}`));
+      }));
+    }),
     what: 'Simple exec'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var serverEnv = {};
-      var clientEnv = { SSH2NODETEST: 'foo' };
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const serverEnv = {};
+      const clientEnv = { SSH2NODETEST: 'foo' };
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            session.once('env', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('env', mustCall((accept, reject, info) => {
               serverEnv[info.key] = info.val;
               accept && accept();
-            }).once('exec', function(accept, reject, info) {
+            })).once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
               stream.exit(100);
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
         client.exec('foo --bar',
                     { env: clientEnv },
-                    function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
+                    mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
           stream.resume();
-        });
-      }).on('end', function() {
+        }));
+      })).on('end', mustCall(() => {
         assert.deepEqual(serverEnv, clientEnv,
-                         makeMsg('Environment mismatch'));
-      });
-    },
+                         msg('Environment mismatch'));
+      }));
+    }),
     what: 'Exec with environment set'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let out = '';
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            var ptyInfo;
-            session.once('pty', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            let ptyInfo;
+            session.once('pty', mustCall((accept, reject, info) => {
               ptyInfo = info;
               accept && accept();
-            }).once('exec', function(accept, reject, info) {
+            })).once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
               stream.write(JSON.stringify(ptyInfo));
               stream.exit(100);
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      var pty = {
+            }));
+          }));
+        }));
+      }));
+      const pty = {
         rows: 2,
         cols: 4,
         width: 0,
@@ -900,30 +865,26 @@ var tests = [
         term: 'vt220',
         modes: {}
       };
-      client.on('ready', function() {
+      client.on('ready', mustCall(() => {
         client.exec('foo --bar',
                     { pty: pty },
-                    function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
+                    mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          });
-        });
-      }).on('end', function() {
+          }));
+        }));
+      })).on('end', mustCall(() => {
         assert.deepEqual(JSON.parse(out),
                          pty,
-                         makeMsg('Wrong stdout data: ' + inspect(out)));
-      });
-    },
+                         msg(`Wrong stdout data: ${inspect(out)}`));
+      }));
+    }),
     what: 'Exec with pty set'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let out = '';
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
@@ -931,797 +892,683 @@ var tests = [
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            var authAgentReq = false;
-            session.once('auth-agent', function(accept, reject) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            let authAgentReq = false;
+            session.once('auth-agent', mustCall((accept, reject) => {
               authAgentReq = true;
               accept && accept();
-            }).once('exec', function(accept, reject, info) {
+            })).once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
               stream.write(inspect(authAgentReq));
               stream.exit(100);
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
         client.exec('foo --bar',
                     { agentForward: true },
-                    function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
+                    mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          });
-        });
-      }).on('end', function() {
+          }));
+        }));
+      })).on('end', mustCall(() => {
         assert(out === 'true',
-               makeMsg('Wrong stdout data: ' + inspect(out)));
-      });
-    },
+               msg(`Wrong stdout data: ${inspect(out)}`));
+      }));
+    }),
     what: 'Exec with OpenSSH agent forwarding'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let out = '';
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            var x11 = false;
-            session.once('x11', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            let x11 = false;
+            session.once('x11', mustCall((accept, reject, info) => {
               assert.strictEqual(info.single,
                                  false,
-                                 makeMsg('Wrong client x11.single: '
+                                 msg('Wrong client x11.single: '
                                          + info.single));
               assert.strictEqual(info.screen,
                                  0,
-                                 makeMsg('Wrong client x11.screen: '
+                                 msg('Wrong client x11.screen: '
                                          + info.screen));
               assert.strictEqual(info.protocol,
                                  'MIT-MAGIC-COOKIE-1',
-                                 makeMsg('Wrong client x11.protocol: '
+                                 msg('Wrong client x11.protocol: '
                                          + info.protocol));
               assert.strictEqual(info.cookie.length,
                                  32,
-                                 makeMsg('Invalid client x11.cookie: '
+                                 msg('Invalid client x11.cookie: '
                                          + info.cookie));
               x11 = true;
               accept && accept();
-            }).once('exec', function(accept, reject, info) {
+            })).once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
-              conn.x11('127.0.0.1', 4321, function(err, xstream) {
-                assert(!err, makeMsg('Unexpected x11() error: ' + err));
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
+              conn.x11('127.0.0.1', 4321, mustCall((err, xstream) => {
+                assert(!err, msg(`Unexpected x11() error: ${err}`));
                 xstream.resume();
-                xstream.on('end', function() {
+                xstream.on('end', mustCall(() => {
                   stream.write(JSON.stringify(x11));
                   stream.exit(100);
                   stream.end();
                   conn.end();
-                }).end();
-              });
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.on('x11', function(info, accept, reject) {
+                })).end();
+              }));
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.on('x11', mustCall((info, accept, reject) => {
           assert.strictEqual(info.srcIP,
                              '127.0.0.1',
-                             makeMsg('Invalid server x11.srcIP: '
+                             msg('Invalid server x11.srcIP: '
                                      + info.srcIP));
           assert.strictEqual(info.srcPort,
                              4321,
-                             makeMsg('Invalid server x11.srcPort: '
+                             msg('Invalid server x11.srcPort: '
                                      + info.srcPort));
           accept();
-        }).exec('foo --bar',
+        })).exec('foo --bar',
                     { x11: true },
-                    function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
+                    mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          });
-        });
-      }).on('end', function() {
+          }));
+        }));
+      })).on('end', mustCall(() => {
         assert(out === 'true',
-               makeMsg('Wrong stdout data: ' + inspect(out)));
-      });
-    },
+               msg(`Wrong stdout data: ${inspect(out)}`));
+      }));
+    }),
     what: 'Exec with X11 forwarding'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-      var x11ClientConfig = {
+  { run: mustCall(function(msg) {
+      let out = '';
+      const x11ClientConfig = {
         single: true,
         screen: 1234,
         protocol: 'YUMMY-MAGIC-COOKIE-1',
         cookie: '00112233445566778899001122334455'
       };
-
-      r = setup(
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            var x11 = false;
-            session.once('x11', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            let x11 = false;
+            session.once('x11', mustCall((accept, reject, info) => {
               assert.strictEqual(info.single,
                                  true,
-                                 makeMsg('Wrong client x11.single: '
+                                 msg('Wrong client x11.single: '
                                          + info.single));
               assert.strictEqual(info.screen,
                                  1234,
-                                 makeMsg('Wrong client x11.screen: '
+                                 msg('Wrong client x11.screen: '
                                          + info.screen));
               assert.strictEqual(info.protocol,
                                  'YUMMY-MAGIC-COOKIE-1',
-                                 makeMsg('Wrong client x11.protocol: '
+                                 msg('Wrong client x11.protocol: '
                                          + info.protocol));
-              assert.strictEqual(info.cookie,
+              assert(Buffer.isBuffer(info.cookie));
+              assert.strictEqual(info.cookie.toString(),
                                  '00112233445566778899001122334455',
-                                 makeMsg('Wrong client x11.cookie: '
+                                 msg('Wrong client x11.cookie: '
                                          + info.cookie));
               x11 = info;
+              x11.cookie = x11.cookie.toString();
               accept && accept();
-            }).once('exec', function(accept, reject, info) {
+            })).once('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
-                     makeMsg('Wrong exec command: ' + info.command));
-              var stream = accept();
-              conn.x11('127.0.0.1', 4321, function(err, xstream) {
-                assert(!err, makeMsg('Unexpected x11() error: ' + err));
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
+              conn.x11('127.0.0.1', 4321, mustCall((err, xstream) => {
+                assert(!err, msg(`Unexpected x11() error: ${err}`));
                 xstream.resume();
-                xstream.on('end', function() {
+                xstream.on('end', mustCall(() => {
                   stream.write(JSON.stringify(x11));
                   stream.exit(100);
                   stream.end();
                   conn.end();
-                }).end();
-              });
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.on('x11', function(info, accept, reject) {
+                })).end();
+              }));
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.on('x11', mustCall((info, accept, reject) => {
           assert.strictEqual(info.srcIP,
                              '127.0.0.1',
-                             makeMsg('Invalid server x11.srcIP: '
+                             msg('Invalid server x11.srcIP: '
                                      + info.srcIP));
           assert.strictEqual(info.srcPort,
                              4321,
-                             makeMsg('Invalid server x11.srcPort: '
+                             msg('Invalid server x11.srcPort: '
                                      + info.srcPort));
           accept();
-        }).exec('foo --bar',
-                    { x11: x11ClientConfig },
-                    function(err, stream) {
-          assert(!err, makeMsg('Unexpected exec error: ' + err));
-          stream.on('data', function(d) {
+        })).exec('foo --bar',
+                 { x11: x11ClientConfig },
+                 mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          });
-        });
-      }).on('end', function() {
-        var result = JSON.parse(out);
+          }));
+        }));
+      })).on('end', mustCall(() => {
+        const result = JSON.parse(out);
         assert.deepStrictEqual(result,
                                x11ClientConfig,
-                               makeMsg('Wrong stdout data: ' + result));
-      });
-    },
+                               msg(`Wrong stdout data: ${result}`));
+      }));
+    }),
     what: 'Exec with X11 forwarding (custom X11 settings)'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var out = '';
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let out = '';
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            var sawPty = false;
-            session.once('pty', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            let sawPty = false;
+            session.once('pty', mustCall((accept, reject, info) => {
               sawPty = true;
               accept && accept();
-            }).once('shell', function(accept, reject) {
-              var stream = accept();
-              stream.write('Cowabunga dude! ' + inspect(sawPty));
+            })).once('shell', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.write(`Cowabunga dude! ${inspect(sawPty)}`);
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.shell(function(err, stream) {
-          assert(!err, makeMsg('Unexpected shell error: ' + err));
-          stream.on('data', function(d) {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.shell(mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected shell error: ${err}`));
+          stream.on('data', mustCallAtLeast((d) => {
             out += d;
-          });
-        });
-      }).on('end', function() {
+          }));
+        }));
+      })).on('end', mustCall(() => {
         assert(out === 'Cowabunga dude! true',
-               makeMsg('Wrong stdout data: ' + inspect(out)));
-      });
-    },
+               msg(`Wrong stdout data: ${inspect(out)}`));
+      }));
+    }),
     what: 'Simple shell'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var serverEnv = {};
-      var clientEnv = { SSH2NODETEST: 'foo' };
-      var sawPty = false;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const serverEnv = {};
+      const clientEnv = { SSH2NODETEST: 'foo' };
+      let sawPty = false;
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            session.once('env', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('env', mustCall((accept, reject, info) => {
               serverEnv[info.key] = info.val;
               accept && accept();
-            }).once('pty', function(accept, reject, info) {
+            })).once('pty', mustCall((accept, reject, info) => {
               sawPty = true;
               accept && accept();
-            }).once('shell', function(accept, reject) {
-              var stream = accept();
+            })).once('shell', mustCall((accept, reject) => {
+              const stream = accept();
               stream.end();
               conn.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.shell({ env: clientEnv }, function(err, stream) {
-          assert(!err, makeMsg('Unexpected shell error: ' + err));
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.shell({ env: clientEnv }, mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected shell error: ${err}`));
           stream.resume();
-        });
-      }).on('end', function() {
+        }));
+      })).on('end', mustCall(() => {
         assert.deepEqual(serverEnv, clientEnv,
-                         makeMsg('Environment mismatch'));
+                         msg('Environment mismatch'));
         assert.strictEqual(sawPty, true);
-      });
-    },
+      }));
+    }),
     what: 'Shell with environment set'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var expHandle = Buffer.from([1, 2, 3, 4]);
-      var sawOpenS = false;
-      var sawCloseS = false;
-      var sawOpenC = false;
-      var sawCloseC = false;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const expHandle = Buffer.from([1, 2, 3, 4]);
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.once('session', function(accept, reject) {
-            var session = accept();
-            session.once('sftp', function(accept, reject) {
+        })).on('ready', mustCall(() => {
+          conn.once('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('sftp', mustCall((accept, reject) => {
               if (accept) {
-                var sftp = accept();
-                sftp.once('OPEN', function(id, filename, flags, attrs) {
+                const sftp = accept();
+                sftp.once('OPEN', mustCall((id, filename, flags, attrs) => {
                   assert(id === 0,
-                         makeMsg('Unexpected sftp request ID: ' + id));
+                         msg(`Unexpected sftp request ID: ${id}`));
                   assert(filename === 'node.js',
-                         makeMsg('Unexpected filename: ' + filename));
+                         msg(`Unexpected filename: ${filename}`));
                   assert(flags === OPEN_MODE.READ,
-                         makeMsg('Unexpected flags: ' + flags));
-                  sawOpenS = true;
+                         msg(`Unexpected flags: ${flags}`));
                   sftp.handle(id, expHandle);
-                  sftp.once('CLOSE', function(id, handle) {
+                  sftp.once('CLOSE', mustCall((id, handle) => {
                     assert(id === 1,
-                           makeMsg('Unexpected sftp request ID: ' + id));
+                           msg(`Unexpected sftp request ID: ${id}`));
                     assert.deepEqual(handle,
                                      expHandle,
-                                     makeMsg('Wrong sftp file handle: '
+                                     msg('Wrong sftp file handle: '
                                              + inspect(handle)));
-                    sawCloseS = true;
                     sftp.status(id, STATUS_CODE.OK);
                     conn.end();
-                  });
-                });
+                  }));
+                }));
               }
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.sftp(function(err, sftp) {
-          assert(!err, makeMsg('Unexpected sftp error: ' + err));
-          sftp.open('node.js', 'r', function(err, handle) {
-            assert(!err, makeMsg('Unexpected sftp error: ' + err));
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.sftp(mustCall((err, sftp) => {
+          assert(!err, msg(`Unexpected sftp error: ${err}`));
+          sftp.open('node.js', 'r', mustCall((err, handle) => {
+            assert(!err, msg(`Unexpected sftp error: ${err}`));
             assert.deepEqual(handle,
                              expHandle,
-                             makeMsg('Wrong sftp file handle: '
+                             msg('Wrong sftp file handle: '
                                      + inspect(handle)));
-            sawOpenC = true;
-            sftp.close(handle, function(err) {
-              assert(!err, makeMsg('Unexpected sftp error: ' + err));
-              sawCloseC = true;
-            });
-          });
-        });
-      }).on('end', function() {
-        assert(sawOpenS, makeMsg('Expected sftp open()'));
-        assert(sawOpenC, makeMsg('Expected sftp open() callback'));
-        assert(sawCloseS, makeMsg('Expected sftp open()'));
-        assert(sawOpenC, makeMsg('Expected sftp close() callback'));
-      });
-    },
+            sftp.close(handle, mustCall((err) => {
+              assert(!err, msg(`Unexpected sftp error: ${err}`));
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Simple SFTP'
   },
-  { run: function() {
-      var client;
-      var server;
-      var state = {
+  { run: mustCall(function(msg, next) {
+      const state = {
         readies: 0,
         closes: 0
       };
-      var clientcfg = {
+      const clientCfg = {
         username: USER,
         password: PASSWORD
       };
-      var servercfg = {
+      const serverCfg = {
         hostKeys: [HOST_KEY_RSA]
       };
-      var reconnect = false;
-
-      client = new Client(),
-      server = new Server(servercfg);
+      let reconnect = false;
+      const client = new Client();
+      const server = new Server(serverCfg);
 
       function onReady() {
         assert(++state.readies <= 4,
-               makeMsg('Wrong ready count: ' + state.readies));
+               msg(`Wrong ready count: ${state.readies}`));
       }
+
       function onClose() {
         assert(++state.closes <= 3,
-               makeMsg('Wrong close count: ' + state.closes));
+               msg(`Wrong close count: ${state.closes}`));
         if (state.closes === 2)
           server.close();
         else if (state.closes === 3)
           next();
       }
 
-      server.listen(0, 'localhost', function() {
-        clientcfg.host = 'localhost';
-        clientcfg.port = server.address().port;
-        client.connect(clientcfg);
-      });
+      server.listen(0, 'localhost', mustCall(() => {
+        clientCfg.host = 'localhost';
+        clientCfg.port = server.address().port;
+        client.connect(clientCfg);
+      }));
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', onReady);
-      }).on('close', onClose);
-      client.on('ready', function() {
+        })).on('ready', onReady);
+      })).on('close', onClose);
+      client.on('ready', mustCall(() => {
         onReady();
-        if (reconnect)
+        if (reconnect) {
           client.end();
-        else {
+        } else {
           reconnect = true;
-          client.connect(clientcfg);
+          client.connect(clientCfg);
         }
-      }).on('close', onClose);
-    },
+      })).on('close', onClose);
+    }),
     what: 'connect() on connected client'
   },
-  { run: function() {
-      var client = new Client({
+  { run: mustCall(function(msg, next) {
+      const client = new Client({
         username: USER,
         password: PASSWORD
       });
 
-      assert.throws(function() {
-        client.exec('uptime', function(err, stream) {
-          assert(false, makeMsg('Callback unexpectedly called'));
-        });
-      });
+      assert.throws(mustCall(() => {
+        client.exec('uptime', mustNotCall());
+      }));
       next();
-    },
+    }),
     what: 'Throw when not connected'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calledBack = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let calledBack = 0;
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        });
-      });
-      client.on('ready', function() {
+        }));
+        conn.on('session', mustCall(() => {}));
+      }));
+      client.on('ready', mustCall(() => {
         function callback(err, stream) {
-          assert(err, makeMsg('Expected error'));
+          assert(err, msg('Expected error'));
           assert(err.message === 'No response from server',
-                 makeMsg('Wrong error message: ' + err.message));
+                 msg(`Wrong error message: ${err.message}`));
           ++calledBack;
         }
         client.exec('uptime', callback);
         client.shell(callback);
         client.sftp(callback);
         client.end();
-      }).on('close', function() {
-        // give the callbacks a chance to execute
-        process.nextTick(function() {
+      })).on('close', mustCall(() => {
+        // Give the callbacks a chance to execute
+        process.nextTick(mustCall(() => {
           assert(calledBack === 3,
-                 makeMsg('Only '
-                               + calledBack
-                               + '/3 outstanding callbacks called'));
-        });
-      });
-    },
+                 msg(`${calledBack}/3 outstanding callbacks called`));
+        }));
+      }));
+    }),
     what: 'Outstanding callbacks called on disconnect'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calledBack = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            session.once('exec', function(accept, reject, info) {
-              var stream = accept();
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('exec', mustCall((accept, reject, info) => {
+              const stream = accept();
               stream.exit(0);
               stream.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        function callback(err, stream) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        let calledBack = 0;
+        const callback = mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
           stream.resume();
           if (++calledBack === 3)
             client.end();
-        }
+        }, 3);
         client.exec('foo', callback);
         client.exec('bar', callback);
         client.exec('baz', callback);
-      }).on('end', function() {
-        assert(calledBack === 3,
-               makeMsg('Only '
-                             + calledBack
-                             + '/3 callbacks called'));
-      });
-    },
+      }));
+    }),
     what: 'Pipelined requests'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calledBack = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          var reqs = [];
-          conn.on('session', function(accept, reject) {
+        })).on('ready', mustCall(() => {
+          const reqs = [];
+          conn.on('session', mustCall((accept, reject) => {
             if (reqs.length === 0) {
-              conn.rekey(function(err) {
-                assert(!err, makeMsg('Unexpected rekey error: ' + err));
-                reqs.forEach(function(accept) {
-                  var session = accept();
-                  session.once('exec', function(accept, reject, info) {
-                    var stream = accept();
+              conn.rekey(mustCall((err) => {
+                assert(!err, msg(`Unexpected rekey error: ${err}`));
+                reqs.forEach((accept) => {
+                  const session = accept();
+                  session.once('exec', mustCall((accept, reject, info) => {
+                    const stream = accept();
                     stream.exit(0);
                     stream.end();
-                  });
+                  }));
                 });
-              });
+              }));
             }
             reqs.push(accept);
-          });
-        });
-      });
-      client.on('ready', function() {
-        function callback(err, stream) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        let calledBack = 0;
+        const callback = mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
           stream.resume();
           if (++calledBack === 3)
             client.end();
-        }
+        }, 3);
         client.exec('foo', callback);
         client.exec('bar', callback);
         client.exec('baz', callback);
-      }).on('end', function() {
-        assert(calledBack === 3,
-               makeMsg('Only '
-                             + calledBack
-                             + '/3 callbacks called'));
-      });
-    },
+      }));
+    }),
     what: 'Pipelined requests with intermediate rekeying'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            session.once('exec', function(accept, reject, info) {
-              var stream = accept();
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('exec', mustCall((accept, reject, info) => {
+              const stream = accept();
               stream.exit(0);
               stream.end();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.exec('foo', function(err, stream) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
-          stream.on('exit', function(code, signal) {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.exec('foo', mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
+          stream.on('exit', mustCall((code, signal) => {
             client.end();
-          });
-        });
-      });
-    },
+          }));
+        }));
+      }));
+    }),
     what: 'Ignore outgoing after stream close'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            accept().on('sftp', function(accept, reject) {
-              var sftp = accept();
-              // XXX: hack to get channel ...
-              var channel = sftp._readableState.pipes;
-              if (Array.isArray(channel))
-                channel = channel[0];
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            accept().on('sftp', mustCall((accept, reject) => {
+              const sftp = accept();
 
-              channel.unpipe(sftp);
-              sftp.unpipe(channel);
-
-              channel.exit(127);
-              channel.close();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        var timeout = setTimeout(function() {
-          assert(false, makeMsg('Unexpected SFTP timeout'));
-        }, 1000);
-        client.sftp(function(err, sftp) {
+              // XXX: hack
+              sftp._protocol.exitStatus(sftp.outgoing.id, 127);
+              sftp._protocol.channelClose(sftp.outgoing.id);
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        const timeout = setTimeout(mustNotCall(), 1000);
+        client.sftp(mustCall((err, sftp) => {
           clearTimeout(timeout);
-          assert(err, makeMsg('Expected error'));
+          assert(err, msg('Expected error'));
           assert(err.code === 127,
-                 makeMsg('Expected exit code 127, saw: ' + err.code));
+                 msg(`Expected exit code 127, saw: ${err.code}`));
           client.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'SFTP server aborts with exit-status'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
-          sock: new net.Socket()
+          sock: new Socket()
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {});
-      });
-      client.on('ready', function() {
+        })).on('ready', mustCall(() => {}));
+      }));
+      client.on('ready', mustCall(() => {
         client.end();
-      });
-    },
+      }));
+    }),
     what: 'Double pipe on unconnected, passed in net.Socket'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        });
-        conn.on('request', function(accept, reject, name, info) {
+        }));
+        conn.on('request', mustCall((accept, reject, name, info) => {
           accept();
-          conn.forwardOut('good', 0, 'remote', 12345, function(err, ch) {
-            if (err) {
-              assert(!err, makeMsg('Unexpected error: ' + err));
-            }
-            conn.forwardOut('bad', 0, 'remote', 12345, function(err, ch) {
-              assert(err, makeMsg('Should receive error'));
+          conn.forwardOut('good', 0, 'remote', 12345, mustCall((err, ch) => {
+            if (err)
+              assert(!err, msg(`Unexpected error: ${err}`));
+            conn.forwardOut('bad', 0, 'remote', 12345, mustCall((err, ch) => {
+              assert(err, msg('Should receive error'));
               client.end();
-            });
-          });
-        });
-      });
+            }));
+          }));
+        }));
+      }));
 
-      client.on('ready', function() {
+      client.on('ready', mustCall(() => {
         // request forwarding
-        client.forwardIn('good', 0, function(err, port) {
-          if (err) {
-            assert(!err, makeMsg('Unexpected error: ' + err));
-          }
-        });
-      });
-      client.on('tcp connection', function(details, accept, reject) {
+        client.forwardIn('good', 0, mustCall((err, port) => {
+          if (err)
+            assert(!err, msg(`Unexpected error: ${err}`));
+        }));
+      }));
+      client.on('tcp connection', mustCall((details, accept, reject) => {
         accept();
-      });
-    },
+      }));
+    }),
     what: 'Client auto-rejects unrequested, allows requested forwarded-tcpip'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
@@ -1730,44 +1577,38 @@ var tests = [
           greeting: 'Hello world!'
         }
       );
-      client = r.client;
-      server = r.server;
 
-      var sawGreeting = false;
+      let sawGreeting = false;
 
-      client.on('greeting', function(greeting) {
+      client.on('greeting', mustCall((greeting) => {
         assert.strictEqual(greeting, 'Hello world!\r\n');
         sawGreeting = true;
-      });
-      client.on('banner', function(message) {
-        assert.fail(null, null, makeMsg('Unexpected banner'));
-      });
+      }));
+      client.on('banner', mustCall((message) => {
+        assert.fail(null, null, msg('Unexpected banner'));
+      }));
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          assert(sawGreeting, makeMsg('Client did not see greeting'));
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
+          assert(sawGreeting, msg('Client did not see greeting'));
           if (ctx.method === 'none')
             return ctx.reject();
           assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
+                 msg(`Wrong auth method: ${ctx.method}`));
           assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
+                 msg(`Unexpected username: ${ctx.username}`));
           assert(ctx.password === PASSWORD,
-                 makeMsg('Unexpected password: ' + ctx.password));
+                 msg(`Unexpected password: ${ctx.password}`));
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server greeting'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
@@ -1776,43 +1617,38 @@ var tests = [
           banner: 'Hello world!'
         }
       );
-      client = r.client;
-      server = r.server;
 
-      var sawBanner = false;
+      let sawBanner = false;
 
-      client.on('greeting', function(greeting) {
-        assert.fail(null, null, makeMsg('Unexpected greeting'));
-      });
-      client.on('banner', function(message) {
+      client.on('greeting', mustCall((greeting) => {
+        assert.fail(null, null, msg('Unexpected greeting'));
+      }));
+      client.on('banner', mustCall((message) => {
         assert.strictEqual(message, 'Hello world!\r\n');
         sawBanner = true;
-      });
+      }));
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          assert(sawBanner, makeMsg('Client did not see banner'));
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
+          assert(sawBanner, msg('Client did not see banner'));
           if (ctx.method === 'none')
             return ctx.reject();
           assert(ctx.method === 'password',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
+                 msg(`Wrong auth method: ${ctx.method}`));
           assert(ctx.username === USER,
-                 makeMsg('Unexpected username: ' + ctx.username));
+                 msg(`Unexpected username: ${ctx.username}`));
           assert(ctx.password === PASSWORD,
-                 makeMsg('Unexpected password: ' + ctx.password));
+                 msg(`Unexpected password: ${ctx.password}`));
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Server banner'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var fastRejectSent = false;
+  { run: mustCall(function(msg) {
+      let fastRejectSent = false;
 
       function sendAcceptLater(accept) {
         if (fastRejectSent)
@@ -1820,208 +1656,135 @@ var tests = [
         else
           setImmediate(sendAcceptLater, accept);
       }
-
-      r = setup(
+      const { client, server } = setup(
         this,
         { username: USER },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        });
+        }));
 
-        conn.on('request', function(accept, reject, name, info) {
+        conn.on('request', mustCall((accept, reject, name, info) => {
           if (info.bindAddr === 'fastReject') {
             // Will call reject on 'fastReject' soon
             reject();
             fastRejectSent = true;
-          } else
-            // but accept on 'slowAccept' later
+          } else {
+            // ... but accept on 'slowAccept' later
             sendAcceptLater(accept);
-        });
-      });
+          }
+        }));
+      }));
 
-      client.on('ready', function() {
-        var replyCnt = 0;
+      client.on('ready', mustCall(() => {
+        let replyCnt = 0;
 
-        client.forwardIn('slowAccept', 0, function(err) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
+        client.forwardIn('slowAccept', 0, mustCall((err) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
           if (++replyCnt === 2)
             client.end();
-        });
+        }, 2));
 
-        client.forwardIn('fastReject', 0, function(err) {
-          assert(err, makeMsg('Should receive error'));
+        client.forwardIn('fastReject', 0, mustCall((err) => {
+          assert(err, msg('Should receive error'));
           if (++replyCnt === 2)
             client.end();
-        });
-      });
-    },
+        }, 2));
+      }));
+    }),
     what: 'Server responds to global requests in the right order'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD
         },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      var timer;
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      let timer;
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            session.once('subsystem', function(accept, reject, info) {
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.once('subsystem', mustCall((accept, reject, info) => {
               assert.equal(info.name, 'netconf');
 
-              // Prevent success reply from being sent
-              conn._sshstream.channelSuccess = function() {};
+              // XXX: hack to prevent success reply from being sent
+              conn._protocol.channelSuccess = () => {};
 
-              var stream = accept();
+              const stream = accept();
               stream.close();
-              timer = setTimeout(function() {
-                throw new Error(makeMsg('Expected client callback'));
+              timer = setTimeout(() => {
+                throw new Error(msg('Expected client callback'));
               }, 50);
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.subsys('netconf', function(err, stream) {
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.subsys('netconf', mustCall((err, stream) => {
           clearTimeout(timer);
           assert(err);
           client.end();
-        });
-      });
-    },
+        }));
+      }));
+    }),
     what: 'Cleanup outstanding channel requests on channel close'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
-        this,
-        { username: USER,
-          password: PASSWORD
-        },
-        { hostKeys: [HOST_KEY_RSA] }
-      );
-      client = r.client;
-      server = r.server;
-
-      var timer;
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            session.once('exec', function(accept, reject, info) {
-              var stream = accept();
-              // Write enough to bring the Client's channel window to 0
-              // (currently 1MB)
-              var buf = Buffer.allocUnsafe(2048);
-              for (var i = 0; i < 1000; ++i)
-                stream.write(buf);
-              stream.exit(0);
-              stream.close();
-            });
-          });
-        });
-      });
-      client.on('ready', function() {
-        client.exec('foo', function(err, stream) {
-          var sawClose = false;
-          assert(!err, makeMsg('Unexpected error'));
-          client._sshstream.on('CHANNEL_CLOSE:' + stream.incoming.id, onClose);
-          function onClose() {
-            // This handler gets called *after* the internal handler, so we
-            // should have seen `stream`'s `close` event already if the bug
-            // exists
-            assert(!sawClose, makeMsg('Premature close event'));
-            client.end();
-          }
-          stream.on('close', function() {
-            sawClose = true;
-          });
-        });
-      });
-    },
-    what: 'Channel emits close prematurely'
-  },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER },
         { hostKeys: [HOST_KEY_RSA], ident: 'OpenSSH_5.3' }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        });
-        conn.once('request', function(accept, reject, name, info) {
+        }));
+        conn.once('request', mustCall((accept, reject, name, info) => {
           assert(name === 'tcpip-forward',
-                 makeMsg('Unexpected request: ' + name));
+                 msg(`Unexpected request: ${name}`));
           accept(1337);
-          conn.forwardOut('good', 0, 'remote', 12345, function(err, ch) {
-            assert(!err, makeMsg('Unexpected error: ' + err));
+          conn.forwardOut('good', 0, 'remote', 12345, mustCall((err, ch) => {
+            assert(!err, msg(`Unexpected error: ${err}`));
             client.end();
-          });
-        });
-      });
+          }));
+        }));
+      }));
 
-      client.on('ready', function() {
+      client.on('ready', mustCall(() => {
         // request forwarding
-        client.forwardIn('good', 0, function(err, port) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
-          assert(port === 1337, makeMsg('Bad bound port: ' + port));
-        });
-      });
-      client.on('tcp connection', function(details, accept, reject) {
+        client.forwardIn('good', 0, mustCall((err, port) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
+          assert(port === 1337, msg(`Bad bound port: ${port}`));
+        }));
+      }));
+      client.on('tcp connection', mustCall((details, accept, reject) => {
         assert(details.destIP === 'good',
-               makeMsg('Bad incoming destIP: ' + details.destIP));
+               msg(`Bad incoming destIP: ${details.destIP}`));
         assert(details.destPort === 1337,
-               makeMsg('Bad incoming destPort: ' + details.destPort));
+               msg(`Bad incoming destPort: ${details.destPort}`));
         assert(details.srcIP === 'remote',
-               makeMsg('Bad incoming srcIP: ' + details.srcIP));
+               msg(`Bad incoming srcIP: ${details.srcIP}`));
         assert(details.srcPort === 12345,
-               makeMsg('Bad incoming srcPort: ' + details.srcPort));
+               msg(`Bad incoming srcPort: ${details.srcPort}`));
         accept();
-      });
-    },
+      }));
+    }),
     what: 'OpenSSH 5.x workaround for binding on port 0'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var srvError;
-      var cliError;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let srvError;
+      let cliError;
+      const { client, server } = setup(
         this,
         { username: USER,
           algorithms: {
@@ -2034,8 +1797,6 @@ var tests = [
           }
         }
       );
-      client = r.client;
-      server = r.server;
 
       // Remove default client error handler added by `setup()` since we are
       // expecting an error in this case
@@ -2043,268 +1804,223 @@ var tests = [
 
       function onError(err) {
         if (this === client) {
-          assert(!cliError, makeMsg('Unexpected multiple client errors'));
+          assert(!cliError, msg('Unexpected multiple client errors'));
           cliError = err;
         } else {
-          assert(!srvError, makeMsg('Unexpected multiple server errors'));
+          assert(!srvError, msg('Unexpected multiple server errors'));
           srvError = err;
         }
         assert.strictEqual(err.level, 'handshake');
         assert(/handshake failed/i.test(err.message),
-               makeMsg('Wrong error message'));
+               msg('Wrong error message'));
       }
 
-      server.on('connection', function(conn) {
+      server.on('connection', mustCall((conn) => {
         // Remove default server connection error handler added by `setup()`
         // since we are expecting an error in this case
         conn.removeAllListeners('error');
 
-        function onGoodHandshake() {
-          assert(false, makeMsg('Handshake should have failed'));
-        }
-        conn.on('authentication', onGoodHandshake);
-        conn.on('ready', onGoodHandshake);
+        conn.on('authentication', mustNotCall());
+        conn.on('ready', mustNotCall());
 
         conn.on('error', onError);
-      });
+      }));
 
-      client.on('ready', function() {
-        assert(false, makeMsg('Handshake should have failed'));
-      });
-      client.on('error', onError);
-      client.on('close', function() {
-        assert(cliError, makeMsg('Expected client error'));
-        assert(srvError, makeMsg('Expected server error'));
-      });
-    },
+      client.on('ready', mustNotCall())
+            .on('error', onError)
+            .on('close', mustCall(() => {
+        assert(cliError, msg('Expected client error'));
+        assert(srvError, msg('Expected server error'));
+      }));
+    }),
     what: 'Handshake errors are emitted'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var cliError;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let cliError;
+      const { client, server } = setup(
         this,
         { username: USER, privateKey: KEY_RSA_BAD },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
       // Remove default client error handler added by `setup()` since we are
       // expecting an error in this case
       client.removeAllListeners('error');
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           assert(ctx.method === 'publickey' || ctx.method === 'none',
-                 makeMsg('Unexpected auth method: ' + ctx.method));
-          assert(!ctx.signature, makeMsg('Unexpected signature'));
+                 msg(`Wrong auth method: ${ctx.method}`));
+          assert(!ctx.signature, msg('Unexpected signature'));
           if (ctx.method === 'none')
             return ctx.reject();
           ctx.accept();
-        });
-        conn.on('ready', function() {
-          assert(false, makeMsg('Authentication should have failed'));
-        });
-      });
+        }));
+        conn.on('ready', mustNotCall());
+      }));
 
-      client.on('ready', function() {
-        assert(false, makeMsg('Authentication should have failed'));
-      });
-      client.on('error', function(err) {
+      client.on('ready', mustNotCall()).on('error', mustCall((err) => {
         if (cliError) {
           assert(/all configured/i.test(err.message),
-                 makeMsg('Wrong error message'));
+                 msg('Wrong error message'));
         } else {
           cliError = err;
-          assert(/signing/i.test(err.message), makeMsg('Wrong error message'));
+          assert(/signing/i.test(err.message), msg('Wrong error message'));
         }
-      });
-      client.on('close', function() {
-        assert(cliError, makeMsg('Expected client error'));
-      });
-    },
+      })).on('close', mustCall(() => {
+        assert(cliError, msg('Expected client error'));
+      }));
+    }),
     what: 'Client signing errors are caught and emitted'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var srvError;
-      var cliError;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let srvError;
+      let cliError;
+      const { client, server } = setup(
         this,
         { username: USER, password: 'foo' },
         { hostKeys: [KEY_RSA_BAD] }
       );
-      client = r.client;
-      server = r.server;
 
       // Remove default client error handler added by `setup()` since we are
       // expecting an error in this case
       client.removeAllListeners('error');
 
-      server.on('connection', function(conn) {
+      server.on('connection', mustCall((conn) => {
         // Remove default server connection error handler added by `setup()`
         // since we are expecting an error in this case
         conn.removeAllListeners('error');
 
-        conn.once('error', function(err) {
-          assert(/signing/i.test(err.message), makeMsg('Wrong error message'));
+        conn.once('error', mustCall((err) => {
+          assert(/signature generation failed/i.test(err.message),
+                 msg('Wrong error message'));
           srvError = err;
-        });
-        conn.on('authentication', function(ctx) {
-          assert(false, makeMsg('Handshake should have failed'));
-        });
-        conn.on('ready', function() {
-          assert(false, makeMsg('Authentication should have failed'));
-        });
-      });
+        })).on('authentication', mustNotCall())
+           .on('ready', mustNotCall());
+      }));
 
-      client.on('ready', function() {
-        assert(false, makeMsg('Handshake should have failed'));
-      });
-      client.on('error', function(err) {
-        assert(!cliError, makeMsg('Unexpected multiple client errors'));
+      client.on('ready', mustNotCall()).on('error', mustCall((err) => {
+        assert(!cliError, msg('Unexpected multiple client errors'));
         assert(/KEY_EXCHANGE_FAILED/.test(err.message),
-               makeMsg('Wrong error message'));
+               msg('Wrong error message'));
         cliError = err;
-      });
-      client.on('close', function() {
-        assert(srvError, makeMsg('Expected server error'));
-        assert(cliError, makeMsg('Expected client error'));
-      });
-    },
+      })).on('close', mustCall(() => {
+        assert(srvError, msg('Expected server error'));
+        assert(cliError, msg('Expected client error'));
+      }));
+    }),
     what: 'Server signing errors are caught and emitted'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var sawReady = false;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      let sawReady = false;
+      const { client, server } = setup(
         this,
         { username: '', password: 'foo' },
         { hostKeys: [HOST_KEY_RSA] }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           assert.strictEqual(ctx.username, '',
-                             makeMsg('Expected empty username'));
+                             msg('Expected empty username'));
           ctx.accept();
-        }).on('ready', function() {
+        })).on('ready', mustCall(() => {
           conn.end();
-        });
-      });
+        }));
+      }));
 
-      client.on('ready', function() {
+      client.on('ready', mustCall(() => {
         sawReady = true;
-      }).on('close', function() {
-        assert.strictEqual(sawReady, true, makeMsg('Expected ready event'));
-      });
-    },
+      })).on('close', mustCall(() => {
+        assert.strictEqual(sawReady, true, msg('Expected ready event'));
+      }));
+    }),
     what: 'Empty username string works'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var socketPath = '/foo';
-      var events = [];
-      var expected = [
+  { run: mustCall(function(msg) {
+      const socketPath = '/foo';
+      const events = [];
+      const expected = [
         ['client', 'openssh_forwardInStreamLocal'],
         ['server',
           'streamlocal-forward@openssh.com',
-          { socketPath: socketPath }],
+          { socketPath }],
         ['client', 'forward callback'],
-        ['client', 'unix connection', { socketPath: socketPath }],
+        ['client', 'unix connection', { socketPath }],
         ['client', 'socket data', '1'],
         ['server', 'socket data', '2'],
         ['client', 'socket end'],
         ['server',
          'cancel-streamlocal-forward@openssh.com',
-         { socketPath: socketPath }],
+         { socketPath }],
         ['client', 'cancel callback']
       ];
-
-      r = setup(
+      const { client, server } = setup(
         this,
         { username: USER },
         { hostKeys: [HOST_KEY_RSA], ident: 'OpenSSH_7.1' }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        });
-        conn.on('request', function(accept, reject, name, info) {
+        }));
+        conn.on('request', mustCall((accept, reject, name, info) => {
           events.push(['server', name, info]);
           if (name === 'streamlocal-forward@openssh.com') {
             accept();
-            conn.openssh_forwardOutStreamLocal(socketPath, function(err, ch) {
-              assert(!err, makeMsg('Unexpected error: ' + err));
+            conn.openssh_forwardOutStreamLocal(socketPath,
+                                               mustCall((err, ch) => {
+              assert(!err, msg(`Unexpected error: ${err}`));
               ch.write('1');
-              ch.on('data', function(data) {
+              ch.on('data', mustCallAtLeast((data) => {
                 events.push(['server', 'socket data', data.toString()]);
                 ch.close();
-              });
-            });
+              }));
+            }));
           } else if (name === 'cancel-streamlocal-forward@openssh.com') {
             accept();
           } else {
             reject();
           }
-        });
-      });
+        }));
+      }));
 
-      client.on('ready', function() {
+      client.on('ready', mustCall(() => {
         // request forwarding
         events.push(['client', 'openssh_forwardInStreamLocal']);
-        client.openssh_forwardInStreamLocal(socketPath, function(err) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
+        client.openssh_forwardInStreamLocal(socketPath, mustCall((err) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
           events.push(['client', 'forward callback']);
-        });
-        client.on('unix connection', function(info, accept, reject) {
+        }));
+        client.on('unix connection', mustCall((info, accept, reject) => {
           events.push(['client', 'unix connection', info]);
-          var stream = accept();
-          stream.on('data', function(data) {
+          const stream = accept();
+          stream.on('data', mustCallAtLeast((data) => {
             events.push(['client', 'socket data', data.toString()]);
             stream.write('2');
-          }).on('end', function() {
+          })).on('end', mustCall(() => {
             events.push(['client', 'socket end']);
-            client.openssh_unforwardInStreamLocal(socketPath, function(err) {
-              assert(!err, makeMsg('Unexpected error: ' + err));
+            client.openssh_unforwardInStreamLocal(socketPath,
+                                                  mustCall((err) => {
+              assert(!err, msg(`Unexpected error: ${err}`));
               events.push(['client', 'cancel callback']);
               client.end();
-            });
-          });
-        });
-      });
-      client.on('end', function() {
-        var msg = 'Events mismatch\nActual:\n' + inspect(events)
-                  + '\nExpected:\n' + inspect(expected);
-        assert.deepEqual(events, expected, makeMsg(msg));
-      });
-    },
+            }));
+          }));
+        }));
+      }));
+      client.on('end', mustCall(() => {
+        assert.deepEqual(events,
+                         expected,
+                         msg(`Events mismatch\nActual:\n${inspect(events)}`
+                               + `\nExpected:\n${inspect(expected)}`));
+      }));
+    }),
     what: 'OpenSSH forwarded UNIX socket connection'
   },
-  { run: function() {
-      var client;
-      var server;
-      var r;
-      var calledBack = 0;
-
-      r = setup(
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
         this,
         { username: USER,
           password: PASSWORD,
@@ -2318,149 +2034,162 @@ var tests = [
           },
         }
       );
-      client = r.client;
-      server = r.server;
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          var reqs = [];
-          conn.on('session', function(accept, reject) {
+        })).on('ready', mustCall(() => {
+          const reqs = [];
+          conn.on('session', mustCall((accept, reject) => {
             if (reqs.length === 0) {
-              conn.rekey(function(err) {
-                assert(!err, makeMsg('Unexpected rekey error: ' + err));
-                reqs.forEach(function(accept) {
-                  var session = accept();
-                  session.once('exec', function(accept, reject, info) {
-                    var stream = accept();
+              conn.rekey(mustCall((err) => {
+                assert(!err, msg(`Unexpected rekey error: ${err}`));
+                reqs.forEach((accept) => {
+                  const session = accept();
+                  session.once('exec', mustCall((accept, reject, info) => {
+                    const stream = accept();
                     stream.exit(0);
                     stream.end();
-                  });
+                  }));
                 });
-              });
+              }));
             }
             reqs.push(accept);
-          });
-        });
-      });
-      client.on('ready', function() {
-        function callback(err, stream) {
-          assert(!err, makeMsg('Unexpected error: ' + err));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        let calledBack = 0;
+        const callback = mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
           stream.resume();
           if (++calledBack === 3)
             client.end();
-        }
+        }, 3);
         client.exec('foo', callback);
         client.exec('bar', callback);
         client.exec('baz', callback);
-      }).on('end', function() {
-        assert(calledBack === 3,
-               makeMsg('Only '
-                             + calledBack
-                             + '/3 callbacks called'));
-      });
-    },
+      }));
+    }),
     what: 'Rekeying with AES-GCM'
   },
 ];
 
-function setup(self, clientcfg, servercfg, timeout) {
+function setup(self, clientCfg, serverCfg, timeout) {
+  const { next, msg } = self;
   self.state = {
     clientReady: false,
     serverReady: false,
     clientClose: false,
-    serverClose: false
+    serverClose: false,
   };
 
   if (DEBUG) {
     console.log('========================================================\n'
-                + '[TEST] '
-                + self.what
-                + '\n========================================================');
-    clientcfg.debug = function() {
-      var args = new Array(arguments.length + 1);
-      args[0] = '[CLIENT]';
-      for (var i = 0; i < arguments.length; ++i)
-        args[i + 1] = arguments[i];
-      console.log.apply(null, args);
+                + `[TEST] ${self.what}\n`
+                + '========================================================');
+    clientCfg.debug = (...args) => {
+      console.log(`[${self.what}][CLIENT]`, ...args);
     };
-    servercfg.debug = function() {
-      var args = new Array(arguments.length + 1);
-      args[0] = '[SERVER]';
-      for (var i = 0; i < arguments.length; ++i)
-        args[i + 1] = arguments[i];
-      console.log.apply(null, args);
+    serverCfg.debug = (...args) => {
+      console.log(`[${self.what}][SERVER]`, ...args);
     };
   }
 
-  var client = new Client();
-  var server = new Server(servercfg);
+  const client = new Client();
+  const server = new Server(serverCfg);
   if (timeout === undefined)
     timeout = DEFAULT_TEST_TIMEOUT;
-  var timer;
+  let timer;
 
   server.on('error', onError)
-        .on('connection', function(conn) {
+        .on('connection', mustCall((conn) => {
           conn.on('error', onError)
-              .on('ready', onReady);
+              .on('ready', mustCall(onReady));
           server.close();
-        })
-        .on('close', onClose);
+        }))
+        .on('close', mustCall(onClose));
   client.on('error', onError)
-        .on('ready', onReady)
-        .on('close', onClose);
+        .on('ready', mustCall(onReady))
+        .on('close', mustCall(onClose));
 
   function onError(err) {
-    var which = (this === client ? 'client' : 'server');
-    assert(false, makeMsg('Unexpected ' + which + ' error: ' + err));
+    const which = (this === client ? 'client' : 'server');
+    assert(false, msg(`Unexpected ${which} error: ${err}`));
   }
+
   function onReady() {
     if (this === client) {
       assert(!self.state.clientReady,
-             makeMsg('Received multiple ready events for client'));
+             msg('Received multiple ready events for client'));
       self.state.clientReady = true;
     } else {
       assert(!self.state.serverReady,
-             makeMsg('Received multiple ready events for server'));
+             msg('Received multiple ready events for server'));
       self.state.serverReady = true;
     }
     if (self.state.clientReady && self.state.serverReady)
       self.onReady && self.onReady();
   }
+
   function onClose() {
     if (this === client) {
       assert(!self.state.clientClose,
-             makeMsg('Received multiple close events for client'));
+             msg('Received multiple close events for client'));
       self.state.clientClose = true;
     } else {
       assert(!self.state.serverClose,
-             makeMsg('Received multiple close events for server'));
+             msg('Received multiple close events for server'));
       self.state.serverClose = true;
     }
-    if (self.state.clientClose && self.state.serverClose) {
+    if (self.state.clientClose
+        && self.state.serverClose
+        && !getParamNames(self.run.origFn || self.run).includes('next')) {
       clearTimeout(timer);
       next();
     }
   }
 
-  process.nextTick(function() {
-    server.listen(0, 'localhost', function() {
+  process.nextTick(mustCall(() => {
+    server.listen(0, 'localhost', mustCall(() => {
       if (timeout >= 0) {
-        timer = setTimeout(function() {
-          assert(false, makeMsg('Test timed out'));
+        timer = setTimeout(() => {
+          assert(false, msg('Test timed out'));
         }, timeout);
       }
-      if (clientcfg.sock)
-        clientcfg.sock.connect(server.address().port, 'localhost');
-      else {
-        clientcfg.host = 'localhost';
-        clientcfg.port = server.address().port;
+      if (clientCfg.sock) {
+        clientCfg.sock.connect(server.address().port, 'localhost');
+      } else {
+        clientCfg.host = 'localhost';
+        clientCfg.port = server.address().port;
       }
-      client.connect(clientcfg);
-    });
-  });
-  return { client: client, server: server };
+      client.connect(clientCfg);
+    }));
+  }));
+
+  return { client, server };
+}
+
+const getParamNames = (() => {
+  const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+  const ARGUMENT_NAMES = /([^\s,]+)/g;
+  const toString = Function.prototype.toString;
+  return (fn) => {
+    const s = toString.call(fn).replace(STRIP_COMMENTS, '');
+    const result = s.slice(s.indexOf('(') + 1, s.indexOf(')'))
+                    .match(ARGUMENT_NAMES);
+    return (result || []);
+  };
+})();
+
+function once(fn) {
+  let called = false;
+  return (...args) => {
+    if (called)
+      return;
+    called = true;
+    fn(...args);
+  };
 }
 
 function next() {
@@ -2469,29 +2198,20 @@ function next() {
   if (++t === tests.length)
     return;
 
-  var v = tests[t];
-  v.run.call(v);
+  const v = tests[t];
+  v.next = once(next);
+  v.msg = msg.bind(null, v.what);
+  v.run(v.msg, v.next);
 }
 
-function makeMsg(what, msg) {
-  if (msg === undefined)
-    msg = what;
-  if (tests[t])
-    what = tests[t].what;
-  else
-    what = '<Unknown>';
-  return '[' + group + what + ']: ' + msg;
+function msg(what, desc) {
+  return `[${THIS_FILE}/${what}]: ${desc}`;
 }
 
-process.once('uncaughtException', function(err) {
-  if (t > -1 && !/(?:^|\n)AssertionError: /i.test(''+err))
-    console.log(makeMsg('Unexpected Exception:'));
-  throw err;
-});
-process.once('exit', function() {
-  assert(t === tests.length,
-         makeMsg('_exit',
-                 'Only finished ' + t + '/' + tests.length + ' tests'));
+process.once('exit', () => {
+  const ran = Math.max(t, 0);
+  assert(ran === tests.length,
+         msg('(exit)', `Finished ${ran}/${tests.length} tests`));
 });
 
 next();

@@ -1,361 +1,437 @@
-var Server = require('../lib/server');
-var utils = require('ssh2-streams').utils;
+// TODO: add more rekey tests that at least include switching from no
+// compression to compression and vice versa
+'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var join = path.join;
-var assert = require('assert');
-var spawn = require('child_process').spawn;
-var exec = require('child_process').exec;
+const assert = require('assert');
+const { spawn, spawnSync } = require('child_process');
+const { chmodSync, readdirSync, readFileSync } = require('fs');
+const { basename, join } = require('path');
 
-var t = -1;
-var group = path.basename(__filename, '.js') + '/';
-var fixturesdir = join(__dirname, 'fixtures');
+const Server = require('../lib/server.js');
+const { parseKey } = require('../lib/protocol/keyParser.js');
 
-var CLIENT_TIMEOUT = 5000;
-var USER = 'nodejs';
-var HOST_KEY_RSA = fs.readFileSync(join(fixturesdir, 'ssh_host_rsa_key'));
-var HOST_KEY_DSA = fs.readFileSync(join(fixturesdir, 'ssh_host_dsa_key'));
-var HOST_KEY_ECDSA = fs.readFileSync(join(fixturesdir, 'ssh_host_ecdsa_key'));
-var CLIENT_KEY_RSA_PATH = join(fixturesdir, 'id_rsa');
-var CLIENT_KEY_RSA_RAW = fs.readFileSync(CLIENT_KEY_RSA_PATH);
-var CLIENT_KEY_RSA = utils.parseKey(CLIENT_KEY_RSA_RAW);
-var CLIENT_KEY_DSA_PATH = join(fixturesdir, 'id_dsa');
-var CLIENT_KEY_DSA_RAW = fs.readFileSync(CLIENT_KEY_DSA_PATH);
-var CLIENT_KEY_DSA = utils.parseKey(CLIENT_KEY_DSA_RAW);
-var CLIENT_KEY_ECDSA_PATH = join(fixturesdir, 'id_ecdsa');
-var CLIENT_KEY_ECDSA_RAW = fs.readFileSync(CLIENT_KEY_ECDSA_PATH);
-var CLIENT_KEY_ECDSA = utils.parseKey(CLIENT_KEY_ECDSA_RAW);
+const { mustCall, mustCallAtLeast } = require('./common.js');
 
-var opensshPath = 'ssh';
-var opensshVer;
-var DEBUG = false;
+let t = -1;
+const THIS_FILE = basename(__filename, '.js');
+const SPAWN_OPTS = { windowsHide: true };
+const fixturesDir = join(__dirname, 'fixtures');
+const fixture = (file) => readFileSync(join(fixturesDir, file));
+
+const HOST_KEY_RSA = fixture('ssh_host_rsa_key');
+const HOST_KEY_DSA = fixture('ssh_host_dsa_key');
+const HOST_KEY_ECDSA = fixture('ssh_host_ecdsa_key');
+const CLIENT_KEY_RSA_PATH = join(fixturesDir, 'id_rsa');
+const CLIENT_KEY_RSA_RAW = readFileSync(CLIENT_KEY_RSA_PATH);
+const CLIENT_KEY_RSA = parseKey(CLIENT_KEY_RSA_RAW);
+const CLIENT_KEY_DSA_PATH = join(fixturesDir, 'id_dsa');
+const CLIENT_KEY_DSA_RAW = readFileSync(CLIENT_KEY_DSA_PATH);
+const CLIENT_KEY_DSA = parseKey(CLIENT_KEY_DSA_RAW);
+const CLIENT_KEY_ECDSA_PATH = join(fixturesDir, 'id_ecdsa');
+const CLIENT_KEY_ECDSA_RAW = readFileSync(CLIENT_KEY_ECDSA_PATH);
+const CLIENT_KEY_ECDSA = parseKey(CLIENT_KEY_ECDSA_RAW);
+const CLIENT_TIMEOUT = 5000;
+const USER = 'nodejs';
+const DEBUG = false;
+
+const opensshPath = 'ssh';
+let opensshVer;
 
 // Fix file modes to avoid OpenSSH client complaints about keys' permissions
-fs.readdirSync(fixturesdir).forEach(function(file) {
-  fs.chmodSync(join(fixturesdir, file), '0600');
-});
+for (const file of readdirSync(fixturesDir, { withFileTypes: true })) {
+  if (file.isFile())
+    chmodSync(join(fixturesDir, file.name), 0o600);
+}
 
-var tests = [
-  { run: function() {
-      var what = this.what;
-      var server;
-
-      server = setup(
+const tests = [
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_RSA_PATH },
         { hostKeys: [HOST_KEY_RSA] }
       );
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg(what, 'Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-rsa',
-                 makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg(what, 'Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature !== undefined,
+                     msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Unexpected auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+            default:
+              assert(false, msg('Too many auth attempts'));
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg(what, 'Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            if (session) {
-              session.on('exec', function(accept, reject) {
-                var stream = accept();
-                if (stream) {
-                  stream.exit(0);
-                  stream.end();
-                }
-              }).on('pty', function(accept, reject) {
-                accept && accept();
-              });
-            }
-          });
-        });
-      });
-    },
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 2)).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Authenticate with an RSA key'
   },
-  { run: function() {
-      var what = this.what;
-      var server;
-
-      server = setup(
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_DSA_PATH },
         { hostKeys: [HOST_KEY_RSA] }
       );
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg(what, 'Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ssh-dss',
-                 makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg(what, 'Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature !== undefined,
+                     msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Unexpected auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-dss',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_DSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+            default:
+              assert(false, msg('Too many auth attempts'));
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_DSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg(what, 'Could not verify PK signature'));
+                   msg('Could not verify PK signature'));
           }
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            if (session) {
-              session.on('exec', function(accept, reject) {
-                var stream = accept();
-                if (stream) {
-                  stream.exit(0);
-                  stream.end();
-                }
-              }).on('pty', function(accept, reject) {
-                accept && accept();
-              });
-            }
-          });
-        });
-      });
-    },
+        }, 2)).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Authenticate with a DSA key'
   },
-  { run: function() {
-      var what = this.what;
-      var server;
-
-      server = setup(
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_ECDSA_PATH },
         { hostKeys: [HOST_KEY_RSA] }
       );
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
-          if (ctx.method === 'none')
-            return ctx.reject();
-          assert(ctx.method === 'publickey',
-                 makeMsg(what, 'Unexpected auth method: ' + ctx.method));
-          assert(ctx.username === USER,
-                 makeMsg(what, 'Unexpected username: ' + ctx.username));
-          assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
-                 makeMsg(what, 'Unexpected key algo: ' + ctx.key.algo));
-          assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
-                           ctx.key.data,
-                           makeMsg(what, 'Public key mismatch'));
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature !== undefined,
+                     msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Unexpected auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ecdsa-sha2-nistp256',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_ECDSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+            default:
+              assert(false, msg('Too many auth attempts'));
+          }
           if (ctx.signature) {
             assert(CLIENT_KEY_ECDSA.verify(ctx.blob, ctx.signature) === true,
-                   makeMsg(what, 'Could not verify PK signature'));
-            ctx.accept();
-          } else
-            ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            if (session) {
-              session.on('exec', function(accept, reject) {
-                var stream = accept();
-                if (stream) {
-                  stream.exit(0);
-                  stream.end();
-                }
-              }).on('pty', function(accept, reject) {
-                accept && accept();
-              });
-            }
-          });
-        });
-      });
-    },
-    what: 'Authenticate with a ECDSA key'
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
+    what: 'Authenticate with an ECDSA key'
   },
-  { run: function() {
-      var server;
-
-      server = setup(
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_RSA_PATH },
         { hostKeys: [HOST_KEY_DSA] }
       );
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            if (session) {
-              session.on('exec', function(accept, reject) {
-                var stream = accept();
-                if (stream) {
-                  stream.exit(0);
-                  stream.end();
-                }
-              }).on('pty', function(accept, reject) {
-                accept && accept();
-              });
-            }
-          });
-        });
-      });
-    },
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Server with DSA host key'
   },
-  { run: function() {
-      var server;
-
-      server = setup(
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_RSA_PATH },
         { hostKeys: [HOST_KEY_ECDSA] }
       );
 
-      server.on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            if (session) {
-              session.on('exec', function(accept, reject) {
-                var stream = accept();
-                if (stream) {
-                  stream.exit(0);
-                  stream.end();
-                }
-              }).on('pty', function(accept, reject) {
-                accept && accept();
-              });
-            }
-          });
-        });
-      });
-    },
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Server with ECDSA host key'
   },
-  { run: function() {
-      var server;
-      var what = this.what;
-
-      server = setup(
+  { run: mustCall(function(msg) {
+      const server = setup(
         this,
         { privateKeyPath: CLIENT_KEY_RSA_PATH },
         { hostKeys: [HOST_KEY_RSA] }
       );
 
-      server.on('_child', function(childProc) {
+      server.on('_child', mustCall((childProc) => {
         childProc.stderr.once('data', function(data) {
           childProc.stdin.end();
         });
         childProc.stdin.write('ping');
-      }).on('connection', function(conn) {
-        conn.on('authentication', function(ctx) {
+      })).on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
-        }).on('ready', function() {
-          conn.on('session', function(accept, reject) {
-            var session = accept();
-            assert(session, makeMsg(what, 'Missing session'));
-            session.on('exec', function(accept, reject) {
-              var stream = accept();
-              assert(stream, makeMsg(what, 'Missing exec stream'));
-              stream.stdin.on('data', function(data) {
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.stdin.on('data', mustCallAtLeast((data) => {
                 stream.stdout.write('pong on stdout');
                 stream.stderr.write('pong on stderr');
-              }).on('end', function() {
+              })).on('end', mustCall(() => {
                 stream.stdout.write('pong on stdout');
                 stream.stderr.write('pong on stderr');
                 stream.exit(0);
                 stream.close();
-              });
-            }).on('pty', function(accept, reject) {
+              }));
+            })).on('pty', mustCall((accept, reject) => {
               accept && accept();
-            });
-          });
-        });
-      });
-    },
+            }));
+          }));
+        }));
+      }));
+    }),
     what: 'Server closes stdin too early'
+  },
+  { run: mustCall(function(msg) {
+      const server = setup(
+        this,
+        { privateKeyPath: CLIENT_KEY_RSA_PATH },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+
+      server.on('connection', mustCall((conn) => {
+        let authAttempt = 0;
+        conn.on('authentication', mustCall((ctx) => {
+          switch (++authAttempt) {
+            case 1:
+              assert(ctx.method === 'none'),
+                     msg(`Wrong method: ${ctx.method}`);
+              return ctx.reject();
+            case 3:
+              assert(ctx.signature !== undefined,
+                     msg('Missing publickey signature'));
+            // FALLTHROUGH
+            case 2:
+              assert(ctx.method === 'publickey',
+                     msg(`Unexpected auth method: ${ctx.method}`));
+              assert(ctx.username === USER,
+                     msg(`Unexpected username: ${ctx.username}`));
+              assert(ctx.key.algo === 'ssh-rsa',
+                     msg(`Unexpected key algo: ${ctx.key.algo}`));
+              assert.deepEqual(CLIENT_KEY_RSA.getPublicSSH(),
+                               ctx.key.data,
+                               msg('Public key mismatch'));
+              break;
+            default:
+              assert(false, msg('Too many auth attempts'));
+          }
+          if (ctx.signature) {
+            assert(CLIENT_KEY_RSA.verify(ctx.blob, ctx.signature) === true,
+                   msg('Could not verify PK signature'));
+          }
+          ctx.accept();
+        }, 3)).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            conn.rekey();
+            session.on('exec', mustCall((accept, reject) => {
+              const stream = accept();
+              stream.exit(0);
+              stream.end();
+            })).on('pty', mustCall((accept, reject) => {
+              accept && accept();
+            }));
+          }));
+        }));
+      }));
+    }),
+    what: 'Rekey'
   },
 ];
 
-function setup(self, clientcfg, servercfg) {
+function setup(self, clientCfg, serverCfg) {
+  const { next, msg } = self;
   self.state = {
     serverReady: false,
     clientClose: false,
-    serverClose: false
+    serverClose: false,
   };
 
-  var client;
-  var server = new Server(servercfg);
+  let client;
+  if (DEBUG) {
+    console.log('========================================================\n'
+                + `[TEST] ${self.what}\n`
+                + '========================================================');
+    serverCfg.debug = (...args) => {
+      console.log(`[${self.what}][SERVER]`, ...args);
+    };
+  }
+  const server = new Server(serverCfg);
 
   server.on('error', onError)
-        .on('connection', function(conn) {
+        .on('connection', mustCall((conn) => {
           conn.on('error', onError)
-              .on('ready', onReady);
+              .on('ready', mustCall(onReady));
           server.close();
-        })
-        .on('close', onClose);
+        }))
+        .on('close', mustCall(onClose));
 
   function onError(err) {
-    var which = (arguments.length >= 3 ? 'client' : 'server');
-    assert(false, makeMsg(self.what, 'Unexpected ' + which + ' error: ' + err));
+    const which = (arguments.length >= 3 ? 'client' : 'server');
+    assert(false, msg(`Unexpected ${which} error: ${err}`));
   }
+
   function onReady() {
     assert(!self.state.serverReady,
-           makeMsg(self.what, 'Received multiple ready events for server'));
+           msg('Received multiple ready events for server'));
     self.state.serverReady = true;
     self.onReady && self.onReady();
   }
+
   function onClose() {
     if (arguments.length >= 3) {
       assert(!self.state.clientClose,
-             makeMsg(self.what, 'Received multiple close events for client'));
+             msg('Received multiple close events for client'));
       self.state.clientClose = true;
     } else {
       assert(!self.state.serverClose,
-             makeMsg(self.what, 'Received multiple close events for server'));
+             msg('Received multiple close events for server'));
       self.state.serverClose = true;
     }
-    if (self.state.clientClose && self.state.serverClose)
+    if (self.state.clientClose
+        && self.state.serverClose
+        && !getParamNames(self.run.origFn || self.run).includes('next')) {
       next();
+    }
   }
 
-  process.nextTick(function() {
-    server.listen(0, 'localhost', function() {
-      var cmd = opensshPath;
-      var args = ['-o', 'UserKnownHostsFile=/dev/null',
-                  '-o', 'StrictHostKeyChecking=no',
-                  '-o', 'CheckHostIP=no',
-                  '-o', 'ConnectTimeout=3',
-                  '-o', 'GlobalKnownHostsFile=/dev/null',
-                  '-o', 'GSSAPIAuthentication=no',
-                  '-o', 'IdentitiesOnly=yes',
-                  '-o', 'BatchMode=yes',
-                  '-o', 'VerifyHostKeyDNS=no',
+  process.nextTick(mustCall(() => {
+    server.listen(0, 'localhost', mustCall(() => {
+      const args = [
+        '-o', 'UserKnownHostsFile=/dev/null',
+        '-o', 'StrictHostKeyChecking=no',
+        '-o', 'CheckHostIP=no',
+        '-o', 'ConnectTimeout=3',
+        '-o', 'GlobalKnownHostsFile=/dev/null',
+        '-o', 'GSSAPIAuthentication=no',
+        '-o', 'IdentitiesOnly=yes',
+        '-o', 'BatchMode=yes',
+        '-o', 'VerifyHostKeyDNS=no',
 
-                  '-vvvvvv',
-                  '-T',
-                  '-o', 'KbdInteractiveAuthentication=no',
-                  '-o', 'HostbasedAuthentication=no',
-                  '-o', 'PasswordAuthentication=no',
-                  '-o', 'PubkeyAuthentication=yes',
-                  '-o', 'PreferredAuthentications=publickey'];
-      if (clientcfg.privateKeyPath)
-        args.push('-o', 'IdentityFile=' + clientcfg.privateKeyPath);
+        '-vvvvvv',
+        '-T',
+        '-o', 'KbdInteractiveAuthentication=no',
+        '-o', 'HostbasedAuthentication=no',
+        '-o', 'PasswordAuthentication=no',
+        '-o', 'PubkeyAuthentication=yes',
+        '-o', 'PreferredAuthentications=publickey'
+      ];
+      if (clientCfg.privateKeyPath)
+        args.push('-o', 'IdentityFile=' + clientCfg.privateKeyPath);
       if (!/^[0-6]\./.test(opensshVer)) {
         // OpenSSH 7.0+ disables DSS/DSA host (and user) key support by
         // default, so we explicitly enable it here
@@ -367,7 +443,7 @@ function setup(self, clientcfg, servercfg) {
                 'localhost',
                 'uptime');
 
-      client = spawn(cmd, args);
+      client = spawn(opensshPath, args, SPAWN_OPTS);
       server.emit('_child', client);
       if (DEBUG) {
         client.stdout.pipe(process.stdout);
@@ -376,21 +452,44 @@ function setup(self, clientcfg, servercfg) {
         client.stdout.resume();
         client.stderr.resume();
       }
-      client.on('error', function(err) {
+      client.on('error', (err) => {
         onError(err, null, null);
-      }).on('exit', function(code) {
+      }).on('exit', (code) => {
         clearTimeout(client.timer);
         if (code !== 0)
-          return onError(new Error('Non-zero exit code ' + code), null, null);
+          return onError(new Error(`Non-zero exit code ${code}`), null, null);
         onClose(null, null, null);
       });
 
-      client.timer = setTimeout(function() {
-        assert(false, makeMsg(self.what, 'Client timeout'));
+      client.timer = setTimeout(() => {
+        assert(false, msg('Client timeout'));
       }, CLIENT_TIMEOUT);
-    });
-  });
+    }));
+  }));
+
   return server;
+}
+
+const getParamNames = (() => {
+  const STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+  const ARGUMENT_NAMES = /([^\s,]+)/g;
+  const toString = Function.prototype.toString;
+  return (fn) => {
+    const s = toString.call(fn).replace(STRIP_COMMENTS, '');
+    const result = s.slice(s.indexOf('(') + 1, s.indexOf(')'))
+                    .match(ARGUMENT_NAMES);
+    return (result || []);
+  };
+})();
+
+function once(fn) {
+  let called = false;
+  return (...args) => {
+    if (called)
+      return;
+    called = true;
+    fn(...args);
+  };
 }
 
 function next() {
@@ -399,43 +498,45 @@ function next() {
   if (++t === tests.length)
     return;
 
-  var v = tests[t];
-  v.run.call(v);
+  const v = tests[t];
+  v.next = once(next);
+  v.msg = msg.bind(null, v.what);
+  v.run(v.msg, v.next);
 }
 
-function makeMsg(what, msg) {
-  return '[' + group + what + ']: ' + msg;
+function msg(what, desc) {
+  return `[${THIS_FILE}/${what}]: ${desc}`;
 }
 
-process.once('uncaughtException', function(err) {
-  if (t > -1 && !/(?:^|\n)AssertionError: /i.test(''+err))
-    console.log(makeMsg(tests[t].what, 'Unexpected Exception:'));
-  throw err;
-});
-process.once('exit', function() {
-  assert(t === tests.length,
-         makeMsg('_exit',
-                 'Only finished ' + t + '/' + tests.length + ' tests'));
+process.once('exit', () => {
+  const ran = Math.max(t, 0);
+  assert(ran === tests.length,
+         msg('(exit)', `Finished ${ran}/${tests.length} tests`));
 });
 
 
-// Get OpenSSH client version first
-exec(opensshPath + ' -V', function(err, stdout, stderr) {
-  if (err) {
-    console.log('OpenSSH client is required for these tests');
+{
+  // Get OpenSSH client version first
+  const {
+    error, stderr, stdout
+  } = spawnSync(opensshPath, ['-V'], SPAWN_OPTS);
+
+  if (error) {
+    console.error('OpenSSH client is required for these tests');
     process.exitCode = 5;
     return;
   }
-  var re = /^OpenSSH_([\d\.]+)/;
-  var m = re.exec(stdout.toString());
+  const re = /^OpenSSH_([\d.]+)/;
+  let m = re.exec(stdout.toString());
   if (!m || !m[1]) {
     m = re.exec(stderr.toString());
     if (!m || !m[1]) {
-      console.log('OpenSSH client is required for these tests');
+      console.error('OpenSSH client is required for these tests');
       process.exitCode = 5;
       return;
     }
   }
   opensshVer = m[1];
+  console.log(`Testing with OpenSSH version: ${opensshVer}`);
   next();
-});
+}
