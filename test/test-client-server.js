@@ -740,9 +740,9 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('exec', mustCall((accept, reject, info) => {
+            session.on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -840,13 +840,13 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
             let ptyInfo;
-            session.once('pty', mustCall((accept, reject, info) => {
+            session.on('pty', mustCall((accept, reject, info) => {
               ptyInfo = info;
               accept && accept();
-            })).once('exec', mustCall((accept, reject, info) => {
+            })).on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -898,13 +898,13 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
             let authAgentReq = false;
-            session.once('auth-agent', mustCall((accept, reject) => {
+            session.on('auth-agent', mustCall((accept, reject) => {
               authAgentReq = true;
               accept && accept();
-            })).once('exec', mustCall((accept, reject, info) => {
+            })).on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -946,10 +946,10 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
             let x11 = false;
-            session.once('x11', mustCall((accept, reject, info) => {
+            session.on('x11', mustCall((accept, reject, info) => {
               assert.strictEqual(info.single,
                                  false,
                                  msg('Wrong client x11.single: '
@@ -968,7 +968,7 @@ const tests = [
                                          + info.cookie));
               x11 = true;
               accept && accept();
-            })).once('exec', mustCall((accept, reject, info) => {
+            })).on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -1032,10 +1032,10 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
             let x11 = false;
-            session.once('x11', mustCall((accept, reject, info) => {
+            session.on('x11', mustCall((accept, reject, info) => {
               assert.strictEqual(info.single,
                                  true,
                                  msg('Wrong client x11.single: '
@@ -1056,7 +1056,7 @@ const tests = [
               x11 = info;
               x11.cookie = x11.cookie.toString();
               accept && accept();
-            })).once('exec', mustCall((accept, reject, info) => {
+            })).on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -1116,13 +1116,13 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
             let sawPty = false;
-            session.once('pty', mustCall((accept, reject, info) => {
+            session.on('pty', mustCall((accept, reject, info) => {
               sawPty = true;
               accept && accept();
-            })).once('shell', mustCall((accept, reject) => {
+            })).on('shell', mustCall((accept, reject) => {
               const stream = accept();
               stream.write(`Cowabunga dude! ${inspect(sawPty)}`);
               stream.end();
@@ -1161,15 +1161,15 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('env', mustCall((accept, reject, info) => {
+            session.on('env', mustCall((accept, reject, info) => {
               serverEnv[info.key] = info.val;
               accept && accept();
-            })).once('pty', mustCall((accept, reject, info) => {
+            })).on('pty', mustCall((accept, reject, info) => {
               sawPty = true;
               accept && accept();
-            })).once('shell', mustCall((accept, reject) => {
+            })).on('shell', mustCall((accept, reject) => {
               const stream = accept();
               stream.end();
               conn.end();
@@ -1204,12 +1204,12 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('sftp', mustCall((accept, reject) => {
+            session.on('sftp', mustCall((accept, reject) => {
               if (accept) {
                 const sftp = accept();
-                sftp.once('OPEN', mustCall((id, filename, flags, attrs) => {
+                sftp.on('OPEN', mustCall((id, filename, flags, attrs) => {
                   assert(id === 0,
                          msg(`Unexpected sftp request ID: ${id}`));
                   assert(filename === 'node.js',
@@ -1217,7 +1217,7 @@ const tests = [
                   assert(flags === OPEN_MODE.READ,
                          msg(`Unexpected flags: ${flags}`));
                   sftp.handle(id, expHandle);
-                  sftp.once('CLOSE', mustCall((id, handle) => {
+                  sftp.on('CLOSE', mustCall((id, handle) => {
                     assert(id === 1,
                            msg(`Unexpected sftp request ID: ${id}`));
                     assert.deepEqual(handle,
@@ -1369,7 +1369,7 @@ const tests = [
         })).on('ready', mustCall(() => {
           conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('exec', mustCall((accept, reject, info) => {
+            session.on('exec', mustCall((accept, reject, info) => {
               const stream = accept();
               stream.exit(0);
               stream.end();
@@ -1412,7 +1412,7 @@ const tests = [
                 assert(!err, msg(`Unexpected rekey error: ${err}`));
                 reqs.forEach((accept) => {
                   const session = accept();
-                  session.once('exec', mustCall((accept, reject, info) => {
+                  session.on('exec', mustCall((accept, reject, info) => {
                     const stream = accept();
                     stream.exit(0);
                     stream.end();
@@ -1454,7 +1454,7 @@ const tests = [
         })).on('ready', mustCall(() => {
           conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('exec', mustCall((accept, reject, info) => {
+            session.on('exec', mustCall((accept, reject, info) => {
               const stream = accept();
               stream.exit(0);
               stream.end();
@@ -1714,7 +1714,7 @@ const tests = [
         })).on('ready', mustCall(() => {
           conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('subsystem', mustCall((accept, reject, info) => {
+            session.on('subsystem', mustCall((accept, reject, info) => {
               assert.equal(info.name, 'netconf');
 
               // XXX: hack to prevent success reply from being sent
@@ -1750,7 +1750,7 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         }));
-        conn.once('request', mustCall((accept, reject, name, info) => {
+        conn.on('request', mustCall((accept, reject, name, info) => {
           assert(name === 'tcpip-forward',
                  msg(`Unexpected request: ${name}`));
           accept(1337);
@@ -1892,7 +1892,7 @@ const tests = [
         // since we are expecting an error in this case
         conn.removeAllListeners('error');
 
-        conn.once('error', mustCall((err) => {
+        conn.on('error', mustCall((err) => {
           assert(/signature generation failed/i.test(err.message),
                  msg('Wrong error message'));
           srvError = err;
@@ -2047,7 +2047,7 @@ const tests = [
                 assert(!err, msg(`Unexpected rekey error: ${err}`));
                 reqs.forEach((accept) => {
                   const session = accept();
-                  session.once('exec', mustCall((accept, reject, info) => {
+                  session.on('exec', mustCall((accept, reject, info) => {
                     const stream = accept();
                     stream.exit(0);
                     stream.end();
@@ -2119,7 +2119,7 @@ const tests = [
                 assert(!err, msg(`Unexpected rekey error: ${err}`));
                 reqs.forEach((accept) => {
                   const session = accept();
-                  session.once('exec', mustCall((accept, reject, info) => {
+                  session.on('exec', mustCall((accept, reject, info) => {
                     const stream = accept();
                     stream.exit(0);
                     stream.end();
@@ -2205,7 +2205,7 @@ const tests = [
                 assert(!err, msg(`Unexpected rekey error: ${err}`));
                 reqs.forEach((accept) => {
                   const session = accept();
-                  session.once('exec', mustCall((accept, reject, info) => {
+                  session.on('exec', mustCall((accept, reject, info) => {
                     const stream = accept();
                     stream.exit(0);
                     stream.end();
