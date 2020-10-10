@@ -826,6 +826,51 @@ const tests = [
     what: 'Exec with environment set'
   },
   { run: mustCall(function(msg) {
+      const { client, server } = setup(
+        this,
+        { username: USER,
+          password: PASSWORD
+        },
+        { hostKeys: [HOST_KEY_RSA] }
+      );
+      const dimensions = {
+        rows: 60,
+        cols: 115,
+        height: 480,
+        width: 640
+      };
+
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
+          ctx.accept();
+        })).on('ready', mustCall(() => {
+          conn.on('session', mustCall((accept, reject) => {
+            const session = accept();
+            session.on('window-change', mustCall((accept, reject, info) => {
+              accept && accept();
+              assert.deepStrictEqual(info, dimensions, msg('Wrong dimensions'));
+            })).on('exec', mustCall((accept, reject, info) => {
+              assert(info.command === 'foo --bar',
+                     msg(`Wrong exec command: ${info.command}`));
+              const stream = accept();
+              stream.exit(100);
+              stream.end();
+              conn.end();
+            }));
+          }));
+        }));
+      }));
+      client.on('ready', mustCall(() => {
+        client.exec('foo --bar', mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected exec error: ${err}`));
+          stream.setWindow(...Object.values(dimensions));
+          stream.resume();
+        }));
+      }));
+    }),
+    what: 'Exec with setWindow()'
+  },
+  { run: mustCall(function(msg) {
       let out = '';
       const { client, server } = setup(
         this,
