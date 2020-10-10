@@ -782,7 +782,6 @@ const tests = [
     what: 'Simple exec'
   },
   { run: mustCall(function(msg) {
-      const serverEnv = {};
       const clientEnv = { SSH2NODETEST: 'foo' };
       const { client, server } = setup(
         this,
@@ -796,12 +795,15 @@ const tests = [
         conn.on('authentication', mustCall((ctx) => {
           ctx.accept();
         })).on('ready', mustCall(() => {
-          conn.once('session', mustCall((accept, reject) => {
+          conn.on('session', mustCall((accept, reject) => {
             const session = accept();
-            session.once('env', mustCall((accept, reject, info) => {
-              serverEnv[info.key] = info.val;
+            session.on('env', mustCall((accept, reject, info) => {
               accept && accept();
-            })).once('exec', mustCall((accept, reject, info) => {
+              assert(info.key === Object.keys(clientEnv)[0],
+                     msg('Wrong env key'));
+              assert(info.val === Object.values(clientEnv)[0],
+                     msg('Wrong env value'));
+            })).on('exec', mustCall((accept, reject, info) => {
               assert(info.command === 'foo --bar',
                      msg(`Wrong exec command: ${info.command}`));
               const stream = accept();
@@ -819,9 +821,6 @@ const tests = [
           assert(!err, msg(`Unexpected exec error: ${err}`));
           stream.resume();
         }));
-      })).on('end', mustCall(() => {
-        assert.deepEqual(serverEnv, clientEnv,
-                         msg('Environment mismatch'));
       }));
     }),
     what: 'Exec with environment set'
