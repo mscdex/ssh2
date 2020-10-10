@@ -3,7 +3,10 @@
 const { spawnSync } = require('child_process');
 
 // Attempt to build the bundled optional binding
-const result = spawnSync('node-gyp', ['rebuild'], {
+const result = spawnSync('node-gyp', [
+  `--target=${process.version}`,
+  'rebuild'
+], {
   cwd: 'lib/protocol/crypto',
   encoding: 'utf8',
   shell: true,
