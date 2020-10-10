@@ -441,6 +441,7 @@ const tests = [
       this.onReady = mustCall((client, server) => {
         const path_ = '/foo/bar/baz';
         const attrs_ = new Stats({
+          mode: 0o644 | constants.S_IFREG,
           size: 10 * 1024,
           uid: 9001,
           gid: 9001,
@@ -456,6 +457,19 @@ const tests = [
         client.stat(path_, mustCall((err, attrs) => {
           assert(!err, msg(`Unexpected stat() error: ${err}`));
           assert.deepStrictEqual(attrs, attrs_, msg('attrs mismatch'));
+          const expectedTypes = {
+            isDirectory: false,
+            isFile: true,
+            isBlockDevice: false,
+            isCharacterDevice: false,
+            isSymbolicLink: false,
+            isFIFO: false,
+            isSocket: false
+          };
+          for (const [fn, expect] of Object.entries(expectedTypes)) {
+            assert(attrs[fn]() === expect,
+                   msg(`attrs.${fn}() failed`));
+          }
         }));
       });
     }),
