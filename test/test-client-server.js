@@ -9,6 +9,7 @@ const { inspect } = require('util');
 
 const Client = require('../lib/client.js');
 const Server = require('../lib/server.js');
+const { KexInit } = require('../lib/protocol/kex.js');
 const { parseKey } = require('../lib/protocol/keyParser.js');
 const { OPEN_MODE, STATUS_CODE } = require('../lib/protocol/SFTP.js');
 
@@ -2072,6 +2073,176 @@ const tests = [
       }));
     }),
     what: 'Rekeying with AES-GCM'
+  },
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          algorithms: {
+            compress: [ 'none' ],
+          },
+        },
+        { hostKeys: [HOST_KEY_RSA],
+          algorithms: {
+            compress: [ 'none', 'zlib@openssh.com' ],
+          },
+        }
+      );
+
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
+          ctx.accept();
+        })).on('ready', mustCall(() => {
+          const reqs = [];
+          conn.on('session', mustCall((accept, reject) => {
+            if (reqs.length === 0) {
+              // XXX: hack to change algorithms after initial handshake
+              client._protocol._offer = new KexInit({
+                kex: ['ecdh-sha2-nistp256'],
+                srvHostKey: ['rsa-sha2-256'],
+                cs: {
+                  cipher: ['aes128-gcm@openssh.com'],
+                  mac: [],
+                  compress: ['zlib@openssh.com'],
+                  lang: [],
+                },
+                sc: {
+                  cipher: ['aes128-gcm@openssh.com'],
+                  mac: [],
+                  compress: ['zlib@openssh.com'],
+                  lang: [],
+                },
+              });
+
+              conn.rekey(mustCall((err) => {
+                assert(!err, msg(`Unexpected rekey error: ${err}`));
+                reqs.forEach((accept) => {
+                  const session = accept();
+                  session.once('exec', mustCall((accept, reject, info) => {
+                    const stream = accept();
+                    stream.exit(0);
+                    stream.end();
+                  }));
+                });
+              }));
+            }
+            reqs.push(accept);
+          }));
+        }));
+      }));
+      let handshakes = 0;
+      client.on('handshake', mustCall((info) => {
+        switch (++handshakes) {
+          case 1:
+            assert(info.cs.compress === 'none', msg('wrong compress value'));
+            assert(info.sc.compress === 'none', msg('wrong compress value'));
+            break;
+          case 2:
+            assert(info.cs.compress === 'zlib@openssh.com',
+                   msg('wrong compress value'));
+            assert(info.sc.compress === 'zlib@openssh.com',
+                   msg('wrong compress value'));
+            break;
+        }
+      }, 2)).on('ready', mustCall(() => {
+        let calledBack = 0;
+        const callback = mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
+          stream.resume();
+          if (++calledBack === 3)
+            client.end();
+        }, 3);
+        client.exec('foo', callback);
+        client.exec('bar', callback);
+        client.exec('baz', callback);
+      }));
+    }),
+    what: 'Switch from no compression to compression'
+  },
+  { run: mustCall(function(msg) {
+      const { client, server } = setup(
+        this,
+        { username: USER,
+          password: PASSWORD,
+          algorithms: {
+            compress: [ 'zlib' ],
+          },
+        },
+        { hostKeys: [HOST_KEY_RSA],
+          algorithms: {
+            compress: [ 'zlib', 'none' ],
+          },
+        }
+      );
+
+      server.on('connection', mustCall((conn) => {
+        conn.on('authentication', mustCall((ctx) => {
+          ctx.accept();
+        })).on('ready', mustCall(() => {
+          const reqs = [];
+          conn.on('session', mustCall((accept, reject) => {
+            if (reqs.length === 0) {
+              // XXX: hack to change algorithms after initial handshake
+              client._protocol._offer = new KexInit({
+                kex: ['ecdh-sha2-nistp256'],
+                srvHostKey: ['rsa-sha2-256'],
+                cs: {
+                  cipher: ['aes128-gcm@openssh.com'],
+                  mac: [],
+                  compress: ['none'],
+                  lang: [],
+                },
+                sc: {
+                  cipher: ['aes128-gcm@openssh.com'],
+                  mac: [],
+                  compress: ['none'],
+                  lang: [],
+                },
+              });
+
+              conn.rekey(mustCall((err) => {
+                assert(!err, msg(`Unexpected rekey error: ${err}`));
+                reqs.forEach((accept) => {
+                  const session = accept();
+                  session.once('exec', mustCall((accept, reject, info) => {
+                    const stream = accept();
+                    stream.exit(0);
+                    stream.end();
+                  }));
+                });
+              }));
+            }
+            reqs.push(accept);
+          }));
+        }));
+      }));
+      let handshakes = 0;
+      client.on('handshake', mustCall((info) => {
+        switch (++handshakes) {
+          case 1:
+            assert(info.cs.compress === 'zlib', msg('wrong compress value'));
+            assert(info.sc.compress === 'zlib', msg('wrong compress value'));
+            break;
+          case 2:
+            assert(info.cs.compress === 'none', msg('wrong compress value'));
+            assert(info.sc.compress === 'none', msg('wrong compress value'));
+            break;
+        }
+      }, 2)).on('ready', mustCall(() => {
+        let calledBack = 0;
+        const callback = mustCall((err, stream) => {
+          assert(!err, msg(`Unexpected error: ${err}`));
+          stream.resume();
+          if (++calledBack === 3)
+            client.end();
+        }, 3);
+        client.exec('foo', callback);
+        client.exec('bar', callback);
+        client.exec('baz', callback);
+      }));
+    }),
+    what: 'Switch from compression to no compression'
   },
 ];
 
