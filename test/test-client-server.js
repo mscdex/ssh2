@@ -3,7 +3,7 @@
 
 const assert = require('assert');
 const { readFileSync } = require('fs');
-const { Socket } = require('net');
+const { Server: netServer, Socket } = require('net');
 const { join, basename } = require('path');
 const { inspect } = require('util');
 
@@ -1574,6 +1574,41 @@ const tests = [
       }));
     }),
     what: 'Double pipe on unconnected, passed in net.Socket'
+  },
+  {
+    run: mustCall(function (msg) {
+      let client;
+
+      // Start a TCP server for the SSH server
+      const tcpServer = new netServer((serverSocket) => {
+        const { server } = setup(
+          this,
+          client,
+          { hostKeys: [HOST_KEY_RSA],
+            sock: serverSocket
+          }
+        );
+        server.on('connection', mustCall((conn) => {
+          conn.on('authentication', mustCall((ctx) => {
+            ctx.accept();
+          })).on('ready', mustCall(() => {}));
+        }));
+        client.on('ready', mustCall(() => {
+          server.close();
+          tcpServer.close();
+        }));
+      });
+
+      tcpServer.listen(() => {
+        client = new Client();
+        client.connect({
+          username: USER,
+          password: PASSWORD,
+          port: tcpServer.address().port
+        });
+      });
+    }),
+    what: "Server - Double pipe on passed in net.Socket"
   },
   { run: mustCall(function(msg) {
       const { client, server } = setup(
