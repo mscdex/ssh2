@@ -2290,7 +2290,7 @@ const tests = [
   },
 ];
 
-function setup(self, clientCfg, serverCfg, timeout) {
+function setup(self, clientCfgOrClient, serverCfg, timeout) {
   const { next, msg } = self;
   self.state = {
     clientReady: false,
@@ -2298,6 +2298,10 @@ function setup(self, clientCfg, serverCfg, timeout) {
     clientClose: false,
     serverClose: false,
   };
+
+  const alreadyConnectedClient = clientCfgOrClient instanceof Client;
+  const client = alreadyConnectedClient ? clientCfgOrClient : new Client();
+  const clientCfg = alreadyConnectedClient ? client.config : clientCfgOrClient;
 
   if (DEBUG) {
     console.log('========================================================\n'
@@ -2311,7 +2315,6 @@ function setup(self, clientCfg, serverCfg, timeout) {
     };
   }
 
-  const client = new Client();
   const server = new Server(serverCfg);
   if (timeout === undefined)
     timeout = DEFAULT_TEST_TIMEOUT;
@@ -2321,7 +2324,8 @@ function setup(self, clientCfg, serverCfg, timeout) {
         .on('connection', mustCall((conn) => {
           conn.on('error', onError)
               .on('ready', mustCall(onReady));
-          server.close();
+          if (!serverCfg.sock)
+            server.close();
         }))
         .on('close', mustCall(onClose));
   client.on('error', onError)
@@ -2366,20 +2370,28 @@ function setup(self, clientCfg, serverCfg, timeout) {
   }
 
   process.nextTick(mustCall(() => {
-    server.listen(0, 'localhost', mustCall(() => {
+    const setTestTimeoutAndConnectClient = (serverPort) => {
       if (timeout >= 0) {
         timer = setTimeout(() => {
           assert(false, msg('Test timed out'));
         }, timeout);
       }
-      if (clientCfg.sock) {
-        clientCfg.sock.connect(server.address().port, 'localhost');
-      } else {
-        clientCfg.host = 'localhost';
-        clientCfg.port = server.address().port;
+      if (!alreadyConnectedClient) {
+        if (clientCfg.sock) {
+            clientCfg.sock.connect(serverPort, 'localhost');
+        } else {
+            clientCfg.host = 'localhost';
+            clientCfg.port = serverPort;
+        }
+        client.connect(clientCfg);
       }
-      client.connect(clientCfg);
-    }));
+    };
+
+    if (serverCfg.sock) {
+      setTestTimeoutAndConnectClient(serverCfg.sock.localPort);
+    } else {
+      server.listen(0, 'localhost', mustCall(() => setTestTimeoutAndConnectClient(server.address().port)));
+    }
   }));
 
   return { client, server };
