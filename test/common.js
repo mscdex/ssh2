@@ -1,9 +1,17 @@
 'use strict';
 
 const assert = require('assert');
+const { readFileSync } = require('fs');
+const { join } = require('path');
 const { inspect } = require('util');
 
+const Client = require('../lib/client.js');
+const Server = require('../lib/server.js');
+const { parseKey } = require('../lib/protocol/keyParser.js');
+
 const mustCallChecks = [];
+
+const DEFAULT_TEST_TIMEOUT = 30 * 1000;
 
 function noop() {}
 
@@ -70,6 +78,7 @@ function _mustCallInner(fn, criteria = 1, field) {
     ++context.actual;
     return fn.call(this, ...args);
   }
+  // TODO: remove origFn?
   wrapped.origFn = fn;
 
   return wrapped;
@@ -100,8 +109,184 @@ function mustNotCall(msg) {
   };
 }
 
+function setup(title, configs) {
+  const {
+    client: clientCfg,
+    server: serverCfg,
+    allReady: allReady_,
+    timeout: timeout_,
+    debug,
+    noForceClientReady,
+    noForceServerReady,
+  } = configs;
+  let clientClose = false;
+  let clientReady = false;
+  let serverClose = false;
+  let serverReady = false;
+  const msg = (text) => {
+    return `${title}: ${text}`;
+  };
+
+  const timeout = (typeof timeout_ === 'number'
+                   ? timeout_
+                   : DEFAULT_TEST_TIMEOUT);
+
+  const allReady = (typeof allReady_ === 'function' ? allReady_ : undefined);
+
+  if (debug) {
+    clientCfg.debug = (...args) => {
+      console.log(`[${title}][CLIENT]`, ...args);
+    };
+    serverCfg.debug = (...args) => {
+      console.log(`[${title}][SERVER]`, ...args);
+    };
+  }
+
+  let timer;
+  let client;
+  let clientReadyFn;
+  let server;
+  let serverReadyFn;
+  if (clientCfg) {
+    client = new Client();
+    clientReadyFn = (noForceClientReady ? onReady : mustCall(onReady));
+    client.on('error', onError)
+          .on('ready', clientReadyFn)
+          .on('close', mustCall(onClose));
+  } else {
+    clientReady = clientClose = true;
+  }
+
+  if (serverCfg) {
+    server = new Server(serverCfg);
+    serverReadyFn = (noForceServerReady ? onReady : mustCall(onReady));
+    server.on('error', onError)
+          .on('connection', mustCall((conn) => {
+            conn.on('error', onError)
+                .on('ready', serverReadyFn);
+            server.close();
+          }))
+          .on('close', mustCall(onClose));
+  } else {
+    serverReady = serverClose = true;
+  }
+
+  function onError(err) {
+    const which = (this === client ? 'client' : 'server');
+    assert(false, msg(`Unexpected ${which} error: ${err}`));
+  }
+
+  function onReady() {
+    if (this === client) {
+      assert(!clientReady,
+             msg('Received multiple ready events for client'));
+      clientReady = true;
+    } else {
+      assert(!serverReady,
+             msg('Received multiple ready events for server'));
+      serverReady = true;
+    }
+    clientReady && serverReady && allReady && allReady();
+  }
+
+  function onClose() {
+    if (this === client) {
+      assert(!clientClose,
+             msg('Received multiple close events for client'));
+      clientClose = true;
+    } else {
+      assert(!serverClose,
+             msg('Received multiple close events for server'));
+      serverClose = true;
+    }
+    if (clientClose && serverClose)
+      clearTimeout(timer);
+  }
+
+  process.nextTick(mustCall(() => {
+    function connectClient() {
+      if (clientCfg.sock) {
+        clientCfg.sock.connect(server.address().port, 'localhost');
+      } else {
+        clientCfg.host = 'localhost';
+        clientCfg.port = server.address().port;
+      }
+      client.connect(clientCfg);
+    }
+
+    if (server) {
+      server.listen(0, 'localhost', mustCall(() => {
+        if (timeout >= 0) {
+          timer = setTimeout(() => {
+            assert(false, msg('Test timed out'));
+          }, timeout);
+        }
+        if (client)
+          connectClient();
+      }));
+    }
+  }));
+
+  return { client, server };
+}
+
+const FIXTURES_DIR = join(__dirname, 'fixtures');
+const fixture = (() => {
+  const cache = new Map();
+  return (file) => {
+    const existing = cache.get(file);
+    if (existing !== undefined)
+      return existing;
+
+    const result = readFileSync(join(FIXTURES_DIR, file));
+    cache.set(file, result);
+    return result;
+  };
+})();
+const fixtureKey = (() => {
+  const cache = new Map();
+  return (file, passphrase, bypass) => {
+    if (typeof passphrase === 'boolean') {
+      bypass = passphrase;
+      passphrase = undefined;
+    }
+    if (typeof bypass !== 'boolean' || !bypass) {
+      const existing = cache.get(file);
+      if (existing !== undefined)
+        return existing;
+    }
+    const fullPath = join(FIXTURES_DIR, file);
+    const raw = fixture(file);
+    let key = parseKey(raw, passphrase);
+    if (Array.isArray(key))
+      key = key[0];
+    const result = { key, raw, fullPath };
+    cache.set(file, result);
+    return result;
+  };
+})();
+
+function setupSimple(debug, title) {
+  const { client, server } = setup(title, {
+    client: { username: 'Password User', password: '12345' },
+    server: { hostKeys: [ fixtureKey('ssh_host_rsa_key').raw ] },
+    debug,
+  });
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    }));
+  }));
+  return { client, server };
+}
+
 module.exports = {
+  fixture,
+  fixtureKey,
+  FIXTURES_DIR,
   mustCall,
   mustCallAtLeast,
   mustNotCall,
+  setup,
+  setupSimple,
 };
