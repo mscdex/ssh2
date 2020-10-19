@@ -48,7 +48,7 @@ Development/testing is done against OpenSSH (8.0 currently).
 
 * [node.js](http://nodejs.org/) -- v10.16.0 or newer
   * node v12.0.0 or newer for Ed25519 key support
-* (Optional) [`cpu-features`](https://github.com/mscdex/cpu-features) is set as an optional package dependency that will be automatically built and used if possible. See the project's documentation for its own requirements.
+* (Optional) [`cpu-features`](https://github.com/mscdex/cpu-features) is set as an optional package dependency (you do not need to install it explicitly/separately from `ssh2`) that will be automatically built and used if possible. See the project's documentation for its own requirements.
   * This addon is currently used to help generate an optimal default cipher list
 
 ## Installation
