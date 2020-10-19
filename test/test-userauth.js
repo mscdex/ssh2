@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const { inspect } = require('util');
 
 const {
   fixtureKey,
@@ -199,6 +200,71 @@ const debug = false;
   }));
 }
 
+
+// keyboard-interactive ========================================================
+{
+  const username = 'Keyboard-Interactive User';
+  const request = {
+    name: 'SSH2 Authentication',
+    instructions: 'These are instructions',
+    prompts: [
+      { prompt: 'Password: ', echo: false },
+      { prompt: 'Is the cake a lie? ', echo: true },
+    ],
+  };
+  const responses = [
+    'foobarbaz',
+    'yes',
+  ];
+  const { client, server } = setup(
+    'Password (empty username)',
+    {
+      client: {
+        username,
+        tryKeyboard: true,
+      },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    let authAttempt = 0;
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username,
+             `Wrong username: ${ctx.username}`);
+      if (++authAttempt === 1) {
+        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        return ctx.reject();
+      }
+      assert(ctx.method === 'keyboard-interactive',
+             `Wrong auth method: ${ctx.method}`);
+      ctx.prompt(request.prompts,
+                 request.name,
+                 request.instructions,
+                 mustCall((responses_) => {
+        assert.deepStrictEqual(responses_, responses);
+        ctx.accept();
+      }));
+    }, 2)).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+
+  client.on('keyboard-interactive',
+            mustCall((name, instructions, lang, prompts, finish) => {
+    assert(name === request.name, `Wrong prompt name: ${name}`);
+    assert(instructions === request.instructions,
+           `Wrong prompt instructions: ${instructions}`);
+    assert.deepStrictEqual(
+      prompts,
+      request.prompts,
+      `Wrong prompts: ${inspect(prompts)}`
+    );
+    process.nextTick(finish, responses);
+  }));
+}
 
 // authHandler() tests =========================================================
 {
