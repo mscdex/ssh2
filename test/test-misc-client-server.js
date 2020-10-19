@@ -560,21 +560,17 @@ const setup = setupSimple.bind(undefined, DEBUG);
     'Cleanup outstanding channel requests on channel close'
   );
 
-  let timer;
-
   server.on('connection', mustCall((conn) => {
     conn.on('ready', mustCall(() => {
       conn.on('session', mustCall((accept, reject) => {
         const session = accept();
         session.on('subsystem', mustCall((accept, reject, info) => {
-          assert.equal(info.name, 'netconf');
+          assert(info.name === 'netconf', `Wrong subsystem name: ${info.name}`);
 
           // XXX: hack to prevent success reply from being sent
           conn._protocol.channelSuccess = () => {};
 
-          const stream = accept();
-          stream.close();
-          timer = setTimeout(mustNotCall(), 50);
+          accept().close();
         }));
       }));
     }));
@@ -582,8 +578,7 @@ const setup = setupSimple.bind(undefined, DEBUG);
 
   client.on('ready', mustCall(() => {
     client.subsys('netconf', mustCall((err, stream) => {
-      clearTimeout(timer);
-      assert(err);
+      assert(err, 'Expected error');
       client.end();
     }));
   }));
