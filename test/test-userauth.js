@@ -34,12 +34,9 @@ const debug = false;
   const { server } = setup(
     desc,
     {
-      client: {
-        username,
-        privateKey: clientKey.raw,
-        passphrase,
-      },
+      client: { username, privateKey: clientKey.raw, passphrase },
       server: serverCfg,
+
       debug,
     }
   );
@@ -85,11 +82,9 @@ const debug = false;
   const { server } = setup(
     'Password',
     {
-      client: {
-        username,
-        password,
-      },
+      client: { username, password },
       server: serverCfg,
+
       debug,
     }
   );
@@ -119,11 +114,9 @@ const debug = false;
   const { server } = setup(
     'Password (empty username)',
     {
-      client: {
-        username,
-        password,
-      },
+      client: { username, password },
       server: serverCfg,
+
       debug,
     }
   );
@@ -165,6 +158,7 @@ const debug = false;
         localHostname,
       },
       server: serverCfg,
+
       debug,
     }
   );
@@ -226,6 +220,7 @@ const debug = false;
         }),
       },
       server: serverCfg,
+
       debug,
     }
   );
@@ -259,6 +254,7 @@ const debug = false;
         }),
       },
       server: serverCfg,
+
       debug,
     }
   );
@@ -292,6 +288,7 @@ const debug = false;
         }),
       },
       server: serverCfg,
+
       debug,
       noForceClientReady: true,
       noForceServerReady: true,
@@ -332,6 +329,7 @@ const debug = false;
         }),
       },
       server: serverCfg,
+
       debug,
       noForceClientReady: true,
       noForceServerReady: true,
@@ -389,6 +387,7 @@ const debug = false;
         }, 2),
       },
       server: serverCfg,
+
       debug,
     }
   );
@@ -423,6 +422,7 @@ const debug = false;
       conn.end();
     }));
   }));
+
   client.on('close', mustCall(() => {
     assert.deepStrictEqual(events, expectedEvents);
   }));

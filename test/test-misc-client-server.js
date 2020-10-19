@@ -11,6 +11,7 @@ const { KexInit } = require('../lib/protocol/kex.js');
 const {
   fixture,
   mustCall,
+  mustCallAtLeast,
   mustNotCall,
   setup: setup_,
   setupSimple,
@@ -922,5 +923,54 @@ const setup = setupSimple.bind(undefined, DEBUG);
     client.exec('foo', mustCall(callback));
     client.exec('bar', mustCall(callback));
     client.exec('baz', mustCall(callback));
+  }));
+}
+
+{
+  const { client, server } = setup_(
+    'Large data compression',
+    {
+      client: {
+        ...clientCfg,
+        algorithms: { compress: [ 'zlib' ] },
+      },
+      server: {
+        ...serverCfg,
+        algorithms: { compress: [ 'zlib' ] },
+      }
+    },
+  );
+
+  const chunk = Buffer.alloc(1024 * 1024, 'a');
+  const chunkCount = 10;
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          const stream = accept();
+          for (let i = 0; i < chunkCount; ++i)
+            stream.write(chunk);
+          stream.exit(0);
+          stream.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.exec('foo', mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      let nb = 0;
+      stream.on('data', mustCallAtLeast((data) => {
+        nb += data.length;
+      })).on('end', mustCall(() => {
+        assert(nb === (chunkCount * chunk.length),
+               `Wrong stream byte count: ${nb}`);
+        client.end();
+      }));
+    }));
   }));
 }
