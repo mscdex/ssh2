@@ -969,3 +969,51 @@ const setup = setupSimple.bind(undefined, DEBUG);
     }));
   }));
 }
+
+{
+  const { client, server } = setup_(
+    'Debug output',
+    {
+      client: {
+        ...clientCfg,
+        debug: mustCallAtLeast((msg) => {
+          assert(typeof msg === 'string',
+                 `Wrong debug argument type: ${typeof msg}`);
+          assert(msg.length > 0, 'Unexpected empty debug message');
+        }),
+      },
+      server: {
+        ...serverCfg,
+        debug: mustCallAtLeast((msg) => {
+          assert(typeof msg === 'string',
+                 `Wrong debug argument type: ${typeof msg}`);
+          assert(msg.length > 0, 'Unexpected empty debug message');
+        }),
+      },
+    },
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === 'foo --bar',
+                 `Wrong exec command: ${info.command}`);
+          const stream = accept();
+          stream.exit(100);
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.exec('foo --bar', mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.resume();
+    }));
+  }));
+}
