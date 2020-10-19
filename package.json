@@ -3,7 +3,7 @@
   "version": "1.0.0-beta.0",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
-  "main": "./lib/client",
+  "main": "./lib/index.js",
   "engines": {
     "node": ">=10.16.0"
   },
