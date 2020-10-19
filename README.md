@@ -713,7 +713,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **socketPath** - _string_ - The originating UNIX socket path of the connection.
 
-* **change password**(< _string_ >message, < _string_ >language, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
+* **change password**(< _string_ >prompt, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
 
 * **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
 
@@ -996,6 +996,8 @@ You can find more examples in the `examples` directory of this repository.
     * `password`:
 
         * **password** - _string_ - This is the password sent by the client.
+
+        * **requestChange**(< _string_ >prompt, < _function_ >callback) - _(void)_ - Sends a password change request to the client. `callback` is called with `(newPassword)`, where `newPassword` is the new password supplied by the client. You may accept, reject, or prompt for another password change after `callback` is called.
 
     * `publickey`:
 

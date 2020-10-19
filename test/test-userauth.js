@@ -141,6 +141,49 @@ const debug = false;
     }));
   }));
 }
+{
+  const username = 'foo';
+  const oldPassword = 'bar';
+  const newPassword = 'baz';
+  const changePrompt = 'Prithee changeth thy password';
+  const { client, server } = setup(
+    'Password (change requested)',
+    {
+      client: { username, password: oldPassword },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    let authAttempt = 0;
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username,
+             `Wrong username: ${ctx.username}`);
+      if (++authAttempt === 1) {
+        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        return ctx.reject();
+      }
+      assert(ctx.method === 'password',
+             `Wrong auth method: ${ctx.method}`);
+      assert(ctx.password === oldPassword,
+             `Wrong old password: ${ctx.password}`);
+      ctx.requestChange(changePrompt, mustCall((newPassword_) => {
+        assert(newPassword_ === newPassword,
+               `Wrong new password: ${newPassword_}`);
+        ctx.accept();
+      }));
+    }, 2)).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+
+  client.on('change password', mustCall((prompt, done) => {
+    assert(prompt === changePrompt, `Wrong password change prompt: ${prompt}`);
+    process.nextTick(done, newPassword);
+  }));
+}
 
 
 // Hostbased ===================================================================
