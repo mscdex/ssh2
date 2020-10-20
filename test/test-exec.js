@@ -73,6 +73,272 @@ const setup = setupSimple.bind(undefined, DEBUG);
 }
 
 {
+  const { client, server } = setup('Simple exec() (exit signal)');
+
+  const COMMAND = 'foo --bar';
+  const STDOUT_DATA = 'stdout data!\n';
+  const STDERR_DATA = 'stderr data!\n';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === COMMAND,
+                 `Wrong exec command: ${info.command}`);
+          const stream = accept();
+          stream.stderr.write(STDERR_DATA);
+          stream.write(STDOUT_DATA);
+          assert.throws(() => stream.exit('SIGFAKE'));
+          stream.exit('SIGKILL');
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    let out = '';
+    let outErr = '';
+    const events = [];
+    const EXPECTED_EVENTS = [ 'exit', 'close' ];
+    const EXPECTED_EXIT_CLOSE_ARGS = [ null, 'SIGKILL', false, '' ];
+    client.on('close', mustCall(() => {
+      assert(out === STDOUT_DATA, `Wrong stdout data: ${inspect(out)}`);
+      assert(outErr === STDERR_DATA, `Wrong stderr data: ${inspect(outErr)}`);
+      assert.deepStrictEqual(
+        events,
+        EXPECTED_EVENTS,
+        `Wrong command event order: ${events}`
+      );
+    })).exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.on('data', mustCallAtLeast((d) => {
+        out += d;
+      })).on('exit', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong exit args: ${inspect(args)}`);
+        events.push('exit');
+      })).on('close', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong close args: ${inspect(args)}`);
+        events.push('close');
+      })).stderr.on('data', mustCallAtLeast((d) => {
+        outErr += d;
+      }));
+    }));
+  }));
+}
+
+{
+  const { client, server } = setup('Simple exec() (exit signal -- no "SIG")');
+
+  const COMMAND = 'foo --bar';
+  const STDOUT_DATA = 'stdout data!\n';
+  const STDERR_DATA = 'stderr data!\n';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === COMMAND,
+                 `Wrong exec command: ${info.command}`);
+          const stream = accept();
+          stream.stderr.write(STDERR_DATA);
+          stream.write(STDOUT_DATA);
+          assert.throws(() => stream.exit('FAKE'));
+          stream.exit('KILL');
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    let out = '';
+    let outErr = '';
+    const events = [];
+    const EXPECTED_EVENTS = [ 'exit', 'close' ];
+    const EXPECTED_EXIT_CLOSE_ARGS = [ null, 'SIGKILL', false, '' ];
+    client.on('close', mustCall(() => {
+      assert(out === STDOUT_DATA, `Wrong stdout data: ${inspect(out)}`);
+      assert(outErr === STDERR_DATA, `Wrong stderr data: ${inspect(outErr)}`);
+      assert.deepStrictEqual(
+        events,
+        EXPECTED_EVENTS,
+        `Wrong command event order: ${events}`
+      );
+    })).exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.on('data', mustCallAtLeast((d) => {
+        out += d;
+      })).on('exit', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong exit args: ${inspect(args)}`);
+        events.push('exit');
+      })).on('close', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong close args: ${inspect(args)}`);
+        events.push('close');
+      })).stderr.on('data', mustCallAtLeast((d) => {
+        outErr += d;
+      }));
+    }));
+  }));
+}
+
+{
+  const { client, server } = setup('Exec with signal()');
+
+  const COMMAND = 'foo --bar';
+  const STDOUT_DATA = 'stdout data!\n';
+  const STDERR_DATA = 'stderr data!\n';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        let stream;
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === COMMAND,
+                 `Wrong exec command: ${info.command}`);
+          stream = accept();
+          stream.stderr.write(STDERR_DATA);
+          stream.write(STDOUT_DATA);
+        })).on('signal', mustCall((accept, reject, info) => {
+          assert(info.name === 'INT', `Wrong client signal name: ${info.name}`);
+          stream.exit(100);
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    let out = '';
+    let outErr = '';
+    const events = [];
+    const EXPECTED_EVENTS = [ 'exit', 'close' ];
+    const EXPECTED_EXIT_CLOSE_ARGS = [ 100 ];
+    client.on('close', mustCall(() => {
+      assert(out === STDOUT_DATA, `Wrong stdout data: ${inspect(out)}`);
+      assert(outErr === STDERR_DATA, `Wrong stderr data: ${inspect(outErr)}`);
+      assert.deepStrictEqual(
+        events,
+        EXPECTED_EVENTS,
+        `Wrong command event order: ${events}`
+      );
+    })).exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      const sendSignal = (() => {
+        let sent = false;
+        return () => {
+          if (sent)
+            return;
+          sent = true;
+          assert.throws(() => stream.signal('FAKE'));
+          assert.throws(() => stream.signal('SIGFAKE'));
+          stream.signal('SIGINT');
+        };
+      })();
+      stream.on('data', mustCallAtLeast((d) => {
+        out += d;
+        sendSignal();
+      })).on('exit', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong exit args: ${inspect(args)}`);
+        events.push('exit');
+      })).on('close', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong close args: ${inspect(args)}`);
+        events.push('close');
+      })).stderr.on('data', mustCallAtLeast((d) => {
+        outErr += d;
+      }));
+    }));
+  }));
+}
+
+{
+  const { client, server } = setup('Exec with signal() -- no "SIG"');
+
+  const COMMAND = 'foo --bar';
+  const STDOUT_DATA = 'stdout data!\n';
+  const STDERR_DATA = 'stderr data!\n';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        let stream;
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === COMMAND,
+                 `Wrong exec command: ${info.command}`);
+          stream = accept();
+          stream.stderr.write(STDERR_DATA);
+          stream.write(STDOUT_DATA);
+        })).on('signal', mustCall((accept, reject, info) => {
+          assert(info.name === 'INT', `Wrong client signal name: ${info.name}`);
+          stream.exit(100);
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    let out = '';
+    let outErr = '';
+    const events = [];
+    const EXPECTED_EVENTS = [ 'exit', 'close' ];
+    const EXPECTED_EXIT_CLOSE_ARGS = [ 100 ];
+    client.on('close', mustCall(() => {
+      assert(out === STDOUT_DATA, `Wrong stdout data: ${inspect(out)}`);
+      assert(outErr === STDERR_DATA, `Wrong stderr data: ${inspect(outErr)}`);
+      assert.deepStrictEqual(
+        events,
+        EXPECTED_EVENTS,
+        `Wrong command event order: ${events}`
+      );
+    })).exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      const sendSignal = (() => {
+        let sent = false;
+        return () => {
+          if (sent)
+            return;
+          sent = true;
+          stream.signal('INT');
+        };
+      })();
+      stream.on('data', mustCallAtLeast((d) => {
+        out += d;
+        sendSignal();
+      })).on('exit', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong exit args: ${inspect(args)}`);
+        events.push('exit');
+      })).on('close', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong close args: ${inspect(args)}`);
+        events.push('close');
+      })).stderr.on('data', mustCallAtLeast((d) => {
+        outErr += d;
+      }));
+    }));
+  }));
+}
+
+{
   const { client, server } = setup('Exec with environment set');
 
   const env = { SSH2NODETEST: 'foo' };
