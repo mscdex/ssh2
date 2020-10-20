@@ -134,12 +134,16 @@ function setup(title, configs) {
   const allReady = (typeof allReady_ === 'function' ? allReady_ : undefined);
 
   if (debug) {
-    clientCfg.debug = (...args) => {
-      console.log(`[${title}][CLIENT]`, ...args);
-    };
-    serverCfg.debug = (...args) => {
-      console.log(`[${title}][SERVER]`, ...args);
-    };
+    if (clientCfg) {
+      clientCfg.debug = (...args) => {
+        console.log(`[${title}][CLIENT]`, ...args);
+      };
+    }
+    if (serverCfg) {
+      serverCfg.debug = (...args) => {
+        console.log(`[${title}][SERVER]`, ...args);
+      };
+    }
   }
 
   let timer;
