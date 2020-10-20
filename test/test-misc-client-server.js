@@ -1,10 +1,17 @@
 'use strict';
 
 const assert = require('assert');
+const http = require('http');
+const https = require('https');
 const { createHash } = require('crypto');
 const { Socket } = require('net');
+const { inspect } = require('util');
 
 const Client = require('../lib/client.js');
+const {
+  SSHTTPAgent: HTTPAgent,
+  SSHTTPSAgent: HTTPSAgent,
+} = require('../lib/http-agents.js');
 const Server = require('../lib/server.js');
 const { KexInit } = require('../lib/protocol/kex.js');
 
@@ -22,9 +29,9 @@ const HOST_RSA_MD5 = '64254520742d3d0792e918f3ce945a64';
 const clientCfg = { username: 'foo', password: 'bar' };
 const serverCfg = { hostKeys: [ fixture('ssh_host_rsa_key') ] };
 
-const DEBUG = false;
+const debug = false;
 
-const setup = setupSimple.bind(undefined, DEBUG);
+const setup = setupSimple.bind(undefined, debug);
 
 
 {
@@ -1014,6 +1021,140 @@ const setup = setupSimple.bind(undefined, DEBUG);
     client.exec('foo --bar', mustCall((err, stream) => {
       assert(!err, `Unexpected exec error: ${err}`);
       stream.resume();
+    }));
+  }));
+}
+
+{
+  const { server } = setup_(
+    'HTTP agent',
+    {
+      // No automatic client, the agent will create one
+
+      server: serverCfg,
+
+      debug,
+    },
+  );
+
+  let httpServer;
+  server.on('listening', () => {
+    httpServer = http.createServer((req, res) => {
+      httpServer.close();
+      res.end('hello world!');
+    });
+    httpServer.listen(0, 'localhost', () => {
+      const agent = new HTTPAgent({
+        host: 'localhost',
+        port: server.address().port,
+        username: 'foo',
+        password: 'bar',
+      });
+      http.get({
+        host: 'localhost',
+        port: httpServer.address().port,
+        agent,
+        headers: { Connection: 'close' },
+      }, (res) => {
+        assert(res.statusCode === 200,
+               `Wrong http status code: ${res.statusCode}`);
+        let buf = '';
+        res.on('data', mustCallAtLeast((chunk) => {
+          buf += chunk;
+        })).on('end', mustCall(() => {
+          assert(buf === 'hello world!',
+                 `Wrong http response body: ${inspect(buf)}`);
+        }));
+      });
+    });
+  });
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('tcpip', mustCall((accept, reject, info) => {
+        assert(info.destIP === 'localhost', `Wrong destIP: ${info.destIP}`);
+        assert(info.destPort === httpServer.address().port,
+               `Wrong destPort: ${info.destPort}`);
+        assert(info.srcIP === 'localhost', `Wrong srcIP: ${info.srcIP}`);
+
+        const stream = accept();
+        const tcp = new Socket();
+        tcp.pipe(stream).pipe(tcp);
+        tcp.connect(httpServer.address().port, 'localhost');
+      }));
+    }));
+  }));
+}
+
+{
+  const { server } = setup_(
+    'HTTPS agent',
+    {
+      // No automatic client, the agent will create one
+
+      server: serverCfg,
+
+      debug,
+    },
+  );
+
+  let httpsServer;
+  server.on('listening', () => {
+    httpsServer = https.createServer({
+      key: fixture('https_key.pem'),
+      cert: fixture('https_cert.pem'),
+    }, (req, res) => {
+      httpsServer.close();
+      res.end('hello world!');
+    });
+    httpsServer.listen(0, 'localhost', () => {
+      const agent = new HTTPSAgent({
+        host: 'localhost',
+        port: server.address().port,
+        username: 'foo',
+        password: 'bar',
+      });
+      https.get({
+        host: 'localhost',
+        port: httpsServer.address().port,
+        agent,
+        headers: { Connection: 'close' },
+        ca: fixture('https_cert.pem'),
+      }, (res) => {
+        assert(res.statusCode === 200,
+               `Wrong http status code: ${res.statusCode}`);
+        let buf = '';
+        res.on('data', mustCallAtLeast((chunk) => {
+          buf += chunk;
+        })).on('end', mustCall(() => {
+          assert(buf === 'hello world!',
+                 `Wrong http response body: ${inspect(buf)}`);
+        }));
+      }).on('error', (err) => {
+        // This workaround is necessary for some reason on node < v14.x
+        if (!/write after end/i.test(err.message))
+          throw err;
+      });
+    });
+  });
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('tcpip', mustCall((accept, reject, info) => {
+        assert(info.destIP === 'localhost', `Wrong destIP: ${info.destIP}`);
+        assert(info.destPort === httpsServer.address().port,
+               `Wrong destPort: ${info.destPort}`);
+        assert(info.srcIP === 'localhost', `Wrong srcIP: ${info.srcIP}`);
+
+        const stream = accept();
+        const tcp = new Socket();
+        tcp.pipe(stream).pipe(tcp);
+        tcp.connect(httpsServer.address().port, 'localhost');
+      }));
     }));
   }));
 }
