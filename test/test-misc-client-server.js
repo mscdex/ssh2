@@ -1158,3 +1158,64 @@ const setup = setupSimple.bind(undefined, debug);
     }));
   }));
 }
+
+[
+  { desc: 'remove/append/prepend (regexps)',
+    config: {
+      remove: /.*/,
+      append: /gcm/,
+      prepend: /ctr/,
+    },
+    expected: [
+      'aes128-ctr',
+      'aes192-ctr',
+      'aes256-ctr',
+      'aes128-gcm',
+      'aes128-gcm@openssh.com',
+      'aes256-gcm',
+      'aes256-gcm@openssh.com',
+    ],
+  },
+  { desc: 'remove/append/prepend (strings)',
+    config: {
+      remove: /.*/,
+      append: 'aes256-ctr',
+      prepend: [ 'aes256-gcm', 'aes128-gcm' ],
+    },
+    expected: [
+      'aes256-gcm',
+      'aes128-gcm',
+      'aes256-ctr',
+    ],
+  },
+].forEach((info) => {
+  const { client, server } = setup_(
+    `Client algorithms option (${info.desc})`,
+    {
+      client: {
+        ...clientCfg,
+        algorithms: { cipher: info.config },
+      },
+      server: serverCfg,
+
+      debug,
+    },
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+  client.on('ready', mustCall(() => {
+    // XXX: hack to easily verify computed offer
+    const offer = client._protocol._offer.lists;
+    assert.deepStrictEqual(
+      offer.cs.cipher.array,
+      info.expected,
+      `Wrong algorithm list: ${offer.cs.cipher.array}`
+    );
+  }));
+});
