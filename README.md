@@ -799,7 +799,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
 
-    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. For arrays, the order of the algorithm names matters, with the most favorable being first. Valid keys:
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names to set an exact list (with the most preferrable first) or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. Valid keys:
 
         * **kex** - _mixed_ - Key exchange algorithms.
             * Default list (in order from most to least preferrable):
@@ -861,12 +861,12 @@ You can find more examples in the `examples` directory of this repository.
               * `hmac-sha2-512`
               * `hmac-sha1`
             * Other supported names:
-              * hmac-md5
-              * hmac-sha2-256-96
-              * hmac-sha2-512-96
-              * hmac-ripemd160
-              * hmac-sha1-96
-              * hmac-md5-96
+              * `hmac-md5`
+              * `hmac-sha2-256-96`
+              * `hmac-sha2-512-96`
+              * `hmac-ripemd160`
+              * `hmac-sha1-96`
+              * `hmac-md5-96`
 
         * **compress** - _mixed_ - Compression algorithms.
             * Default list (in order from most to least preferrable):
