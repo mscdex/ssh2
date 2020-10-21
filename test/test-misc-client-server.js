@@ -785,7 +785,7 @@ const setup = setupSimple.bind(undefined, debug);
           // XXX: hack to change algorithms after initial handshake
           client._protocol._offer = new KexInit({
             kex: [ 'ecdh-sha2-nistp256' ],
-            srvHostKey: [ 'rsa-sha2-256' ],
+            serverHostKey: [ 'rsa-sha2-256' ],
             cs: {
               cipher: [ 'aes128-gcm@openssh.com' ],
               mac: [],
@@ -870,7 +870,7 @@ const setup = setupSimple.bind(undefined, debug);
           // XXX: hack to change algorithms after initial handshake
           client._protocol._offer = new KexInit({
             kex: [ 'ecdh-sha2-nistp256' ],
-            srvHostKey: [ 'rsa-sha2-256' ],
+            serverHostKey: [ 'rsa-sha2-256' ],
             cs: {
               cipher: [ 'aes128-gcm@openssh.com' ],
               mac: [],

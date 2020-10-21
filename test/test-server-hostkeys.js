@@ -130,7 +130,7 @@ const debug = false;
       }));
     }));
     client.on('handshake', mustCall((info) => {
-      assert(info.srvHostKey === selKeyType, 'Wrong host key selected');
+      assert(info.serverHostKey === selKeyType, 'Wrong host key selected');
     }));
   });
 }
