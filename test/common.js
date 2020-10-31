@@ -119,10 +119,16 @@ function setup(title, configs) {
     noForceClientReady,
     noForceServerReady,
   } = configs;
-  // Make shallow copy of client/server configs to avoid mutating them when
+
+  // Make shallow copies of client/server configs to avoid mutating them when
   // multiple tests share the same config object reference
-  const clientCfg = { ...clientCfg_ };
-  const serverCfg = { ...serverCfg_ };
+  let clientCfg;
+  if (clientCfg_)
+    clientCfg = { ...clientCfg_ };
+  let serverCfg;
+  if (serverCfg_)
+    serverCfg = { ...serverCfg_ };
+
   let clientClose = false;
   let clientReady = false;
   let serverClose = false;
