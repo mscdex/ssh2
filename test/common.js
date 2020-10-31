@@ -219,7 +219,12 @@ function setup(title, configs) {
         clientCfg.host = 'localhost';
         clientCfg.port = server.address().port;
       }
-      client.connect(clientCfg);
+      try {
+        client.connect(clientCfg);
+      } catch (ex) {
+        ex.message = msg(ex.message);
+        throw ex;
+      }
     }
 
     if (server) {
