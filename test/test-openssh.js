@@ -152,6 +152,54 @@ const serverCfg = { hostKeys: [ fixture('ssh_host_rsa_key') ] };
 
 {
   const { client, server } = setup_(
+    'OpenSSH UNIX socket connection',
+    {
+      client: clientCfg,
+      server: {
+        ...serverCfg,
+        ident: 'OpenSSH_8.0',
+      },
+
+      debug,
+    },
+  );
+
+  const socketPath = '/foo/bar/baz';
+  const response = 'Hello World';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('openssh.streamlocal', mustCall((accept, reject, info) => {
+        assert.deepStrictEqual(
+          info,
+          { socketPath },
+          `Wrong info: ${inspect(info)}`
+        );
+
+        accept().on('close', mustCall(() => {
+          client.end();
+        })).end(response);
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.openssh_forwardOutStreamLocal(socketPath, mustCall((err, stream) => {
+      assert(!err, `Unexpected error: ${err}`);
+      let buf = '';
+      stream.on('data', mustCallAtLeast((data) => {
+        buf += data;
+      })).on('close', mustCall(() => {
+        assert(buf === response, `Wrong response: ${inspect(buf)}`);
+      }));
+    }));
+  }));
+}
+
+{
+  const { client, server } = setup_(
     'OpenSSH 5.x workaround for binding on port 0',
     {
       client: clientCfg,
