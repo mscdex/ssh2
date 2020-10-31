@@ -9,10 +9,12 @@ for (const filename of files) {
   if (filename.startsWith('test-')) {
     const path = join(__dirname, filename);
     console.log(`> Running ${filename} ...`);
-    spawnSync(`${process.argv0} ${path}`, {
+    const result = spawnSync(`${process.argv0} ${path}`, {
       shell: true,
       stdio: 'inherit',
       windowsHide: true
     });
+    if (result.status !== 0)
+      process.exitCode = 1;
   }
 }
