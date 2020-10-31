@@ -111,14 +111,18 @@ function mustNotCall(msg) {
 
 function setup(title, configs) {
   const {
-    client: clientCfg,
-    server: serverCfg,
+    client: clientCfg_,
+    server: serverCfg_,
     allReady: allReady_,
     timeout: timeout_,
     debug,
     noForceClientReady,
     noForceServerReady,
   } = configs;
+  // Make shallow copy of client/server configs to avoid mutating them when
+  // multiple tests share the same config object reference
+  const clientCfg = { ...clientCfg_ };
+  const serverCfg = { ...serverCfg_ };
   let clientClose = false;
   let clientReady = false;
   let serverClose = false;
