@@ -178,9 +178,11 @@ const serverCfg = { hostKeys: [ fixture('ssh_host_rsa_key') ] };
           `Wrong info: ${inspect(info)}`
         );
 
-        accept().on('close', mustCall(() => {
+        const stream = accept();
+        stream.on('close', mustCall(() => {
           client.end();
         })).end(response);
+        stream.resume();
       }));
     }));
   }));
