@@ -43,6 +43,7 @@ Development/testing is done against OpenSSH (8.0 currently).
       * [HTTPAgent methods](#httpagent-methods)
   * [HTTPSAgent](#httpsagent)
       * [HTTPSAgent methods](#httpsagent-methods)
+  * [Utilities](#utilities)
 
 ## Requirements
 
@@ -1001,6 +1002,12 @@ You can find more examples in the `examples` directory of this repository.
 
         * **requestChange**(< _string_ >prompt, < _function_ >callback) - _(void)_ - Sends a password change request to the client. `callback` is called with `(newPassword)`, where `newPassword` is the new password supplied by the client. You may accept, reject, or prompt for another password change after `callback` is called.
 
+    * `keyboard-interactive`:
+
+        * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
+
+        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
+
     * `publickey`:
 
         * **key** - _object_ - Contains information about the public key sent by the client:
@@ -1009,17 +1016,25 @@ You can find more examples in the `examples` directory of this repository.
 
             * **data** - _Buffer_ - The actual key data.
 
-        * **sigAlgo** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _string_, then this contains the signature algorithm that is passed to [`crypto.createVerify()`](http://nodejs.org/docs/latest/api/crypto.html#crypto_crypto_createverify_algorithm).
+        * **blob** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains the data to be verified that is passed to (along with the signature) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
 
-        * **blob** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains the data that is passed to [`verifier.update()`](http://nodejs.org/docs/latest/api/crypto.html#crypto_verifier_update_data).
+        * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
 
-        * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature that is passed to [`verifier.verify()`](http://nodejs.org/docs/latest/api/crypto.html#crypto_verifier_verify_object_signature_signature_format).
+    * `hostbased`:
 
-    * `keyboard-interactive`:
+        * **key** - _object_ - Contains information about the public key sent by the client:
 
-        * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
+            * **algo** - _string_ - The name of the key algorithm (e.g. `ssh-rsa`).
 
-        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
+            * **data** - _Buffer_ - The actual key data.
+
+        * **blob** - _Buffer_ - This contains the data to be verified that is passed to (along with the signature) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **signature** - _Buffer_ - This contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **localHostname** - _string_ - The local hostname provided by the client.
+
+        * **localUsername** - _string_ - The local username provided by the client.
 
 * **ready**() - Emitted when the client has been successfully authenticated.
 
