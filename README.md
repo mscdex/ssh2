@@ -6,8 +6,6 @@ SSH2 client and server modules written in pure JavaScript for [node.js](http://n
 
 Development/testing is done against OpenSSH (8.0 currently).
 
-[![Build Status](https://travis-ci.org/mscdex/ssh2.svg?branch=master)](https://travis-ci.org/mscdex/ssh2)
-
 # Table of Contents
 
 * [Requirements](#requirements)
