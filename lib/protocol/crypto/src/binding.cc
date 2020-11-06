@@ -1702,7 +1702,7 @@ out:
 
     int outlen;
     unsigned char calc_mac[hmac_len_];
-    memset(calc_mac, 0, sizeof calc_mac);
+    memset(calc_mac, 0, hmac_len_);
 
     uint8_t seqbuf[4] = {0};
     ((uint8_t*)(seqbuf))[0] = (seqno >> 24) & 0xff;
