@@ -668,8 +668,7 @@ const setup = setupSimple.bind(undefined, debug);
   let cliError;
   client.on('ready', mustNotCall()).on('error', mustCall((err) => {
     if (cliError) {
-      assert(/all configured/i.test(err.message),
-             'Wrong error message');
+      assert(/all configured/i.test(err.message), 'Wrong error message');
     } else {
       cliError = err;
       assert(/signing/i.test(err.message), 'Wrong error message');
@@ -1243,6 +1242,32 @@ const setup = setupSimple.bind(undefined, debug);
       user: 'foo',
       password: 'bar',
       readyTimeout: 1,
+    });
+  }));
+}
+
+{
+  const { client } = setup_(
+    'Client error should be emitted on bad/nonexistent greeting',
+    {
+      client: clientCfg,
+      noClientError: true,
+      noForceClientReady: true,
+    },
+  );
+
+  const badServer = net.createServer(mustCall((s) => {
+    badServer.close();
+    s.end();
+  })).listen(0, 'localhost', mustCall(() => {
+    client.on('error', mustCall((err) => {
+      client.end();
+    })).on('ready', mustNotCall()).on('close', mustCall(() => {}));
+    client.connect({
+      host: 'localhost',
+      port: badServer.address().port,
+      user: 'foo',
+      password: 'bar',
     });
   }));
 }
