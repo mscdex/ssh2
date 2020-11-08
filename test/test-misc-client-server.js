@@ -4,7 +4,7 @@ const assert = require('assert');
 const http = require('http');
 const https = require('https');
 const { createHash } = require('crypto');
-const { Socket } = require('net');
+const net = require('net');
 const { inspect } = require('util');
 
 const Client = require('../lib/client.js');
@@ -322,7 +322,7 @@ const setup = setupSimple.bind(undefined, debug);
     {
       client: {
         ...clientCfg,
-        sock: new Socket(),
+        sock: new net.Socket(),
       },
       server: serverCfg,
     },
@@ -1080,7 +1080,7 @@ const setup = setupSimple.bind(undefined, debug);
         assert(info.srcIP === 'localhost', `Wrong srcIP: ${info.srcIP}`);
 
         const stream = accept();
-        const tcp = new Socket();
+        const tcp = new net.Socket();
         tcp.pipe(stream).pipe(tcp);
         tcp.connect(httpServer.address().port, 'localhost');
       }));
@@ -1151,7 +1151,7 @@ const setup = setupSimple.bind(undefined, debug);
         assert(info.srcIP === 'localhost', `Wrong srcIP: ${info.srcIP}`);
 
         const stream = accept();
-        const tcp = new Socket();
+        const tcp = new net.Socket();
         tcp.pipe(stream).pipe(tcp);
         tcp.connect(httpsServer.address().port, 'localhost');
       }));
@@ -1219,3 +1219,30 @@ const setup = setupSimple.bind(undefined, debug);
     );
   }));
 });
+
+{
+  const { client } = setup_(
+    `Safely end() from Client 'error' event handler`,
+    {
+      client: clientCfg,
+      noClientError: true,
+      noForceClientReady: true,
+    },
+  );
+
+  const badServer = net.createServer((s) => {});
+  badServer.listen(0, 'localhost', mustCall(() => {
+    badServer.unref();
+
+    client.on('error', mustCall((err) => {
+      client.end();
+    })).on('ready', mustNotCall()).on('close', mustCall(() => {}));
+    client.connect({
+      host: 'localhost',
+      port: badServer.address().port,
+      user: 'foo',
+      password: 'bar',
+      readyTimeout: 1,
+    });
+  }));
+}

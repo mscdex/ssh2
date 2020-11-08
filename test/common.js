@@ -118,6 +118,8 @@ function setup(title, configs) {
     debug,
     noForceClientReady,
     noForceServerReady,
+    noClientError,
+    noServerError,
   } = configs;
 
   // Make shallow copies of client/server configs to avoid mutating them when
@@ -163,9 +165,10 @@ function setup(title, configs) {
   let serverReadyFn;
   if (clientCfg) {
     client = new Client();
+    if (!noClientError)
+      client.on('error', onError)
     clientReadyFn = (noForceClientReady ? onReady : mustCall(onReady));
-    client.on('error', onError)
-          .on('ready', clientReadyFn)
+    client.on('ready', clientReadyFn)
           .on('close', mustCall(onClose));
   } else {
     clientReady = clientClose = true;
@@ -173,14 +176,15 @@ function setup(title, configs) {
 
   if (serverCfg) {
     server = new Server(serverCfg);
+    if (!noServerError)
+      server.on('error', onError);
     serverReadyFn = (noForceServerReady ? onReady : mustCall(onReady));
-    server.on('error', onError)
-          .on('connection', mustCall((conn) => {
-            conn.on('error', onError)
-                .on('ready', serverReadyFn);
-            server.close();
-          }))
-          .on('close', mustCall(onClose));
+    server.on('connection', mustCall((conn) => {
+      if (!noServerError)
+        conn.on('error', onError);
+      conn.on('ready', serverReadyFn);
+      server.close();
+    })).on('close', mustCall(onClose));
   } else {
     serverReady = serverClose = true;
   }
