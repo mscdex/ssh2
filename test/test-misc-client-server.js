@@ -1233,7 +1233,7 @@ const setup = setupSimple.bind(undefined, debug);
   badServer.listen(0, 'localhost', mustCall(() => {
     badServer.unref();
 
-    client.on('error', mustCall((err) => {
+    client.on('error', mustCallAtLeast((err) => {
       client.end();
     })).on('ready', mustNotCall()).on('close', mustCall(() => {}));
     client.connect({
