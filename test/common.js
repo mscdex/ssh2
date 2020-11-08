@@ -166,7 +166,7 @@ function setup(title, configs) {
   if (clientCfg) {
     client = new Client();
     if (!noClientError)
-      client.on('error', onError)
+      client.on('error', onError);
     clientReadyFn = (noForceClientReady ? onReady : mustCall(onReady));
     client.on('ready', clientReadyFn)
           .on('close', mustCall(onClose));
