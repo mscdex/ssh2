@@ -568,10 +568,8 @@ const { inspect } = require('util');
 
 const {
   Server,
-  sftp: {
-    OPEN_MODE,
-    STATUS_CODE,
-  },
+  SFTP_STATUS_CODE,
+  SFTP_OPEN_MODE,
 } = require('ssh2');
 
 const allowedUser = Buffer.from('foo');
@@ -591,7 +589,7 @@ function checkValue(input, allowed) {
 // This simple SFTP server implements file uploading where the contents get
 // ignored ...
 
-new ssh2.Server({
+new Server({
   hostKeys: [readFileSync('host.key')]
 }, (client) => {
   console.log('Client connected!');
@@ -626,8 +624,8 @@ new ssh2.Server({
         const sftp = accept();
         sftp.on('OPEN', (reqid, filename, flags, attrs) => {
           // Only allow opening /tmp/foo.txt for writing
-          if (filename !== '/tmp/foo.txt' || !(flags & OPEN_MODE.WRITE))
-            return sftp.status(reqid, STATUS_CODE.FAILURE);
+          if (filename !== '/tmp/foo.txt' || !(flags & SFTP_OPEN_MODE.WRITE))
+            return sftp.status(reqid, SFTP_STATUS_CODE.FAILURE);
 
           // Create a fake handle to return to the client, this could easily
           // be a real file descriptor number for example if actually opening
@@ -641,24 +639,24 @@ new ssh2.Server({
         }).on('WRITE', (reqid, handle, offset, data) => {
           if (handle.length !== 4
               || !openFiles.has(handle.readUInt32BE(0))) {
-            return sftp.status(reqid, STATUS_CODE.FAILURE);
+            return sftp.status(reqid, SFTP_STATUS_CODE.FAILURE);
           }
 
           // Fake the write operation
-          sftp.status(reqid, STATUS_CODE.OK);
+          sftp.status(reqid, SFTP_STATUS_CODE.OK);
 
           console.log('Write to file at offset ${offset}: ${inspect(data)}');
         }).on('CLOSE', (reqid, handle) => {
           let fnum;
           if (handle.length !== 4
               || !openFiles.has(fnum = handle.readUInt32BE(0))) {
-            return sftp.status(reqid, STATUS_CODE.FAILURE);
+            return sftp.status(reqid, SFTP_STATUS_CODE.FAILURE);
           }
 
           console.log('Closing file');
           openFiles.delete(fnum);
 
-          sftp.status(reqid, STATUS_CODE.OK);
+          sftp.status(reqid, SFTP_STATUS_CODE.OK);
         });
       });
     });
