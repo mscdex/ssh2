@@ -120,8 +120,6 @@ class ChaChaPolyCipher : public ObjectWrap {
     }
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -256,17 +254,21 @@ out:
       Buffer::Length(info[0])
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
           return Nan::ThrowError("Invalid keys length");
         case kErrBadIVLen:
           return Nan::ThrowError("Invalid IV length");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -298,6 +300,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -409,8 +412,6 @@ class AESGCMCipher : public ObjectWrap {
     EVP_CIPHER_CTX_set_padding(ctx_, 0);
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -496,6 +497,15 @@ out:
       Buffer::Length(info[2])
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
@@ -504,11 +514,6 @@ out:
           return Nan::ThrowError("Invalid IV length");
         case kErrBadCipherName:
           return Nan::ThrowError("Invalid AES GCM cipher name");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -542,6 +547,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -687,8 +693,6 @@ class GenericCipher : public ObjectWrap {
     is_etm_ = is_etm;
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -814,6 +818,15 @@ out:
       is_etm
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
@@ -826,11 +839,6 @@ out:
           return Nan::ThrowError("Invalid MAC name");
         case kErrBadInit:
           return Nan::ThrowError("Failed to properly initialize cipher");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -866,6 +874,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -973,8 +982,6 @@ class ChaChaPolyDecipher : public ObjectWrap {
     }
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -1149,17 +1156,21 @@ out:
       Buffer::Length(info[0])
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
           return Nan::ThrowError("Invalid keys length");
         case kErrBadIVLen:
           return Nan::ThrowError("Invalid IV length");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -1200,6 +1211,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -1241,6 +1253,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -1354,8 +1367,6 @@ class AESGCMDecipher : public ObjectWrap {
     EVP_CIPHER_CTX_set_padding(ctx_, 0);
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -1436,6 +1447,15 @@ out:
       Buffer::Length(info[2])
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
@@ -1444,11 +1464,6 @@ out:
           return Nan::ThrowError("Invalid IV length");
         case kErrBadCipherName:
           return Nan::ThrowError("Invalid AES GCM cipher name");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -1497,6 +1512,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -1654,8 +1670,6 @@ class GenericDecipher : public ObjectWrap {
     block_size_ = EVP_CIPHER_CTX_block_size(ctx_);
 
 out:
-    if (r != kErrNone)
-      clear();
     return r;
   }
 
@@ -1843,6 +1857,15 @@ out:
       Nan::To<uint32_t>(info[6]).FromJust()
     );
     if (r != kErrNone) {
+      if (r == kErrOpenSSL) {
+        char msg_buf[128] = {0};
+        ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
+        obj->clear();
+        delete obj;
+        return Nan::ThrowError(msg_buf);
+      }
+      obj->clear();
       delete obj;
       switch (r) {
         case kErrBadKeyLen:
@@ -1855,11 +1878,6 @@ out:
           return Nan::ThrowError("Invalid MAC name");
         case kErrBadInit:
           return Nan::ThrowError("Failed to properly initialize decipher");
-        case kErrOpenSSL: {
-          char msg_buf[128] = {0};
-          ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
-          return Nan::ThrowError(msg_buf);
-        }
         default:
           return Nan::ThrowError("Unknown init failure");
       }
@@ -1895,6 +1913,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
@@ -1940,6 +1959,7 @@ out:
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
+        ERR_clear_error();
         return Nan::ThrowError(msg_buf);
       }
       default:
