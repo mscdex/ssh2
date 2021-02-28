@@ -456,7 +456,10 @@ const setup = setupSimple.bind(undefined, debug);
   const { client, server } = setup_(
     'Server greeting',
     {
-      client: clientCfg,
+      client: {
+        ...clientCfg,
+        ident: 'node.js rules',
+      },
       server: {
         ...serverCfg,
         greeting: GREETING,
@@ -466,7 +469,16 @@ const setup = setupSimple.bind(undefined, debug);
 
   let sawGreeting = false;
 
-  server.on('connection', mustCall((conn) => {
+  server.on('connection', mustCall((conn, info) => {
+    assert.deepStrictEqual(info.header, {
+      identRaw: 'SSH-2.0-node.js rules',
+      greeting: '',
+      versions: {
+        protocol: '2.0',
+        software: 'node.js'
+      },
+      comments: 'rules'
+    });
     conn.on('handshake', mustCall((details) => {
       assert(sawGreeting, 'Client did not see greeting before handshake');
     })).on('authentication', mustCall((ctx) => {
@@ -480,6 +492,46 @@ const setup = setupSimple.bind(undefined, debug);
     assert.strictEqual(greeting, `${GREETING}\r\n`);
     sawGreeting = true;
   })).on('banner', mustNotCall());
+}
+
+{
+  const { client, server } = setup_(
+    'Correct ident parsing',
+    {
+      client: {
+        ...clientCfg,
+        ident: 'node.js rules\n',
+      },
+      server: serverCfg,
+
+      noServerError: true,
+      noServerError: true,
+      noForceServerReady: true,
+      noForceClientReady: true,
+    },
+  );
+
+  server.on('connection', mustCall((conn, info) => {
+    assert.deepStrictEqual(info.header, {
+      identRaw: 'SSH-2.0-node.js rules',
+      greeting: '',
+      versions: {
+        protocol: '2.0',
+        software: 'node.js'
+      },
+      comments: 'rules'
+    });
+    conn.once('error', mustCall((err) => {
+      assert(/bad packet length/i.test(err.message), 'Wrong error message');
+    }));
+    conn.on('handshake', mustNotCall())
+        .on('authentication', mustNotCall())
+        .on('ready', mustNotCall());
+  }));
+
+  client.on('greeting', mustNotCall())
+        .on('banner', mustNotCall())
+        .on('ready', mustNotCall());
 }
 
 {
