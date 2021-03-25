@@ -606,6 +606,8 @@ new ssh2.Server({
         if (!checkValue(Buffer.from(ctx.password), allowedPassword))
           return ctx.reject();
         break;
+      case 'none':
+        return ctx.reject(['password']);
       default:
         return ctx.reject();
     }
@@ -993,6 +995,10 @@ You can find more examples in the `examples` directory of this repository.
 #### Connection events
 
 * **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
+
+    * `none`:
+
+        * This is sometimes used by SFTP clients to determine what methods are actually usable. In particular FileZilla and Cyberduck use this when initially connecting. You can pass such a list of methods as an array to ctx.reject(), ex. `ctx.reject(['password'])` would tell the client only the password method is available.
 
     * `password`:
 
