@@ -505,7 +505,7 @@ const setup = setupSimple.bind(undefined, debug);
       server: serverCfg,
 
       noServerError: true,
-      noServerError: true,
+      noClientError: true,
       noForceServerReady: true,
       noForceClientReady: true,
     },
@@ -706,7 +706,7 @@ const setup = setupSimple.bind(undefined, debug);
       assert(!ctx.signature, 'Unexpected signature');
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.method === 'publickey',

@@ -171,7 +171,7 @@ setup('fstat', mustCall((client, server) => {
     assert(!err, `Unexpected fstat() error: ${err}`);
     assert.deepStrictEqual(attrs, attrs_, 'attrs mismatch');
   }));
-})),
+}));
 
 setup('setstat', mustCall((client, server) => {
   const path_ = '/foo/bar/baz';

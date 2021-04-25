@@ -91,6 +91,7 @@ function getCallSite(top) {
   const err = new Error();
   Error.captureStackTrace(err, top);
   // With the V8 Error API, the stack is not formatted until it is accessed
+  // eslint-disable-next-line no-unused-expressions
   err.stack;
   Error.prepareStackTrace = originalStackFormatter;
   return err.stack;

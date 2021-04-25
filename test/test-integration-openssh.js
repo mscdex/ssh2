@@ -91,8 +91,8 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'),
-                 `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none',
+                 `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.signature, 'Missing publickey signature');
@@ -158,8 +158,8 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'),
-                 `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none',
+                 `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.signature, 'Missing publickey signature');
@@ -218,8 +218,8 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'),
-                 `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none',
+                 `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.signature, 'Missing publickey signature');
@@ -277,8 +277,8 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'),
-                 `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none',
+                 `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.signature, 'Missing publickey signature');

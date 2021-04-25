@@ -47,8 +47,8 @@ const debug = false;
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'),
-                 `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none',
+                 `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 3:
           assert(ctx.signature, 'Missing publickey signature');
@@ -104,8 +104,8 @@ const debug = false;
                `Wrong username: ${ctx.username}`);
         switch (++authAttempt) {
           case 1:
-            assert(ctx.method === 'none'),
-                   `Wrong auth method: ${ctx.method}`;
+            assert(ctx.method === 'none',
+                   `Wrong auth method: ${ctx.method}`);
             return ctx.reject();
           case 3:
             assert(ctx.signature, 'Missing publickey signature');

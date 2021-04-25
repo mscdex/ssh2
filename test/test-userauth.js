@@ -49,7 +49,7 @@ const debug = false;
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 3:
           assert(ctx.signature, 'Missing publickey signature');
@@ -96,7 +96,7 @@ const debug = false;
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       if (++authAttempt === 1) {
-        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
         return ctx.reject();
       }
       assert(ctx.method === 'password',
@@ -128,7 +128,7 @@ const debug = false;
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       if (++authAttempt === 1) {
-        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
         return ctx.reject();
       }
       assert(ctx.method === 'password',
@@ -162,7 +162,7 @@ const debug = false;
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       if (++authAttempt === 1) {
-        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
         return ctx.reject();
       }
       assert(ctx.method === 'password',
@@ -214,7 +214,7 @@ const debug = false;
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
         case 1:
-          assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+          assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
           assert(ctx.method === 'publickey',
@@ -278,7 +278,7 @@ const debug = false;
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       if (++authAttempt === 1) {
-        assert(ctx.method === 'none'), `Wrong auth method: ${ctx.method}`;
+        assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
         return ctx.reject();
       }
       assert(ctx.method === 'keyboard-interactive',
