@@ -191,7 +191,7 @@ function setup(title, configs) {
 
   function onError(err) {
     const which = (this === client ? 'client' : 'server');
-    assert(false, msg(`Unexpected ${which} error: ${err}`));
+    assert(false, msg(`Unexpected ${which} error: ${err.stack}\n`));
   }
 
   function onReady() {
