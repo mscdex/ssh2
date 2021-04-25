@@ -64,6 +64,30 @@ setup('read', mustCall((client, server) => {
   }));
 }));
 
+setup('read (overflow)', mustCall((client, server) => {
+  const maxChunk = 34000 - 2048;
+  const expected = Buffer.alloc(3 * maxChunk, 'Q');
+  const handle_ = Buffer.from('node.js');
+  const buf = Buffer.alloc(expected.length, 0);
+  let reqs = 0;
+  server.on('READ', mustCall((id, handle, offset, len) => {
+    ++reqs;
+    assert.strictEqual(id, reqs - 1, `Wrong request id: ${id}`);
+    assert.deepStrictEqual(handle, handle_, 'handle mismatch');
+    assert.strictEqual(offset,
+                       (reqs - 1) * maxChunk,
+                       `Wrong read offset: ${offset}`);
+    server.data(id, expected.slice(offset, offset + len));
+    if (reqs === 3)
+      server.end();
+  }, 3));
+  client.read(handle_, buf, 0, buf.length, 0, mustCall((err, nb) => {
+    assert(!err, `Unexpected read() error: ${err}`);
+    assert.deepStrictEqual(buf, expected);
+    assert.strictEqual(nb, buf.length, 'read nb mismatch');
+  }));
+}));
+
 setup('write', mustCall((client, server) => {
   const handle_ = Buffer.from('node.js');
   const buf = Buffer.from('node.jsnode.jsnode.jsnode.jsnode.jsnode.js');
@@ -82,15 +106,16 @@ setup('write', mustCall((client, server) => {
 }));
 
 setup('write (overflow)', mustCall((client, server) => {
+  const maxChunk = 34000 - 2048;
   const handle_ = Buffer.from('node.js');
-  const buf = Buffer.allocUnsafe(3 * 32 * 1024);
+  const buf = Buffer.allocUnsafe(3 * maxChunk);
   let reqs = 0;
   server.on('WRITE', mustCall((id, handle, offset, data) => {
     ++reqs;
     assert.strictEqual(id, reqs - 1, `Wrong request id: ${id}`);
     assert.deepStrictEqual(handle, handle_, 'handle mismatch');
     assert.strictEqual(offset,
-                       (reqs - 1) * 32 * 1024,
+                       (reqs - 1) * maxChunk,
                        `Wrong write offset: ${offset}`);
     assert((offset + data.length) <= buf.length, 'bad offset');
     assert.deepStrictEqual(data,
