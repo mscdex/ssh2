@@ -1335,7 +1335,7 @@ const setup = setupSimple.bind(undefined, debug);
   );
 
   client.on('error', mustCall((err) => {
-    assert.strictEqual(err.errno, 'ENOTFOUND');
+    assert.strictEqual(err.syscall, 'getaddrinfo');
   }));
   client.connect({
     host: 'blerbblubblubblerb',
