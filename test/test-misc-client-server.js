@@ -1323,3 +1323,24 @@ const setup = setupSimple.bind(undefined, debug);
     });
   }));
 }
+
+{
+  const { client } = setup_(
+    'Only one client error on connection failure',
+    {
+      client: clientCfg,
+      noClientError: true,
+      noForceClientReady: true,
+    },
+  );
+
+  client.on('error', mustCall((err) => {
+    assert.strictEqual(err.errno, 'ENOTFOUND');
+  }));
+  client.connect({
+    host: 'blerbblubblubblerb',
+    port: 9999,
+    user: 'foo',
+    password: 'bar'
+  });
+}
