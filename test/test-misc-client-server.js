@@ -1344,3 +1344,56 @@ const setup = setupSimple.bind(undefined, debug);
     password: 'bar'
   });
 }
+
+{
+  const { client, server } = setup(
+    'Client should remove reserved channels on incoming channel rejection'
+  );
+
+  const assignedPort = 31337;
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('request', mustCall((accept, reject, name, info) => {
+        assert(name === 'tcpip-forward', 'Wrong request name');
+        assert.deepStrictEqual(
+          info,
+          { bindAddr: 'good', bindPort: 0 },
+          'Wrong request info'
+        );
+        accept(assignedPort);
+        conn.forwardOut(info.bindAddr,
+                        assignedPort,
+                        'remote',
+                        12345,
+                        mustCall((err, ch) => {
+          assert(err, 'Should receive error');
+          client.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    // request forwarding
+    client.forwardIn('good', 0, mustCall((err, port) => {
+      assert(!err, `Unexpected error: ${err}`);
+      assert(port === assignedPort, 'Wrong assigned port');
+    }));
+  })).on('tcp connection', mustCall((details, accept, reject) => {
+    assert.deepStrictEqual(
+      details,
+      { destIP: 'good',
+        destPort: assignedPort,
+        srcIP: 'remote',
+        srcPort: 12345
+      },
+      'Wrong connection details'
+    );
+    assert.strictEqual(Object.keys(client._chanMgr._channels).length, 1);
+    assert.strictEqual(client._chanMgr._count, 1);
+    reject();
+    assert.strictEqual(Object.keys(client._chanMgr._channels).length, 0);
+    assert.strictEqual(client._chanMgr._count, 0);
+  }));
+}
