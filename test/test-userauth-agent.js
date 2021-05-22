@@ -1,38 +1,50 @@
 'use strict';
 
 const assert = require('assert');
-const { spawnSync } = require('child_process');
 
 const debug = false;
-const SPAWN_OPTS = { windowsHide: true };
 
-if (process.argv[2] === 'child') {
-  const {
-    fixtureKey,
-    mustCall,
-    setup,
-  } = require('./common.js');
+const {
+  fixtureKey,
+  mustCall,
+  setup,
+} = require('./common.js');
+const {
+  AgentProtocol,
+  BaseAgent,
+  utils: { parseKey },
+} = require('../lib/index.js');
 
-  const serverCfg = { hostKeys: [ fixtureKey('ssh_host_rsa_key').raw ] };
+const serverCfg = { hostKeys: [ fixtureKey('ssh_host_rsa_key').raw ] };
 
-  const clientKey = fixtureKey('openssh_new_rsa');
+const clientKey = fixtureKey('openssh_new_rsa');
 
-  // Add key to the agent first
-  {
-    const {
-      error, status
-    } = spawnSync('ssh-add', [ clientKey.fullPath ], SPAWN_OPTS);
-    if (error || status !== 0) {
-      console.error('Failed to add key to agent');
-      process.exit(1);
+{
+  let getIdentitiesCount = 0;
+  let signCount = 0;
+  class MyAgent extends BaseAgent {
+    constructor() {
+      super();
+    }
+    getIdentities(cb) {
+      assert.strictEqual(++getIdentitiesCount, 1);
+      // Ensure that no private portion of the key is used by re-parsing the
+      // public version of the key
+      cb(null, [ parseKey(clientKey.key.getPublicSSH()) ]);
+    }
+    sign(pubKey, data, options, cb) {
+      assert.strictEqual(++signCount, 1);
+      assert.strictEqual(pubKey.getPublicPEM(), clientKey.key.getPublicPEM());
+      const sig = clientKey.key.sign(data, options.hash);
+      cb(null, sig);
     }
   }
 
   const username = 'Agent User';
   const { server } = setup(
-    'Agent authentication',
+    'Custom agent authentication',
     {
-      client: { username, agent: process.env.SSH_AUTH_SOCK },
+      client: { username, agent: new MyAgent() },
       server: serverCfg,
 
       debug,
@@ -67,37 +79,95 @@ if (process.argv[2] === 'child') {
       }
       ctx.accept();
     }, 3)).on('ready', mustCall(() => {
+      assert.strictEqual(getIdentitiesCount, 1);
+      assert.strictEqual(signCount, 1);
       conn.end();
     }));
   }));
-} else {
-  {
-    const {
-      error, status
-    } = spawnSync('which', ['ssh-agent'], SPAWN_OPTS);
+}
+{
+  const client = new AgentProtocol(true);
+  const server = new AgentProtocol(false);
 
-    if (error || status !== 0) {
-      console.log('No ssh-agent available, skipping agent test ...');
-      process.exit(0);
-    }
-  }
+  server.on('identities', mustCall((req) => {
+    setImmediate(() => server.failureReply(req));
+  }));
+  client.getIdentities(mustCall((err, keys) => {
+    assert(err, 'Missing expected error');
+  }));
 
-  {
-    const {
-      error, status
-    } = spawnSync('which', ['ssh-add'], SPAWN_OPTS);
+  client.pipe(server).pipe(client);
+}
+{
+  const client = new AgentProtocol(true);
+  const server = new AgentProtocol(false);
 
-    if (error || status !== 0) {
-      console.log('No ssh-add available, skipping agent test ...');
-      process.exit(0);
-    }
-  }
+  server.on('identities', mustCall((req) => {
+    const keys = [ clientKey.key ];
+    server.getIdentitiesReply(req, keys);
+  }));
+  client.getIdentities(mustCall((err, keys) => {
+    assert(!err, 'Unexpected error');
+    assert.strictEqual(keys.length, 1);
+    assert.strictEqual(keys[0].isPrivateKey(), false);
+    assert.strictEqual(keys[0].getPublicPEM(), clientKey.key.getPublicPEM());
+  }));
 
-  const {
-    error, status
-  } = spawnSync('ssh-agent',
-                [ process.execPath, __filename, 'child' ],
-                { ...SPAWN_OPTS, stdio: 'inherit' });
-  if (error || status !== 0)
-    throw new Error('Agent test failed');
+  client.pipe(server).pipe(client);
+}
+{
+  const client = new AgentProtocol(true);
+  const server = new AgentProtocol(false);
+  const buf = Buffer.from('data to sign');
+
+  server.on('sign', mustCall((req, pubKey, data, options) => {
+    assert.strictEqual(pubKey.getPublicPEM(), clientKey.key.getPublicPEM());
+    assert.deepStrictEqual(data, buf);
+    assert.strictEqual(options.hash, undefined);
+    server.failureReply(req);
+  }));
+  client.sign(clientKey.key.getPublicSSH(),
+              buf,
+              mustCall((err, signature) => {
+    assert(err, 'Missing expected error');
+  }));
+
+  client.pipe(server).pipe(client);
+}
+{
+  const client = new AgentProtocol(true);
+  const server = new AgentProtocol(false);
+  const buf = Buffer.from('data to sign');
+
+  server.on('sign', mustCall((req, pubKey, data, options) => {
+    assert.strictEqual(pubKey.getPublicPEM(), clientKey.key.getPublicPEM());
+    assert.deepStrictEqual(data, buf);
+    assert.strictEqual(options.hash, undefined);
+    server.signReply(req, clientKey.key.sign(data));
+  }));
+  client.sign(clientKey.key.getPublicSSH(),
+              buf,
+              mustCall((err, signature) => {
+    assert(!err, 'Unexpected error');
+    const pubKey = parseKey(clientKey.key.getPublicSSH());
+    assert.strictEqual(pubKey.verify(buf, signature), true);
+  }));
+
+  client.pipe(server).pipe(client);
+}
+{
+  // Test that outstanding requests are handled upon unexpected closure of the
+  // protocol stream
+
+  const client = new AgentProtocol(true);
+  const server = new AgentProtocol(false);
+
+  server.on('identities', mustCall((req) => {
+    server.destroy();
+  }));
+  client.getIdentities(mustCall((err) => {
+    assert(err, 'Missing expected error');
+  }));
+
+  client.pipe(server).pipe(client);
 }

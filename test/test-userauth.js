@@ -536,3 +536,73 @@ const debug = false;
     assert.deepStrictEqual(events, expectedEvents);
   }));
 }
+{
+  const username = 'foo';
+  const password = '1234';
+  const { server } = setup(
+    'authHandler() (custom auth configuration)',
+    {
+      client: {
+        username: 'bar',
+        password: '5678',
+
+        authHandler: mustCall((methodsLeft, partial, cb) => {
+          assert(methodsLeft === null, 'expected null methodsLeft');
+          assert(partial === null, 'expected null partial');
+          return {
+            type: 'password',
+            username,
+            password,
+          };
+        }),
+      },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username, `Wrong username: ${ctx.username}`);
+      assert(ctx.method === 'password', `Wrong auth method: ${ctx.method}`);
+      assert(ctx.password === password, `Unexpected password: ${ctx.password}`);
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+}
+{
+  const username = 'foo';
+  const password = '1234';
+  const { server } = setup(
+    'authHandler() (simple construction with custom auth configuration)',
+    {
+      client: {
+        username: 'bar',
+        password: '5678',
+
+        authHandler: [{
+          type: 'password',
+          username,
+          password,
+        }],
+      },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username, `Wrong username: ${ctx.username}`);
+      assert(ctx.method === 'password', `Wrong auth method: ${ctx.method}`);
+      assert(ctx.password === password, `Unexpected password: ${ctx.password}`);
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+}

@@ -674,15 +674,29 @@ You can find more examples in the `examples` directory of this repository.
 
 ## API
 
-`require('ssh2').Client` returns the **_Client_** constructor.
+`require('ssh2').Client` is the **_Client_** constructor.
 
-`require('ssh2').Server` returns the **_Server_** constructor.
+`require('ssh2').Server` is the **_Server_** constructor.
 
-`require('ssh2').utils` returns an object containing some useful [utilities](#utilities).
+`require('ssh2').utils` is an object containing some useful [utilities](#utilities).
 
-`require('ssh2').HTTPAgent` returns an [`http.Agent`](https://nodejs.org/docs/latest/api/http.html#http_class_http_agent) constructor.
+`require('ssh2').HTTPAgent` is an [`http.Agent`](https://nodejs.org/docs/latest/api/http.html#http_class_http_agent) constructor.
 
-`require('ssh2').HTTPSAgent` returns an [`https.Agent`](https://nodejs.org/docs/latest/api/https.html#https_class_https_agent) constructor. Its API is the same as `HTTPAgent` except it's for HTTPS connections.
+`require('ssh2').HTTPSAgent` is an [`https.Agent`](https://nodejs.org/docs/latest/api/https.html#https_class_https_agent) constructor. Its API is the same as `HTTPAgent` except it's for HTTPS connections.
+
+### Agent-related
+
+`require('ssh2').AgentProtocol` is a Duplex stream [class](#agentprotocol) that aids in communicating over the OpenSSH agent protocol.
+
+`require('ssh2').BaseAgent` is a base [class](#baseagent) for creating custom authentication agents.
+
+`require('ssh2').createAgent` is a helper [function](#createagent) that creates a new agent instance using the same logic as the `agent` configuration option: if the platform is Windows and it's the value "pageant", it creates a `PageantAgent`, otherwise if it's not a path to a Windows pipe it creates a `CygwinAgent`. In all other cases, it creates an `OpenSSHAgent`.
+
+`require('ssh2').CygwinAgent` is an agent [class](#cygwinagent) implementation that communicates with agents in a Cygwin environment.
+
+`require('ssh2').OpenSSHAgent` is an agent [class](#opensshagent) implementation that communicates with OpenSSH agents over a UNIX socket.
+
+`require('ssh2').PageantAgent` is an agent [class](#pageantagent) implementation that communicates with Pageant agent processes.
 
 ### Client
 
@@ -1308,6 +1322,10 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 
     * **getPublicSSH**() - _string_ - This returns the SSH version of a public key (for either public key or derived from a private key)
 
+    * **isPrivateKey**() - _boolean_ - This returns `true` if the key is a private key or not
+
+    * **equals**(< _mixed_ >otherKey) - _boolean_ - This returns `true` if `otherKey` (a parsed or parseable key) is the same as this key. This method does not compare the keys' comments
+
     * **sign**(< _mixed_ >data) - _mixed_ - This signs the given `data` using this key and returns a _Buffer_ containing the signature on success. On failure, an _Error_ will be returned. `data` can be anything accepted by node's [`sign.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_sign_update_data_inputencoding).
 
     * **verify**(< _mixed_ >data, < _Buffer_ >signature) - _mixed_ - This verifies a `signature` of the given `data` using this key and returns `true` if the signature could be verified. On failure, either `false` will be returned or an _Error_ will be returned upon a more critical failure. `data` can be anything accepted by node's [`verify.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_verify_update_data_inputencoding).
@@ -1319,3 +1337,69 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 * **sftp.flagsToString** - [`flagsToString()`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-methods)
 
 * **sftp.stringToFlags** - [`stringToFlags()`](https://github.com/mscdex/ssh2/blob/master/SFTP.md#useful-standalone-methods)
+
+### AgentProtocol
+
+#### AgentProtocol events
+
+* **identities**(< _opaque_ >request) - **(Server mode only)** The client has requested a list of public keys stored in the agent. Use `failureReply()` or `getIdentitiesReply()` to reply appropriately.
+
+* **sign**(< _opaque_ >request, < _mixed_ >pubKey, < _Buffer_ >data, < _object_ >options) - **(Server mode only)** The client has requested `data` to be signed using the key identified by `pubKey`. Use `failureReply()` or `signReply()` to reply appropriately. `options` may contain any of:
+
+  * **hash** - _string_ - The explicitly desired hash to use when computing the signature. Currently if set, this may be either `'sha256'` or `'sha512'` for RSA keys.
+
+#### AgentProtocol methods
+
+* **(constructor)**(< _boolean_ >isClient) - Creates and returns a new AgentProtocol instance. `isClient` determines whether the instance operates in client or server mode.
+
+* **getIdentities**(< _function_ >callback) - _(void)_ - **(Client mode only)** Requests a list of public keys from the agent. `callback` is passed `(err, keys)` where `keys` is a possible array of public keys for authentication.
+
+* **sign**(< _mixed_ >pubKey, < _Buffer_ >data, < _object_ >options, < _function_ >callback) - _(void)_ - **(Client mode only)** Requests that the agent sign `data` using the key identified by `pubKey`. `pubKey` can be any parsed (using `utils.parseKey()`) or parseable key value. `callback` is passed `(err, signature)` where `signature` is a possible _Buffer_ containing the signature for the `data`. `options` may contain any of:
+
+  * **hash** - _string_ - The explicitly desired hash to use when computing the signature. Currently if set, this may be either `'sha256'` or `'sha512'` for RSA keys.
+
+* **failureReply**(< _opaque_ >request) - _(void)_ - **(Server mode only)** Replies to the given `request` with a failure response.
+
+* **getIdentitiesReply**(< _opaque_ >request, < _array_ >keys) - _(void)_ - **(Server mode only)** Responds to a identities list `request` with the given array of keys in `keys`.
+
+* **signReply**(< _opaque_ >request, < _Buffer_ >signature) - _(void)_ - **(Server mode only)** Responds to a sign `request` with the given signature in `signature`.
+
+### BaseAgent
+
+In order to create a custom agent, your class *must*:
+
+  * Extend `BaseAgent`
+  * Call `super()` in its constructor
+  * Implement *at least* the following methods:
+
+* **getIdentities**(< _function_ >callback) - _(void)_ - Passes `(err, keys)` to `callback` where `keys` is a possible array of public keys for authentication.
+
+* **sign**(< _mixed_ >pubKey, < _Buffer_ >data, < _object_ >options, < _function_ >callback) - _(void)_ - Signs `data` using the key identified by `pubKey`. `pubKey` can be any parsed (using `utils.parseKey()`) or parseable key value. `callback` should be passed `(err, signature)` where `signature` is a possible _Buffer_ containing the signature for the `data`. `options` may contain any of:
+
+  * **hash** - _string_ - The explicitly desired hash to use when computing the signature. Currently if set, this may be either `'sha256'` or `'sha512'` for RSA keys.
+
+Additionally your class may implement the following method in order to support agent forwarding on the client:
+
+* **getStream**(< _function_ >callback) - _(void)_ - Passes `(err, stream)` to `callback` where `stream` is a possible Duplex stream to be used to communicate with your agent. You will probably want to utilize `AgentProtocol` as agent forwarding is an OpenSSH feature, so the `stream` needs to be able to transmit/receive OpenSSH agent protocol packets.
+
+### createAgent
+
+* **createAgent**(< _string_ >agentValue) - _(Agent)_ - Creates and returns a new agent instance using the same logic as the `Client`'s `agent` configuration option: if the platform is Windows and it's the value "pageant", it creates a `PageantAgent`, otherwise if it's not a path to a Windows pipe it creates a `CygwinAgent`. In all other cases, it creates an `OpenSSHAgent`.
+
+### CygwinAgent
+
+#### CygwinAgent methods
+
+* **(constructor)**(< _string_ >socketPath) - Communicates with an agent listening at `socketPath` in a Cygwin environment.
+
+### OpenSSHAgent
+
+#### OpenSSHAgent methods
+
+* **(constructor)**(< _string_ >socketPath) - Communicates with an OpenSSH agent listening on the UNIX socket at `socketPath`.
+
+### PageantAgent
+
+#### PageantAgent methods
+
+* **(constructor)**() - Creates a new agent instance for communicating with a running Pageant agent process.
