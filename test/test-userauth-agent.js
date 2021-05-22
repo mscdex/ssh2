@@ -23,9 +23,6 @@ const clientKey = fixtureKey('openssh_new_rsa');
   let getIdentitiesCount = 0;
   let signCount = 0;
   class MyAgent extends BaseAgent {
-    constructor() {
-      super();
-    }
     getIdentities(cb) {
       assert.strictEqual(++getIdentitiesCount, 1);
       // Ensure that no private portion of the key is used by re-parsing the
