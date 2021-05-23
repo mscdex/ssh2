@@ -11,6 +11,10 @@
     "asn1": "^0.2.4",
     "bcrypt-pbkdf": "^1.0.2"
   },
+  "devDependencies": {
+    "@mscdex/eslint-config": "^1.0.0",
+    "eslint": "^7.0.0"
+  },
   "optionalDependencies": {
     "cpu-features": "0.0.2",
     "nan": "^2.14.1"
@@ -18,7 +22,9 @@
   "scripts": {
     "install": "node install.js",
     "rebuild": "node install.js",
-    "test": "node test/test.js"
+    "test": "node test/test.js",
+    "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js examples lib test",
+    "lint:fix": "npm run lint -- --fix"
   },
   "keywords": [
     "ssh",
