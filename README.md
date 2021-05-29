@@ -1,10 +1,10 @@
-# WARNING: This documentation is for an upcoming, unreleased version of `ssh2`. You are probably looking for documentation for `ssh2` v0.8.x [here](https://github.com/mscdex/ssh2/blob/v0.8.x/README.md)
-
 # Description
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
 Development/testing is done against OpenSSH (8.0 currently).
+
+Changes (breaking or otherwise) in v1.0.0 can be found [here](https://github.com/mscdex/ssh2/issues/935).
 
 # Table of Contents
 
