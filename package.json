@@ -17,7 +17,7 @@
   },
   "optionalDependencies": {
     "cpu-features": "0.0.2",
-    "nan": "^2.14.1"
+    "nan": "^2.14.2"
   },
   "scripts": {
     "install": "node install.js",
