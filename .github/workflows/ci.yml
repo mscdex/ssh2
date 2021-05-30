@@ -6,7 +6,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  tests-linux:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -18,6 +18,24 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16.x]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install build tools
+        run: npm install --global windows-build-tools
       - name: Install module
         run: npm install
       - name: Run tests
