@@ -34,8 +34,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install build tools
-        run: npm install --global windows-build-tools
       - name: Install module
         run: npm install
       - name: Run tests
