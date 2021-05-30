@@ -8,7 +8,7 @@ const SPAWN_OPTS = { windowsHide: true };
 
 // TODO: figure out why this test is failing on Windows
 if (process.platform === 'win32') {
-  console.log('Skipping test on Windows');
+  console.log('Skipping ssh-agent test on Windows');
   process.exit(0);
 }
 
