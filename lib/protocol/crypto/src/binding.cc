@@ -37,6 +37,8 @@ enum ErrorType {
   kErrBadBlockLen
 };
 
+#define MAX_MAC_LEN 64
+
 #define POLY1305_KEYLEN   32
 #define POLY1305_TAGLEN   16
 class ChaChaPolyCipher : public ObjectWrap {
@@ -1715,8 +1717,7 @@ out:
     ErrorType r = kErrNone;
 
     int outlen;
-    unsigned char calc_mac[hmac_len_];
-    memset(calc_mac, 0, hmac_len_);
+    unsigned char calc_mac[MAX_MAC_LEN] = {0};
 
     uint8_t seqbuf[4] = {0};
     ((uint8_t*)(seqbuf))[0] = (seqno >> 24) & 0xff;
@@ -1749,7 +1750,7 @@ out:
         }
 
         // Compare MACs
-        if (CRYPTO_memcmp(mac, calc_mac, sizeof(calc_mac))) {
+        if (CRYPTO_memcmp(mac, calc_mac, hmac_len_)) {
           r = kErrInvalidMAC;
           goto out;
         }
