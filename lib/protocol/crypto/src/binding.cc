@@ -94,9 +94,15 @@ class ChaChaPolyCipher : public ObjectWrap {
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
     ErrorType r = kErrNone;
+    const EVP_CIPHER* const cipher = EVP_get_cipherbyname("chacha20");
 
     if (keys_len != 64) {
       r = kErrBadKeyLen;
+      goto out;
+    }
+
+    if (cipher == nullptr) {
+      r = kErrOpenSSL;
       goto out;
     }
 
@@ -104,12 +110,12 @@ class ChaChaPolyCipher : public ObjectWrap {
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
         || EVP_EncryptInit_ex(ctx_pktlen_,
-                              EVP_chacha20(),
+                              cipher,
                               nullptr,
                               keys + 32,
                               nullptr) != 1
         || EVP_EncryptInit_ex(ctx_main_,
-                              EVP_chacha20(),
+                              cipher,
                               nullptr,
                               keys,
                               nullptr) != 1) {
@@ -956,9 +962,15 @@ class ChaChaPolyDecipher : public ObjectWrap {
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
     ErrorType r = kErrNone;
+    const EVP_CIPHER* const cipher = EVP_get_cipherbyname("chacha20");
 
     if (keys_len != 64) {
       r = kErrBadKeyLen;
+      goto out;
+    }
+
+    if (cipher == nullptr) {
+      r = kErrOpenSSL;
       goto out;
     }
 
@@ -966,12 +978,12 @@ class ChaChaPolyDecipher : public ObjectWrap {
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
         || EVP_DecryptInit_ex(ctx_pktlen_,
-                              EVP_chacha20(),
+                              cipher,
                               nullptr,
                               keys + 32,
                               nullptr) != 1
         || EVP_DecryptInit_ex(ctx_main_,
-                              EVP_chacha20(),
+                              cipher,
                               nullptr,
                               keys,
                               nullptr) != 1) {
