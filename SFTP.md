@@ -258,7 +258,7 @@ SFTP methods
 
     `options` can include `start` and `end` values to read a range of bytes from the file instead of the entire file. Both `start` and `end` are inclusive and start at 0. The `encoding` can be `'utf8'`, `'ascii'`, or `'base64'`.
 
-    If `autoClose` is false, then the file handle won't be closed, even if there's an error. It is your responsiblity to close it and make sure there's no file handle leak. If `autoClose` is set to true (default behavior), on `error` or `end` the file handle will be closed automatically.
+    If `autoClose` is false, then the file handle won't be closed, even if there's an error. It is your responsibility to close it and make sure there's no file handle leak. If `autoClose` is set to true (default behavior), on `error` or `end` the file handle will be closed automatically.
 
     An example to read the last 10 bytes of a file which is 100 bytes long:
 
