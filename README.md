@@ -750,7 +750,7 @@ You can find more examples in the `examples` directory of this repository.
         lang: ''
       }
     }
-```   
+```
 
 * **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
@@ -878,10 +878,10 @@ You can find more examples in the `examples` directory of this repository.
 
     * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
 
-    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names to set an exact list (with the most preferrable first) or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. Valid keys:
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names to set an exact list (with the most preferable first) or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. Valid keys:
 
         * **kex** - _mixed_ - Key exchange algorithms.
-            * Default list (in order from most to least preferrable):
+            * Default list (in order from most to least preferable):
               * `curve25519-sha256 (node v14.0.0+)`
               * `curve25519-sha256@libssh.org (node v14.0.0+)`
               * `ecdh-sha2-nistp256`
@@ -899,7 +899,7 @@ You can find more examples in the `examples` directory of this repository.
               * `diffie-hellman-group1-sha1`
 
         * **serverHostKey** - _mixed_ - Server host key formats.
-            * Default list (in order from most to least preferrable):
+            * Default list (in order from most to least preferable):
               * `ssh-ed25519` (node v12.0.0+)
               * `ecdsa-sha2-nistp256`
               * `ecdsa-sha2-nistp384`
@@ -911,7 +911,7 @@ You can find more examples in the `examples` directory of this repository.
               * `ssh-dss`
 
         * **cipher** - _mixed_ - Ciphers.
-            * Default list (in order from most to least preferrable):
+            * Default list (in order from most to least preferable):
               * `chacha20-poly1305@openssh.com` (priority of chacha20-poly1305 may vary depending upon CPU and/or optional binding availability)
               * `aes128-gcm`
               * `aes128-gcm@openssh.com`
@@ -932,7 +932,7 @@ You can find more examples in the `examples` directory of this repository.
               * `cast128-cbc`
 
         * **hmac** - _mixed_ - (H)MAC algorithms.
-            * Default list (in order from most to least preferrable):
+            * Default list (in order from most to least preferable):
               * `hmac-sha2-256-etm@openssh.com`
               * `hmac-sha2-512-etm@openssh.com`
               * `hmac-sha1-etm@openssh.com`
@@ -948,7 +948,7 @@ You can find more examples in the `examples` directory of this repository.
               * `hmac-md5-96`
 
         * **compress** - _mixed_ - Compression algorithms.
-            * Default list (in order from most to least preferrable):
+            * Default list (in order from most to least preferable):
               * `none`
               * `zlib@openssh.com`
               * `zlib`
@@ -1166,7 +1166,7 @@ You can find more examples in the `examples` directory of this repository.
         lang: ''
       }
     }
-```   
+```
 
 * **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
