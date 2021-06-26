@@ -1066,6 +1066,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **highWaterMark** - _integer_ - This is the `highWaterMark` to use for the parser stream. **Default:** `32 * 1024`
 
+    * **server** - _object_ - This option allow you to explicitly define the tcp server `ssh2` is going to use. **Default:** `new net.Server()`
+
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
 #### Connection events
