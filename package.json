@@ -4,6 +4,9 @@
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
   "main": "./lib/index.js",
+  "files": [
+    "/lib"
+  ],
   "engines": {
     "node": ">=10.16.0"
   },
