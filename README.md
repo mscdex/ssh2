@@ -754,6 +754,8 @@ You can find more examples in the `examples` directory of this repository.
 
 * **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
+* **hostkeys**(< _array_ >keys) - Emitted when the server announces its available host keys. `keys` is the list of parsed (using [`parseKey()`](#utilities)) host public keys.
+
 * **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'client-socket' for socket-level errors and 'client-ssh' for SSH disconnection messages. In the case of 'client-ssh' messages, there may be a 'description' property that provides more detail.
 
 * **end**() - The socket was disconnected.
