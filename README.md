@@ -704,31 +704,13 @@ You can find more examples in the `examples` directory of this repository.
 
 * **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
 
-* **ready**() - Authentication was successful.
-
-* **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
-
-    * **srcIP** - _string_ - The originating IP of the connection.
-
-    * **srcPort** - _integer_ - The originating port of the connection.
-
-    * **destIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
-
-    * **destPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
-
-* **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
-
-    * **srcIP** - _string_ - The originating IP of the connection.
-
-    * **srcPort** - _integer_ - The originating port of the connection.
-
-* **keyboard-interactive**(< _string_ >name, < _string_ >instructions, < _string_ >instructionsLang, < _array_ >prompts, < _function_ >finish) - The server is asking for replies to the given `prompts` for keyboard-interactive user authentication. `name` is generally what you'd use as a window title (for GUI apps). `prompts` is an array of `{ prompt: 'Password: ', echo: false }` style objects (here `echo` indicates whether user input should be displayed on the screen). The answers for all prompts must be provided as an array of strings and passed to `finish` when you are ready to continue. Note: It's possible for the server to come back and ask more questions.
-
-* **unix connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded UNIX socket connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
-
-    * **socketPath** - _string_ - The originating UNIX socket path of the connection.
-
 * **change password**(< _string_ >prompt, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
+
+* **close**() - The socket was closed.
+
+* **end**() - The socket was disconnected.
+
+* **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'client-socket' for socket-level errors and 'client-ssh' for SSH disconnection messages. In the case of 'client-ssh' messages, there may be a 'description' property that provides more detail.
 
 * **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
 
@@ -752,15 +734,33 @@ You can find more examples in the `examples` directory of this repository.
     }
 ```
 
-* **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
-
 * **hostkeys**(< _array_ >keys) - Emitted when the server announces its available host keys. `keys` is the list of parsed (using [`parseKey()`](#utilities)) host public keys.
 
-* **error**(< _Error_ >err) - An error occurred. A 'level' property indicates 'client-socket' for socket-level errors and 'client-ssh' for SSH disconnection messages. In the case of 'client-ssh' messages, there may be a 'description' property that provides more detail.
+* **keyboard-interactive**(< _string_ >name, < _string_ >instructions, < _string_ >instructionsLang, < _array_ >prompts, < _function_ >finish) - The server is asking for replies to the given `prompts` for keyboard-interactive user authentication. `name` is generally what you'd use as a window title (for GUI apps). `prompts` is an array of `{ prompt: 'Password: ', echo: false }` style objects (here `echo` indicates whether user input should be displayed on the screen). The answers for all prompts must be provided as an array of strings and passed to `finish` when you are ready to continue. Note: It's possible for the server to come back and ask more questions.
 
-* **end**() - The socket was disconnected.
+* **ready**() - Authentication was successful.
 
-* **close**() - The socket was closed.
+* **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
+
+* **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+
+    * **destIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
+
+    * **destPort** - _integer_ - The remote port the connection was received on (given in earlier call to `forwardIn()`).
+
+    * **srcIP** - _string_ - The originating IP of the connection.
+
+    * **srcPort** - _integer_ - The originating port of the connection.
+
+* **unix connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded UNIX socket connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+
+    * **socketPath** - _string_ - The originating UNIX socket path of the connection.
+
+* **x11**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming X11 connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
+
+    * **srcIP** - _string_ - The originating IP of the connection.
+
+    * **srcPort** - _integer_ - The originating port of the connection.
 
 #### Client methods
 
@@ -768,39 +768,85 @@ You can find more examples in the `examples` directory of this repository.
 
 * **connect**(< _object_ >config) - _(void)_ - Attempts a connection to a server using the information given in `config`:
 
-    * **host** - _string_ - Hostname or IP address of the server. **Default:** `'localhost'`
-
-    * **port** - _integer_ - Port number of the server. **Default:** `22`
-
-    * **localAddress** - _string_ - IP address of the network interface to use to connect to the server. **Default:** (none -- determined by OS)
-
-    * **localPort** - _string_ - The local port number to connect from. **Default:** (none -- determined by OS)
-
-    * **forceIPv4** - _boolean_ - Only connect via resolved IPv4 address for `host`. **Default:** `false`
-
-    * **forceIPv6** - _boolean_ - Only connect via resolved IPv6 address for `host`. **Default:** `false`
-
-    * **hostHash** - _string_ - Any valid hash algorithm supported by node. The host's key is hashed using this algorithm and passed to the **hostVerifier** function as a hex string. **Default:** (none)
-
-    * **hostVerifier** - _function_ - Function with parameters `(hashedKey[, callback])` where `hashedKey` is a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
-
-    * **username** - _string_ - Username for authentication. **Default:** (none)
-
-    * **password** - _string_ - Password for password-based user authentication. **Default:** (none)
-
     * **agent** - _string_ - Path to ssh-agent's UNIX socket for ssh-agent-based user authentication. **Windows users: set to 'pageant' for authenticating with Pageant or (actual) path to a cygwin "UNIX socket."** **Default:** (none)
 
     * **agentForward** - _boolean_ - Set to `true` to use OpenSSH agent forwarding (`auth-agent@openssh.com`) for the life of the connection. `agent` must also be set to use this feature. **Default:** `false`
 
-    * **privateKey** - _mixed_ - _Buffer_ or _string_ that contains a private key for either key-based or hostbased user authentication (OpenSSH format). **Default:** (none)
+    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names to set an exact list (with the most preferable first) or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. Valid keys:
 
-    * **passphrase** - _string_ - For an encrypted private key, this is the passphrase used to decrypt it. **Default:** (none)
+        * **cipher** - _mixed_ - Ciphers.
+            * Default list (in order from most to least preferable):
+              * `chacha20-poly1305@openssh.com` (priority of chacha20-poly1305 may vary depending upon CPU and/or optional binding availability)
+              * `aes128-gcm`
+              * `aes128-gcm@openssh.com`
+              * `aes256-gcm`
+              * `aes256-gcm@openssh.com`
+              * `aes128-ctr`
+              * `aes192-ctr`
+              * `aes256-ctr`
+            * Other supported names:
+              * `3des-cbc`
+              * `aes256-cbc`
+              * `aes192-cbc`
+              * `aes128-cbc`
+              * `arcfour256`
+              * `arcfour128`
+              * `arcfour`
+              * `blowfish-cbc`
+              * `cast128-cbc`
 
-    * **localHostname** - _string_ - Along with **localUsername** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
+        * **compress** - _mixed_ - Compression algorithms.
+            * Default list (in order from most to least preferable):
+              * `none`
+              * `zlib@openssh.com`
+              * `zlib`
+            * Other supported names:
 
-    * **localUsername** - _string_ - Along with **localHostname** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
+        * **hmac** - _mixed_ - (H)MAC algorithms.
+            * Default list (in order from most to least preferable):
+              * `hmac-sha2-256-etm@openssh.com`
+              * `hmac-sha2-512-etm@openssh.com`
+              * `hmac-sha1-etm@openssh.com`
+              * `hmac-sha2-256`
+              * `hmac-sha2-512`
+              * `hmac-sha1`
+            * Other supported names:
+              * `hmac-md5`
+              * `hmac-sha2-256-96`
+              * `hmac-sha2-512-96`
+              * `hmac-ripemd160`
+              * `hmac-sha1-96`
+              * `hmac-md5-96`
 
-    * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. If you set this to `true`, you need to handle the `keyboard-interactive` event. **Default:** `false`
+        * **kex** - _mixed_ - Key exchange algorithms.
+            * Default list (in order from most to least preferable):
+              * `curve25519-sha256 (node v14.0.0+)`
+              * `curve25519-sha256@libssh.org (node v14.0.0+)`
+              * `ecdh-sha2-nistp256`
+              * `ecdh-sha2-nistp384`
+              * `ecdh-sha2-nistp521`
+              * `diffie-hellman-group-exchange-sha256`
+              * `diffie-hellman-group14-sha256`
+              * `diffie-hellman-group15-sha512`
+              * `diffie-hellman-group16-sha512`
+              * `diffie-hellman-group17-sha512`
+              * `diffie-hellman-group18-sha512`
+            * Other supported names:
+              * `diffie-hellman-group-exchange-sha1`
+              * `diffie-hellman-group14-sha1`
+              * `diffie-hellman-group1-sha1`
+
+        * **serverHostKey** - _mixed_ - Server host key formats.
+            * Default list (in order from most to least preferable):
+              * `ssh-ed25519` (node v12.0.0+)
+              * `ecdsa-sha2-nistp256`
+              * `ecdsa-sha2-nistp384`
+              * `ecdsa-sha2-nistp521`
+              * `rsa-sha2-512`
+              * `rsa-sha2-256`
+              * `ssh-rsa`
+            * Other supported names:
+              * `ssh-dss`
 
     * **authHandler** - _mixed_ - Either an array of objects as described below or a function with parameters `(methodsLeft, partialSuccess, callback)` where `methodsLeft` and `partialSuccess` are `null` on the first authentication attempt, otherwise are an array and boolean respectively. Return or call `callback()` with either the name of the authentication method or an object containing the method name along with method-specific details to try next (return/pass `false` to signal no more methods to try). Valid method names are: `'none', 'password', 'publickey', 'agent', 'keyboard-interactive', 'hostbased'`. **Default:** function that follows a set method order: None -> Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased
 
@@ -868,9 +914,37 @@ You can find more examples in the `examples` directory of this repository.
             }
             ```
 
-    * **keepaliveInterval** - _integer_ - How often (in milliseconds) to send SSH-level keepalive packets to the server (in a similar way as OpenSSH's ServerAliveInterval config option). Set to 0 to disable. **Default:** `0`
+    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+
+    * **forceIPv4** - _boolean_ - Only connect via resolved IPv4 address for `host`. **Default:** `false`
+
+    * **forceIPv6** - _boolean_ - Only connect via resolved IPv6 address for `host`. **Default:** `false`
+
+    * **host** - _string_ - Hostname or IP address of the server. **Default:** `'localhost'`
+
+    * **hostHash** - _string_ - Any valid hash algorithm supported by node. The host's key is hashed using this algorithm and passed to the **hostVerifier** function as a hex string. **Default:** (none)
+
+    * **hostVerifier** - _function_ - Function with parameters `(hashedKey[, callback])` where `hashedKey` is a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
 
     * **keepaliveCountMax** - _integer_ - How many consecutive, unanswered SSH-level keepalive packets that can be sent to the server before disconnection (similar to OpenSSH's ServerAliveCountMax config option). **Default:** `3`
+
+    * **keepaliveInterval** - _integer_ - How often (in milliseconds) to send SSH-level keepalive packets to the server (in a similar way as OpenSSH's ServerAliveInterval config option). Set to 0 to disable. **Default:** `0`
+
+    * **localAddress** - _string_ - IP address of the network interface to use to connect to the server. **Default:** (none -- determined by OS)
+
+    * **localHostname** - _string_ - Along with **localUsername** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
+
+    * **localPort** - _string_ - The local port number to connect from. **Default:** (none -- determined by OS)
+
+    * **localUsername** - _string_ - Along with **localHostname** and **privateKey**, set this to a non-empty string for hostbased user authentication. **Default:** (none)
+
+    * **passphrase** - _string_ - For an encrypted `privateKey`, this is the passphrase used to decrypt it. **Default:** (none)
+
+    * **password** - _string_ - Password for password-based user authentication. **Default:** (none)
+
+    * **port** - _integer_ - Port number of the server. **Default:** `22`
+
+    * **privateKey** - _mixed_ - _Buffer_ or _string_ that contains a private key for either key-based or hostbased user authentication (OpenSSH format). **Default:** (none)
 
     * **readyTimeout** - _integer_ - How long (in milliseconds) to wait for the SSH handshake to complete. **Default:** `20000`
 
@@ -878,84 +952,11 @@ You can find more examples in the `examples` directory of this repository.
 
     * **strictVendor** - _boolean_ - Performs a strict server vendor check before sending vendor-specific requests, etc. (e.g. check for OpenSSH server when using `openssh_noMoreSessions()`) **Default:** `true`
 
-    * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for the connection. The value for each category must either be an array of valid algorithm names to set an exact list (with the most preferable first) or an object containing `append`, `prepend`, and/or `remove` properties that each contain an _array_ of algorithm names or RegExps to match to adjust default lists for each category. Valid keys:
+    * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. If you set this to `true`, you need to handle the `keyboard-interactive` event. **Default:** `false`
 
-        * **kex** - _mixed_ - Key exchange algorithms.
-            * Default list (in order from most to least preferable):
-              * `curve25519-sha256 (node v14.0.0+)`
-              * `curve25519-sha256@libssh.org (node v14.0.0+)`
-              * `ecdh-sha2-nistp256`
-              * `ecdh-sha2-nistp384`
-              * `ecdh-sha2-nistp521`
-              * `diffie-hellman-group-exchange-sha256`
-              * `diffie-hellman-group14-sha256`
-              * `diffie-hellman-group15-sha512`
-              * `diffie-hellman-group16-sha512`
-              * `diffie-hellman-group17-sha512`
-              * `diffie-hellman-group18-sha512`
-            * Other supported names:
-              * `diffie-hellman-group-exchange-sha1`
-              * `diffie-hellman-group14-sha1`
-              * `diffie-hellman-group1-sha1`
+    * **username** - _string_ - Username for authentication. **Default:** (none)
 
-        * **serverHostKey** - _mixed_ - Server host key formats.
-            * Default list (in order from most to least preferable):
-              * `ssh-ed25519` (node v12.0.0+)
-              * `ecdsa-sha2-nistp256`
-              * `ecdsa-sha2-nistp384`
-              * `ecdsa-sha2-nistp521`
-              * `rsa-sha2-512`
-              * `rsa-sha2-256`
-              * `ssh-rsa`
-            * Other supported names:
-              * `ssh-dss`
-
-        * **cipher** - _mixed_ - Ciphers.
-            * Default list (in order from most to least preferable):
-              * `chacha20-poly1305@openssh.com` (priority of chacha20-poly1305 may vary depending upon CPU and/or optional binding availability)
-              * `aes128-gcm`
-              * `aes128-gcm@openssh.com`
-              * `aes256-gcm`
-              * `aes256-gcm@openssh.com`
-              * `aes128-ctr`
-              * `aes192-ctr`
-              * `aes256-ctr`
-            * Other supported names:
-              * `3des-cbc`
-              * `aes256-cbc`
-              * `aes192-cbc`
-              * `aes128-cbc`
-              * `arcfour256`
-              * `arcfour128`
-              * `arcfour`
-              * `blowfish-cbc`
-              * `cast128-cbc`
-
-        * **hmac** - _mixed_ - (H)MAC algorithms.
-            * Default list (in order from most to least preferable):
-              * `hmac-sha2-256-etm@openssh.com`
-              * `hmac-sha2-512-etm@openssh.com`
-              * `hmac-sha1-etm@openssh.com`
-              * `hmac-sha2-256`
-              * `hmac-sha2-512`
-              * `hmac-sha1`
-            * Other supported names:
-              * `hmac-md5`
-              * `hmac-sha2-256-96`
-              * `hmac-sha2-512-96`
-              * `hmac-ripemd160`
-              * `hmac-sha1-96`
-              * `hmac-md5-96`
-
-        * **compress** - _mixed_ - Compression algorithms.
-            * Default list (in order from most to least preferable):
-              * `none`
-              * `zlib@openssh.com`
-              * `zlib`
-            * Other supported names:
-
-
-    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+* **end**() - _(void)_ - Disconnects the socket.
 
 * **exec**(< _string_ >command[, < _object_ >options], < _function_ >callback) - _(void)_ - Executes `command` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Valid `options` properties are:
 
@@ -965,15 +966,13 @@ You can find more examples in the `examples` directory of this repository.
 
     * **x11** - _mixed_ - Set to `true` to use defaults below, set to a number to specify a specific screen number, or an object with the following valid properties:
 
-        * **single** - _boolean_ - Allow just a single connection? **Default:** `false`
-
-        * **screen** - _number_ - Screen number to use **Default:** `0`
+        * **cookie** - _mixed_ - The authentication cookie. Can be a hex _string_ or a _Buffer_ containing the raw cookie value (which will be converted to a hex string). **Default:** (random 16 byte value)
 
         * **protocol** - _string_ - The authentication protocol name. **Default:** `'MIT-MAGIC-COOKIE-1'`
 
-        * **cookie** - _mixed_ - The authentication cookie. Can be a hex _string_ or a _Buffer_ containing the raw cookie value (which will be converted to a hex string). **Default:** (random 16 byte value)
+        * **screen** - _number_ - Screen number to use **Default:** `0`
 
-* **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+        * **single** - _boolean_ - Allow just a single connection? **Default:** `false`
 
 * **forwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Bind to `remoteAddr` on `remotePort` on the server and forward incoming TCP connections. `callback` has 2 parameters: < _Error_ >err, < _integer_ >port (`port` is the assigned port number if `remotePort` was 0). Here are some special values for `remoteAddr` and their associated binding behaviors:
 
@@ -987,25 +986,25 @@ You can find more examples in the `examples` directory of this repository.
 
     * '127.0.0.1' and '::1' - Listen on the loopback interfaces for IPv4 and IPv6, respectively.
 
-* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Unbind from `remoteAddr` on `remotePort` on the server and stop forwarding incoming TCP connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
-
 * **forwardOut**(< _string_ >srcIP, < _integer_ >srcPort, < _string_ >dstIP, < _integer_ >dstPort, < _function_ >callback) - _(void)_ - Open a connection with `srcIP` and `srcPort` as the originating address and port and `dstIP` and `dstPort` as the remote destination address and port. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
-
-* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
-
-* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
-
-* **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the server. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
-
-* **end**() - _(void)_ - Disconnects the socket.
-
-* **openssh_noMoreSessions**(< _function_ >callback) - _(void)_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err.
 
 * **openssh_forwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that binds to a UNIX domain socket at `socketPath` on the server and forwards incoming connections. `callback` has 1 parameter: < _Error_ >err.
 
+* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+
+* **openssh_noMoreSessions**(< _function_ >callback) - _(void)_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err.
+
 * **openssh_unforwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that unbinds from a UNIX domain socket at `socketPath` on the server and stops forwarding incoming connections. `callback` has 1 parameter: < _Error_ >err.
 
-* **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that opens a connection to a UNIX domain socket at `socketPath` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+* **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the server. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
+
+* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
+
+* **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+
+* **subsys**(< _string_ >subsystem, < _function_ >callback) - _(void)_ - Invokes `subsystem` on the server. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+
+* **unforwardIn**(< _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Unbind from `remoteAddr` on `remotePort` on the server and stop forwarding incoming TCP connections. Until `callback` is called, more connections may still come in. `callback` has 1 parameter: < _Error_ >err.
 
 ### Server
 
@@ -1013,11 +1012,7 @@ You can find more examples in the `examples` directory of this repository.
 
 * **connection**(< _Connection_ >client, < _object_ >info) - A new client has connected. `info` contains the following properties:
 
-    * **ip** - _string_ - The `remoteAddress` of the connection.
-
     * **family** - _string_ - The `remoteFamily` of the connection.
-
-    * **port** - _integer_ - The `remotePort` of the connection.
 
     * **header** - _object_ - Information about the client's header:
 
@@ -1042,33 +1037,37 @@ You can find more examples in the `examples` directory of this repository.
           comments: 'Ubuntu-2ubuntu2' }
 ```
 
+    * **ip** - _string_ - The `remoteAddress` of the connection.
+
+    * **port** - _integer_ - The `remotePort` of the connection.
+
 #### Server methods
 
 * **(constructor)**(< _object_ >config[, < _function_ >connectionListener]) - Creates and returns a new Server instance. Server instances also have the same methods/properties/events as [`net.Server`](http://nodejs.org/docs/latest/api/net.html#net_class_net_server). `connectionListener` if supplied, is added as a `connection` listener. Valid `config` properties:
 
-    * **hostKeys** - _array_ - An array of either Buffers/strings that contain host private keys or objects in the format of `{ key: <Buffer/string>, passphrase: <string> }` for encrypted private keys. (**Required**) **Default:** (none)
-
     * **algorithms** - _object_ - This option allows you to explicitly override the default transport layer algorithms used for incoming client connections. Each value must be an array of valid algorithms for that category. The order of the algorithms in the arrays are important, with the most favorable being first. For a list of valid and default algorithm names, please review the documentation for the version of `ssh2` used by this module. Valid keys:
-
-        * **kex** - _array_ - Key exchange algorithms.
 
         * **cipher** - _array_ - Ciphers.
 
-        * **serverHostKey** - _array_ - Server host key formats.
+        * **compress** - _array_ - Compression algorithms.
 
         * **hmac** - _array_ - (H)MAC algorithms.
 
-        * **compress** - _array_ - Compression algorithms.
+        * **kex** - _array_ - Key exchange algorithms.
 
-    * **greeting** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Note:** Most clients usually ignore this. **Default:** (none)
+        * **serverHostKey** - _array_ - Server host key formats.
 
     * **banner** - _string_ - A message that is sent to clients once, right before authentication begins. **Default:** (none)
 
-    * **ident** - _string_ - A custom server software name/version identifier. **Default:** `'ssh2js' + moduleVersion + 'srv'`
+    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+
+    * **greeting** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Note:** Most clients usually ignore this. **Default:** (none)
 
     * **highWaterMark** - _integer_ - This is the `highWaterMark` to use for the parser stream. **Default:** `32 * 1024`
 
-    * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
+    * **hostKeys** - _array_ - An array of either Buffers/strings that contain host private keys or objects in the format of `{ key: <Buffer/string>, passphrase: <string> }` for encrypted private keys. (**Required**) **Default:** (none)
+
+    * **ident** - _string_ - A custom server software name/version identifier. **Default:** `'ssh2js' + moduleVersion + 'srv'`
 
 * **injectSocket**(< _DuplexStream_ >socket) - Injects a bidirectional stream as though it were a TCP socket connection. Additionally, `socket` should include `net.Socket`-like properties to ensure the best compatibility (e.g. `socket.remoteAddress`, `socket.remotePort`, `socket.remoteFamily`).
 
@@ -1076,75 +1075,51 @@ You can find more examples in the `examples` directory of this repository.
 
 * **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
 
+    * `hostbased`:
+
+        * **blob** - _Buffer_ - This contains the data to be verified that is passed to (along with the signature) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **key** - _object_ - Contains information about the public key sent by the client:
+
+            * **algo** - _string_ - The name of the key algorithm (e.g. `ssh-rsa`).
+
+            * **data** - _Buffer_ - The actual key data.
+
+        * **localHostname** - _string_ - The local hostname provided by the client.
+
+        * **localUsername** - _string_ - The local username provided by the client.
+
+        * **signature** - _Buffer_ - This contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+    * `keyboard-interactive`:
+
+        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
+
+        * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
+
     * `password`:
 
         * **password** - _string_ - This is the password sent by the client.
 
         * **requestChange**(< _string_ >prompt, < _function_ >callback) - _(void)_ - Sends a password change request to the client. `callback` is called with `(newPassword)`, where `newPassword` is the new password supplied by the client. You may accept, reject, or prompt for another password change after `callback` is called.
 
-    * `keyboard-interactive`:
-
-        * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
-
-        * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
-
     * `publickey`:
-
-        * **key** - _object_ - Contains information about the public key sent by the client:
-
-            * **algo** - _string_ - The name of the key algorithm (e.g. `ssh-rsa`).
-
-            * **data** - _Buffer_ - The actual key data.
 
         * **blob** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains the data to be verified that is passed to (along with the signature) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
 
-        * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
-
-    * `hostbased`:
-
         * **key** - _object_ - Contains information about the public key sent by the client:
 
             * **algo** - _string_ - The name of the key algorithm (e.g. `ssh-rsa`).
 
             * **data** - _Buffer_ - The actual key data.
 
-        * **blob** - _Buffer_ - This contains the data to be verified that is passed to (along with the signature) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+        * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
 
-        * **signature** - _Buffer_ - This contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+* **close**() - The client socket was closed.
 
-        * **localHostname** - _string_ - The local hostname provided by the client.
+* **end**() - The client socket disconnected.
 
-        * **localUsername** - _string_ - The local username provided by the client.
-
-* **ready**() - Emitted when the client has been successfully authenticated.
-
-* **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance.
-
-* **tcpip**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
-
-    * **srcIP** - _string_ - Source IP address of outgoing connection.
-
-    * **srcPort** - _string_ - Source port of outgoing connection.
-
-    * **destIP** - _string_ - Destination IP address of outgoing connection.
-
-    * **destPort** - _string_ - Destination port of outgoing connection.
-
-* **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
-
-    * **socketPath** - _string_ - Destination socket path of outgoing connection.
-
-* **request**(< _mixed_ >accept, < _mixed_ >reject, < _string_ >name, < _object_ >info) - Emitted when the client has sent a global request for `name` (e.g. `tcpip-forward` or `cancel-tcpip-forward`). `accept` and `reject` are functions if the client requested a response. If `bindPort === 0`, you should pass the chosen port to `accept()` so that the client will know what port was bound. `info` contains additional details about the request:
-
-    * `tcpip-forward` and `cancel-tcpip-forward`:
-
-        * **bindAddr** - _string_ - The IP address to start/stop binding to.
-
-        * **bindPort** - _integer_ - The port to start/stop binding to.
-
-    * `streamlocal-forward@openssh.com` and `cancel-streamlocal-forward@openssh.com`:
-
-        * **socketPath** - _string_ - The socket path to start/stop binding to.
+* **error**(< _Error_ >err) - An error occurred.
 
 * **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
 
@@ -1168,19 +1143,41 @@ You can find more examples in the `examples` directory of this repository.
     }
 ```
 
+* **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
+
+    * **socketPath** - _string_ - Destination socket path of outgoing connection.
+
+* **ready**() - Emitted when the client has been successfully authenticated.
+
 * **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
 
-* **error**(< _Error_ >err) - An error occurred.
+* **request**(< _mixed_ >accept, < _mixed_ >reject, < _string_ >name, < _object_ >info) - Emitted when the client has sent a global request for `name` (e.g. `tcpip-forward` or `cancel-tcpip-forward`). `accept` and `reject` are functions if the client requested a response. If `bindPort === 0`, you should pass the chosen port to `accept()` so that the client will know what port was bound. `info` contains additional details about the request:
 
-* **end**() - The client socket disconnected.
+    * `cancel-tcpip-forward` and `tcpip-forward`:
 
-* **close**() - The client socket was closed.
+        * **bindAddr** - _string_ - The IP address to start/stop binding to.
+
+        * **bindPort** - _integer_ - The port to start/stop binding to.
+
+    * `cancel-streamlocal-forward@openssh.com` and `streamlocal-forward@openssh.com`:
+
+        * **socketPath** - _string_ - The socket path to start/stop binding to.
+
+* **session**(< _function_ >accept, < _function_ >reject) - Emitted when the client has requested a new session. Sessions are used to start interactive shells, execute commands, request X11 forwarding, etc. `accept()` returns a new _Session_ instance.
+
+* **tcpip**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested an outbound (TCP) connection. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
+
+    * **destIP** - _string_ - Destination IP address of outgoing connection.
+
+    * **destPort** - _string_ - Destination port of outgoing connection.
+
+    * **srcIP** - _string_ - Source IP address of outgoing connection.
+
+    * **srcPort** - _string_ - Source port of outgoing connection.
 
 #### Connection methods
 
 * **end**() - _(void)_ - Closes the client connection.
-
-* **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _(void)_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 * **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
@@ -1188,39 +1185,13 @@ You can find more examples in the `examples` directory of this repository.
 
 * **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
+* **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _(void)_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
+
 #### Session events
 
-* **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+* **auth-agent**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested incoming ssh-agent requests be forwarded to them. `accept` and `reject` are functions if the client requested a response.
 
-    * **cols** - _integer_ - The number of columns for the pseudo-TTY.
-
-    * **rows** - _integer_ - The number of rows for the pseudo-TTY.
-
-    * **width** - _integer_ - The width of the pseudo-TTY in pixels.
-
-    * **height** - _integer_ - The height of the pseudo-TTY in pixels.
-
-    * **modes** - _object_ - Contains the requested terminal modes of the pseudo-TTY keyed on the mode name with the value being the mode argument. (See the table at the end for valid names).
-
-* **window-change**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client reported a change in window dimensions during this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
-
-    * **cols** - _integer_ - The new number of columns for the client window.
-
-    * **rows** - _integer_ - The new number of rows for the client window.
-
-    * **width** - _integer_ - The new width of the client window in pixels.
-
-    * **height** - _integer_ - The new height of the client window in pixels.
-
-* **x11**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested X11 forwarding. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
-
-    * **single** - _boolean_ - `true` if only a single connection should be forwarded.
-
-    * **protocol** - _string_ - The name of the X11 authentication method used (e.g. `MIT-MAGIC-COOKIE-1`).
-
-    * **cookie** - _string_ - The X11 authentication cookie encoded in hexadecimal.
-
-    * **screen** - _integer_ - The screen number to forward X11 connections for.
+* **close**() - The session was closed.
 
 * **env**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested an environment variable to be set for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
@@ -1228,25 +1199,53 @@ You can find more examples in the `examples` directory of this repository.
 
     * **value** - _string_ - The environment variable's value.
 
-* **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
-
-    * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
-
-* **auth-agent**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested incoming ssh-agent requests be forwarded to them. `accept` and `reject` are functions if the client requested a response.
-
-* **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell.
-
 * **exec**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested execution of a command string. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the command execution. `info` has these properties:
 
     * **command** - _string_ - The command line to be executed.
 
+* **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+
+    * **cols** - _integer_ - The number of columns for the pseudo-TTY.
+
+    * **height** - _integer_ - The height of the pseudo-TTY in pixels.
+
+    * **modes** - _object_ - Contains the requested terminal modes of the pseudo-TTY keyed on the mode name with the value being the mode argument. (See the table at the end for valid names).
+
+    * **rows** - _integer_ - The number of rows for the pseudo-TTY.
+
+    * **width** - _integer_ - The width of the pseudo-TTY in pixels.
+
 * **sftp**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested the SFTP subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns an _SFTP_ instance in server mode (see the [`SFTP` documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md) for details). `info` has these properties:
+
+* **shell**(< _mixed_ >accept, < _mixed_ >reject) - The client has requested an interactive shell. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the interactive shell.
+
+* **signal**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has sent a signal. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+
+    * **name** - _string_ - The signal name (e.g. `SIGUSR1`).
 
 * **subsystem**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client has requested an arbitrary subsystem. `accept` and `reject` are functions if the client requested a response. `accept()` returns a _Channel_ for the subsystem. `info` has these properties:
 
     * **name** - _string_ - The name of the subsystem.
 
-* **close**() - The session was closed.
+* **window-change**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client reported a change in window dimensions during this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+
+    * **cols** - _integer_ - The new number of columns for the client window.
+
+    * **height** - _integer_ - The new height of the client window in pixels.
+
+    * **rows** - _integer_ - The new number of rows for the client window.
+
+    * **width** - _integer_ - The new width of the client window in pixels.
+
+* **x11**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested X11 forwarding. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+
+    * **cookie** - _string_ - The X11 authentication cookie encoded in hexadecimal.
+
+    * **protocol** - _string_ - The name of the X11 authentication method used (e.g. `MIT-MAGIC-COOKIE-1`).
+
+    * **screen** - _integer_ - The screen number to forward X11 connections for.
+
+    * **single** - _boolean_ - `true` if only a single connection should be forwarded.
 
 ### Channel
 
@@ -1266,13 +1265,14 @@ This is a normal **streams2** Duplex Stream (used both by clients and servers), 
 
         * A `stderr` property contains a Readable stream that represents output from stderr.
 
-    * For shell() and exec():
+    * For exec() and shell():
 
         * The readable side represents stdout and the writable side represents stdin.
 
+        * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section.
+
         * **signal**(< _string_ >signalName) - _(void)_ - Sends a POSIX signal to the current process on the server. Valid signal names are: 'ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', and 'USR2'. Some server implementations may ignore this request if they do not support signals. Note: If you are trying to send SIGINT and you find `signal()` doesn't work, try writing `'\x03'` to the Channel stream instead.
 
-        * **setWindow**(< _integer_ >rows, < _integer_ >cols, < _integer_ >height, < _integer_ >width) - _(void)_ - Lets the server know that the local terminal window has been resized. The meaning of these arguments are described in the 'Pseudo-TTY settings' section.
 
 * Server-specific:
 
@@ -1286,17 +1286,17 @@ This is a normal **streams2** Duplex Stream (used both by clients and servers), 
 
 ### Pseudo-TTY settings
 
-* **rows** - < _integer_ > - Number of rows. **Default:** `24`
-
 * **cols** - < _integer_ > - Number of columns. **Default:** `80`
 
 * **height** - < _integer_ > - Height in pixels. **Default:** `480`
 
-* **width** - < _integer_ > - Width in pixels. **Default:** `640`
+* **modes** - < _object_ > - An object containing [Terminal Modes](#terminal-modes) as keys, with each value set to each mode argument. **Default:** `null`
+
+* **rows** - < _integer_ > - Number of rows. **Default:** `24`
 
 * **term** - < _string_ > - The value to use for $TERM. **Default:** `'vt100'`
 
-* **modes** - < _object_ > - An object containing [Terminal Modes](#terminal-modes) as keys, with each value set to each mode argument. **Default:** `null`
+* **width** - < _integer_ > - Width in pixels. **Default:** `640`
 
 `rows` and `cols` override `width` and `height` when `rows` and `cols` are non-zero.
 
@@ -1308,61 +1308,61 @@ Zero dimension parameters are ignored.
 
 Name           | Description
 -------------- | ------------
-VINTR          | Interrupt character; 255 if none. Similarly for the other characters. Not all of these characters are supported on all systems.
-VQUIT          | The quit character (sends SIGQUIT signal on POSIX systems).
-VERASE         | Erase the character to left of the cursor.
-VKILL          | Kill the current input line.
-VEOF           | End-of-file character (sends EOF from the terminal).
-VEOL           | End-of-line character in addition to carriage return and/or linefeed.
-VEOL2          | Additional end-of-line character.
-VSTART         | Continues paused output (normally control-Q).
-VSTOP          | Pauses output (normally control-S).
-VSUSP          | Suspends the current program.
-VDSUSP         | Another suspend character.
-VREPRINT       | Reprints the current input line.
-VWERASE        | Erases a word left of cursor.
-VLNEXT         | Enter the next character typed literally, even if it is a special character
-VFLUSH         | Character to flush output.
-VSWTCH         | Switch to a different shell layer.
-VSTATUS        | Prints system status line (load, command, pid, etc).
-VDISCARD       | Toggles the flushing of terminal output.
-IGNPAR         | The ignore parity flag. The parameter SHOULD be 0 if this flag is FALSE, and 1 if it is TRUE.
-PARMRK         | Mark parity and framing errors.
-INPCK          | Enable checking of parity errors.
-ISTRIP         | Strip 8th bit off characters.
-INLCR          | Map NL into CR on input.
-IGNCR          | Ignore CR on input.
-ICRNL          | Map CR to NL on input.
-IUCLC          | Translate uppercase characters to lowercase.
-IXON           | Enable output flow control.
-IXANY          | Any char will restart after stop.
-IXOFF          | Enable input flow control.
-IMAXBEL        | Ring bell on input queue full.
-ISIG           | Enable signals INTR, QUIT, [D]SUSP.
-ICANON         | Canonicalize input lines.
-XCASE          | Enable input and output of uppercase characters by preceding their lowercase equivalents with "\".
-ECHO           | Enable echoing.
-ECHOE          | Visually erase chars.
-ECHOK          | Kill character discards current line.
-ECHONL         | Echo NL even if ECHO is off.
-NOFLSH         | Don't flush after interrupt.
-TOSTOP         | Stop background jobs from output.
-IEXTEN         | Enable extensions.
-ECHOCTL        | Echo control characters as ^(Char).
-ECHOKE         | Visual erase for line kill.
-PENDIN         | Retype pending input.
-OPOST          | Enable output processing.
-OLCUC          | Convert lowercase to uppercase.
-ONLCR          | Map NL to CR-NL.
-OCRNL          | Translate carriage return to newline (output).
-ONOCR          | Translate newline to carriage return-newline (output).
-ONLRET         | Newline performs a carriage return (output).
 CS7            | 7 bit mode.
 CS8            | 8 bit mode.
+ECHOCTL        | Echo control characters as ^(Char).
+ECHO           | Enable echoing.
+ECHOE          | Visually erase chars.
+ECHOKE         | Visual erase for line kill.
+ECHOK          | Kill character discards current line.
+ECHONL         | Echo NL even if ECHO is off.
+ICANON         | Canonicalize input lines.
+ICRNL          | Map CR to NL on input.
+IEXTEN         | Enable extensions.
+IGNCR          | Ignore CR on input.
+IGNPAR         | The ignore parity flag. The parameter SHOULD be 0 if this flag is FALSE, and 1 if it is TRUE.
+IMAXBEL        | Ring bell on input queue full.
+INLCR          | Map NL into CR on input.
+INPCK          | Enable checking of parity errors.
+ISIG           | Enable signals INTR, QUIT, [D]SUSP.
+ISTRIP         | Strip 8th bit off characters.
+IUCLC          | Translate uppercase characters to lowercase.
+IXANY          | Any char will restart after stop.
+IXOFF          | Enable input flow control.
+IXON           | Enable output flow control.
+NOFLSH         | Don't flush after interrupt.
+OCRNL          | Translate carriage return to newline (output).
+OLCUC          | Convert lowercase to uppercase.
+ONLCR          | Map NL to CR-NL.
+ONLRET         | Newline performs a carriage return (output).
+ONOCR          | Translate newline to carriage return-newline (output).
+OPOST          | Enable output processing.
 PARENB         | Parity enable.
+PARMRK         | Mark parity and framing errors.
 PARODD         | Odd parity, else even.
+PENDIN         | Retype pending input.
+TOSTOP         | Stop background jobs from output.
 TTY_OP_ISPEED  | Specifies the input baud rate in bits per second.
 TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
+VDISCARD       | Toggles the flushing of terminal output.
+VDSUSP         | Another suspend character.
+VEOF           | End-of-file character (sends EOF from the terminal).
+VEOL2          | Additional end-of-line character.
+VEOL           | End-of-line character in addition to carriage return and/or linefeed.
+VERASE         | Erase the character to left of the cursor.
+VFLUSH         | Character to flush output.
+VINTR          | Interrupt character; 255 if none. Similarly for the other characters. Not all of these characters are supported on all systems.
+VKILL          | Kill the current input line.
+VLNEXT         | Enter the next character typed literally, even if it is a special character
+VQUIT          | The quit character (sends SIGQUIT signal on POSIX systems).
+VREPRINT       | Reprints the current input line.
+VSTART         | Continues paused output (normally control-Q).
+VSTATUS        | Prints system status line (load, command, pid, etc).
+VSTOP          | Pauses output (normally control-S).
+VSUSP          | Suspends the current program.
+VSWTCH         | Switch to a different shell layer.
+VWERASE        | Erases a word left of cursor.
+XCASE          | Enable input and output of uppercase characters by preceding their lowercase equivalents with "\".
 
 ### HTTPAgent
 
@@ -1380,9 +1380,9 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 
 * **parseKey**(< _mixed_ >keyData[, < _string_ >passphrase]) - _mixed_ - Parses a private/public key in OpenSSH, RFC4716, or PPK format. For encrypted private keys, the key will be decrypted with the given `passphrase`. `keyData` can be a _Buffer_ or _string_ value containing the key contents. The returned value will be an array of objects (currently in the case of modern OpenSSH keys) or an object with these properties and methods:
 
-    * **type** - _string_ - The full key type (e.g. `'ssh-rsa'`)
-
     * **comment** - _string_ - The comment for the key
+
+    * **equals**(< _mixed_ >otherKey) - _boolean_ - This returns `true` if `otherKey` (a parsed or parseable key) is the same as this key. This method does not compare the keys' comments
 
     * **getPrivatePEM**() - _string_ - This returns the PEM version of a private key
 
@@ -1392,9 +1392,9 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 
     * **isPrivateKey**() - _boolean_ - This returns `true` if the key is a private key or not
 
-    * **equals**(< _mixed_ >otherKey) - _boolean_ - This returns `true` if `otherKey` (a parsed or parseable key) is the same as this key. This method does not compare the keys' comments
-
     * **sign**(< _mixed_ >data) - _mixed_ - This signs the given `data` using this key and returns a _Buffer_ containing the signature on success. On failure, an _Error_ will be returned. `data` can be anything accepted by node's [`sign.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_sign_update_data_inputencoding).
+
+    * **type** - _string_ - The full key type (e.g. `'ssh-rsa'`)
 
     * **verify**(< _mixed_ >data, < _Buffer_ >signature) - _mixed_ - This verifies a `signature` of the given `data` using this key and returns `true` if the signature could be verified. On failure, either `false` will be returned or an _Error_ will be returned upon a more critical failure. `data` can be anything accepted by node's [`verify.update()`](https://nodejs.org/docs/latest/api/crypto.html#crypto_verify_update_data_inputencoding).
 
@@ -1420,15 +1420,15 @@ TTY_OP_OSPEED  | Specifies the output baud rate in bits per second.
 
 * **(constructor)**(< _boolean_ >isClient) - Creates and returns a new AgentProtocol instance. `isClient` determines whether the instance operates in client or server mode.
 
+* **failureReply**(< _opaque_ >request) - _(void)_ - **(Server mode only)** Replies to the given `request` with a failure response.
+
 * **getIdentities**(< _function_ >callback) - _(void)_ - **(Client mode only)** Requests a list of public keys from the agent. `callback` is passed `(err, keys)` where `keys` is a possible array of public keys for authentication.
+
+* **getIdentitiesReply**(< _opaque_ >request, < _array_ >keys) - _(void)_ - **(Server mode only)** Responds to a identities list `request` with the given array of keys in `keys`.
 
 * **sign**(< _mixed_ >pubKey, < _Buffer_ >data, < _object_ >options, < _function_ >callback) - _(void)_ - **(Client mode only)** Requests that the agent sign `data` using the key identified by `pubKey`. `pubKey` can be any parsed (using `utils.parseKey()`) or parseable key value. `callback` is passed `(err, signature)` where `signature` is a possible _Buffer_ containing the signature for the `data`. `options` may contain any of:
 
   * **hash** - _string_ - The explicitly desired hash to use when computing the signature. Currently if set, this may be either `'sha256'` or `'sha512'` for RSA keys.
-
-* **failureReply**(< _opaque_ >request) - _(void)_ - **(Server mode only)** Replies to the given `request` with a failure response.
-
-* **getIdentitiesReply**(< _opaque_ >request, < _array_ >keys) - _(void)_ - **(Server mode only)** Responds to a identities list `request` with the given array of keys in `keys`.
 
 * **signReply**(< _opaque_ >request, < _Buffer_ >signature) - _(void)_ - **(Server mode only)** Responds to a sign `request` with the given signature in `signature`.
 
