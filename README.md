@@ -1070,6 +1070,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
+* **injectSocket**(< _DuplexStream_ >socket) - Injects a bidirectional stream as though it were a TCP socket connection. Additionally, `socket` should include `net.Socket`-like properties to ensure the best compatibility (e.g. `socket.remoteAddress`, `socket.remotePort`, `socket.remoteFamily`).
+
 #### Connection events
 
 * **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:

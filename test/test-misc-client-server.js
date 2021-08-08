@@ -1,10 +1,11 @@
 'use strict';
 
 const assert = require('assert');
+const { createHash } = require('crypto');
 const http = require('http');
 const https = require('https');
-const { createHash } = require('crypto');
 const net = require('net');
+const { Transform } = require('stream');
 const { inspect } = require('util');
 
 const Client = require('../lib/client.js');
@@ -1397,3 +1398,32 @@ const setup = setupSimple.bind(undefined, debug);
     assert.strictEqual(client._chanMgr._count, 0);
   }));
 }
+
+{
+  // Allow injected sockets
+
+  const socket = new Transform({
+    emitClose: true,
+    autoDestroy: true,
+    transform: (chunk, encoding, cb) => {
+      cb();
+    },
+  });
+  socket.remoteAddress = '127.0.0.1';
+  socket.remotePort = '12345';
+  socket.remoteFamily = 'IPv4';
+  socket.push(Buffer.from('SSH-2.0-foo\r\n'));
+
+  const server = new Server(serverCfg);
+  server.on('connection', mustCall((conn, info) => {
+    assert.strictEqual(info.header.versions.software, 'foo');
+    assert.strictEqual(info.ip, '127.0.0.1');
+    assert.strictEqual(info.port, '12345');
+    assert.strictEqual(info.family, 'IPv4');
+    conn.on('ready', mustNotCall());
+    conn.on('close', mustCall());
+    socket.end();
+  }));
+  server.injectSocket(socket);
+}
+
