@@ -1426,4 +1426,3 @@ const setup = setupSimple.bind(undefined, debug);
   }));
   server.injectSocket(socket);
 }
-
