@@ -490,7 +490,8 @@ const { timingSafeEqual } = require('crypto');
 const { readFileSync } = require('fs');
 const { inspect } = require('util');
 
-const { parseKey, Server } = require('ssh2');
+const { utils, Server } = require('ssh2');
+const parseKey = utils.parseKey;
 
 const allowedUser = Buffer.from('foo');
 const allowedPassword = Buffer.from('bar');
