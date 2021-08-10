@@ -1,4 +1,4 @@
-{ "name": "ssh2",
+{ "name": "fastx-ssh2",
   "version": "0.8.9",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
@@ -11,6 +11,6 @@
     "test": "node test/test.js"
   },
   "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "exec", "remote", "client" ],
-  "licenses": [ { "type": "MIT", "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE" } ],
-  "repository" : { "type": "git", "url": "http://github.com/mscdex/ssh2.git" }
+  "licenses": [ { "type": "MIT", "url": "http://github.com/cintolas/ssh2/raw/master/LICENSE" } ],
+  "repository" : { "type": "git", "url": "http://github.com/cintolas/ssh2.git" }
 }
