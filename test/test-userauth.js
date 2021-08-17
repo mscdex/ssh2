@@ -20,6 +20,9 @@ const debug = false;
     clientKey: fixtureKey('id_rsa') },
   { desc: 'RSA (new OpenSSH)',
     clientKey: fixtureKey('openssh_new_rsa') },
+  { desc: 'RSA (new OpenSSH, async)',
+    clientKey: fixtureKey('openssh_new_rsa'),
+    async: true },
   { desc: 'RSA (encrypted)',
     clientKey: fixtureKey('id_rsa_enc', 'foobarbaz'),
     passphrase: 'foobarbaz' },
@@ -32,10 +35,24 @@ const debug = false;
 ].forEach((test) => {
   const { desc, clientKey, passphrase } = test;
   const username = 'Key User';
+
+  let clientOptions = { username, privateKey: clientKey.raw, passphrase };
+  if (test.async) {
+    clientOptions.privateKey = undefined;
+    clientOptions.getSigner = (cb) => {
+      setTimeout(() => cb({
+        publicKey: clientKey.key.getPublicSSH(),
+        sign(buf, cb2) {
+          setTimeout(() => cb2(clientKey.key.sign(buf)), 1);
+        },
+      }), 1);
+    };
+  }
+
   const { server } = setup(
     desc,
     {
-      client: { username, privateKey: clientKey.raw, passphrase },
+      client: clientOptions,
       server: serverCfg,
 
       debug,
@@ -583,6 +600,38 @@ const debug = false;
         username: 'bar',
         password: '5678',
 
+        authHandler: [{
+          type: 'password',
+          username,
+          password,
+        }],
+      },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username, `Wrong username: ${ctx.username}`);
+      assert(ctx.method === 'password', `Wrong auth method: ${ctx.method}`);
+      assert(ctx.password === password, `Unexpected password: ${ctx.password}`);
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+}
+{
+  const username = 'foo';
+  const password = '1234';
+  const { server } = setup(
+    'authHandler() (async password provided)',
+    {
+      client: {
+        username,
+        password: (cb) => setTimeout(() => cb(password), 1),
         authHandler: [{
           type: 'password',
           username,
