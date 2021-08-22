@@ -92,7 +92,7 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
 
   server.on('connection', mustCall((conn) => {
     let authAttempt = 0;
-    conn.on('authentication', mustCall((ctx) => {
+    conn.on('authentication', mustCallAtLeast((ctx) => {
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
@@ -101,7 +101,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                  `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
-          assert(ctx.signature, 'Missing publickey signature');
+        case 3:
+          if (authAttempt === 3)
+            assert(ctx.signature, 'Missing publickey signature');
           assert(ctx.method === 'publickey',
                  `Wrong auth method: ${ctx.method}`);
           assert(ctx.key.algo === clientKey.key.type,
@@ -110,10 +112,15 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                                  ctx.key.data,
                                  'Public key mismatch');
           break;
+        default:
+          assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
         assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
                'Could not verify publickey signature');
+        // We should not expect any further auth attempts after we verify a
+        // signature
+        authAttempt = Infinity;
       }
       ctx.accept();
     }, 2)).on('ready', mustCall(() => {
@@ -159,7 +166,7 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
 
   server.on('connection', mustCall((conn) => {
     let authAttempt = 0;
-    conn.on('authentication', mustCall((ctx) => {
+    conn.on('authentication', mustCallAtLeast((ctx) => {
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
@@ -168,7 +175,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                  `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
-          assert(ctx.signature, 'Missing publickey signature');
+        case 3:
+          if (authAttempt === 3)
+            assert(ctx.signature, 'Missing publickey signature');
           assert(ctx.method === 'publickey',
                  `Wrong auth method: ${ctx.method}`);
           assert(ctx.key.algo === clientKey.key.type,
@@ -177,10 +186,15 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                                  ctx.key.data,
                                  'Public key mismatch');
           break;
+        default:
+          assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
         assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
                'Could not verify publickey signature');
+        // We should not expect any further auth attempts after we verify a
+        // signature
+        authAttempt = Infinity;
       }
       ctx.accept();
     }, 2)).on('ready', mustCall(() => {
@@ -219,7 +233,7 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
     childProc.stdin.write('ping');
   })).on('connection', mustCall((conn) => {
     let authAttempt = 0;
-    conn.on('authentication', mustCall((ctx) => {
+    conn.on('authentication', mustCallAtLeast((ctx) => {
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
@@ -228,7 +242,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                  `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
-          assert(ctx.signature, 'Missing publickey signature');
+        case 3:
+          if (authAttempt === 3)
+            assert(ctx.signature, 'Missing publickey signature');
           assert(ctx.method === 'publickey',
                  `Wrong auth method: ${ctx.method}`);
           assert(ctx.key.algo === clientKey.key.type,
@@ -237,10 +253,15 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                                  ctx.key.data,
                                  'Public key mismatch');
           break;
+        default:
+          assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
         assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
                'Could not verify publickey signature');
+        // We should not expect any further auth attempts after we verify a
+        // signature
+        authAttempt = Infinity;
       }
       ctx.accept();
     }, 2)).on('ready', mustCall(() => {
@@ -278,7 +299,7 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
 
   server.on('connection', mustCall((conn) => {
     let authAttempt = 0;
-    conn.on('authentication', mustCall((ctx) => {
+    conn.on('authentication', mustCallAtLeast((ctx) => {
       assert(ctx.username === username,
              `Wrong username: ${ctx.username}`);
       switch (++authAttempt) {
@@ -287,7 +308,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                  `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
         case 2:
-          assert(ctx.signature, 'Missing publickey signature');
+        case 3:
+          if (authAttempt === 3)
+            assert(ctx.signature, 'Missing publickey signature');
           assert(ctx.method === 'publickey',
                  `Wrong auth method: ${ctx.method}`);
           assert(ctx.key.algo === clientKey.key.type,
@@ -296,10 +319,15 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
                                  ctx.key.data,
                                  'Public key mismatch');
           break;
+        default:
+          assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
         assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
                'Could not verify publickey signature');
+        // We should not expect any further auth attempts after we verify a
+        // signature
+        authAttempt = Infinity;
       }
       ctx.accept();
     }, 2)).on('ready', mustCall(() => {
