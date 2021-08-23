@@ -65,7 +65,7 @@ setup('read', mustCall((client, server) => {
 }));
 
 setup('read (overflow)', mustCall((client, server) => {
-  const maxChunk = 34000 - 2048;
+  const maxChunk = client._maxReadLen;
   const expected = Buffer.alloc(3 * maxChunk, 'Q');
   const handle_ = Buffer.from('node.js');
   const buf = Buffer.alloc(expected.length, 0);
@@ -106,7 +106,7 @@ setup('write', mustCall((client, server) => {
 }));
 
 setup('write (overflow)', mustCall((client, server) => {
-  const maxChunk = 34000 - 2048;
+  const maxChunk = client._maxWriteLen;
   const handle_ = Buffer.from('node.js');
   const buf = Buffer.allocUnsafe(3 * maxChunk);
   let reqs = 0;

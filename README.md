@@ -2,7 +2,7 @@
 
 SSH2 client and server modules written in pure JavaScript for [node.js](http://nodejs.org/).
 
-Development/testing is done against OpenSSH (8.0 currently).
+Development/testing is done against OpenSSH (8.7 currently).
 
 Changes (breaking or otherwise) in v1.0.0 can be found [here](https://github.com/mscdex/ssh2/issues/935).
 
