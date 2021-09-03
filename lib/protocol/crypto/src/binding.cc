@@ -1687,18 +1687,10 @@ out:
     return r;
   }
 
-  ErrorType decrypt_block(unsigned char* data,
-                          uint32_t data_len,
-                          uint32_t seqno) {
+  ErrorType decrypt_block(unsigned char* data, uint32_t data_len) {
     ErrorType r = kErrNone;
 
     int outlen;
-
-    uint8_t seqbuf[4] = {0};
-    ((uint8_t*)(seqbuf))[0] = (seqno >> 24) & 0xff;
-    ((uint8_t*)(seqbuf))[1] = (seqno >> 16) & 0xff;
-    ((uint8_t*)(seqbuf))[2] = (seqno >> 8) & 0xff;
-    ((uint8_t*)(seqbuf))[3] = seqno & 0xff;
 
     if (!is_stream_ && data_len != block_size_) {
       r = kErrBadBlockLen;
@@ -1749,7 +1741,7 @@ out:
         unsigned int outlen = hmac_len_;
         if (HMAC_Init_ex(ctx_hmac_, nullptr, 0, nullptr, nullptr) != 1
             || HMAC_Update(ctx_hmac_, seqbuf, sizeof(seqbuf)) != 1
-            || HMAC_Update(ctx_hmac_, first_block, first_block_len) != 1
+            || HMAC_Update(ctx_hmac_, first_block, 4) != 1
             || HMAC_Update(ctx_hmac_, packet, packet_len) != 1
             || HMAC_Final(ctx_hmac_, calc_mac, &outlen) != 1) {
           r = kErrOpenSSL;
@@ -1804,7 +1796,7 @@ out:
         unsigned int outlen = hmac_len_;
         if (HMAC_Init_ex(ctx_hmac_, nullptr, 0, nullptr, nullptr) != 1
             || HMAC_Update(ctx_hmac_, seqbuf, sizeof(seqbuf)) != 1
-            || HMAC_Update(ctx_hmac_, first_block, first_block_len) != 1
+            || HMAC_Update(ctx_hmac_, first_block, 4) != 1
             || HMAC_Update(ctx_hmac_, packet, packet_len) != 1
             || HMAC_Final(ctx_hmac_, calc_mac, &outlen) != 1) {
           r = kErrOpenSSL;
@@ -1908,13 +1900,9 @@ out:
     if (!Buffer::HasInstance(info[0]))
       return Nan::ThrowTypeError("Missing/Invalid block");
 
-    if (!info[1]->IsUint32())
-      return Nan::ThrowTypeError("Missing/Invalid sequence number");
-
     ErrorType r = obj->decrypt_block(
       reinterpret_cast<unsigned char*>(Buffer::Data(info[0])),
-      Buffer::Length(info[0]),
-      Nan::To<uint32_t>(info[1]).FromJust()
+      Buffer::Length(info[0])
     );
     switch (r) {
       case kErrNone:
@@ -1969,6 +1957,8 @@ out:
         return Nan::ThrowError("Failed to completely decrypt packet");
       case kErrBadHMACLen:
         return Nan::ThrowError("Unexpected HMAC length");
+      case kErrInvalidMAC:
+        return Nan::ThrowError("Invalid MAC");
       case kErrOpenSSL: {
         char msg_buf[128] = {0};
         ERR_error_string_n(ERR_get_error(), msg_buf, sizeof(msg_buf));
