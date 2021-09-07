@@ -339,6 +339,10 @@ SFTP methods
 
 * **ext_openssh_fsync**(< _Buffer_ >handle, < _function_ >callback) - _(void)_ - **OpenSSH extension** Performs POSIX fsync(3) on the open handle `handle`. `callback` has 1 parameter: < _Error_ >err.
 
+* **ext_openssh_lsetstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - **OpenSSH extension** Similar to `setstat()`, but instead sets attributes on symlinks. `callback` has 1 parameter: < _Error_ >err.
+
+* **ext_openssh_expandPath**(< _string_ >path, < _function_ >callback) - _(void)_ - **OpenSSH extension** Similar to `realpath()`, but supports tilde-expansion, i.e. "~", "~/..." and "~user/...". These paths are expanded using shell-like rules. `callback` has 2 parameters: < _Error_ >err, < _string_ >absPath.
+
 
 **Server-only methods**
 
