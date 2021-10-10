@@ -1424,3 +1424,25 @@ const setup = setupSimple.bind(undefined, debug);
   }));
   server.injectSocket(socket);
 }
+
+{
+  const { client, server } = setup(
+    'Server should not error when cleaning up client bare session channels'
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('session', mustCall((accept, reject) => {
+      accept().on('exec', mustCall((accept, reject, info) => {
+        assert(info.command === 'uptime',
+               `Wrong exec command: ${info.command}`);
+        client.end();
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.exec('uptime', mustCall((err) => {
+      assert(err instanceof Error);
+    }));
+  }));
+}
