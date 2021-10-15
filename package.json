@@ -13,11 +13,21 @@
   },
   "devDependencies": {
     "@mscdex/eslint-config": "^1.0.0",
-    "eslint": "^7.0.0"
+    "cpu-features": "0.0.2",
+    "eslint": "^7.0.0",
+    "nan": "^2.15.0"
   },
-  "optionalDependencies": {
+  "peerDependencies": {
     "cpu-features": "0.0.2",
     "nan": "^2.15.0"
+  },
+  "peerDependenciesMeta": {
+    "cpu-features": {
+      "optional": true
+    },
+    "nan": {
+      "optional": true
+    }
   },
   "scripts": {
     "install": "node install.js",
