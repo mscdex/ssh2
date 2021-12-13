@@ -1,16 +1,53 @@
-{ "name": "fastx-ssh2",
-  "version": "0.8.9",
+
+{
+  "name": "ssh2",
+  "version": "1.5.0",
+
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
-  "main": "./lib/client",
-  "engines": { "node": ">=5.2.0" },
+  "main": "./lib/index.js",
+  "engines": {
+    "node": ">=10.16.0"
+  },
   "dependencies": {
-    "ssh2-streams": "~0.4.10"
+    "asn1": "^0.2.4",
+    "bcrypt-pbkdf": "^1.0.2"
+  },
+  "devDependencies": {
+    "@mscdex/eslint-config": "^1.0.0",
+    "eslint": "^7.0.0"
+  },
+  "optionalDependencies": {
+    "cpu-features": "0.0.2",
+    "nan": "^2.15.0"
   },
   "scripts": {
-    "test": "node test/test.js"
+    "install": "node install.js",
+    "rebuild": "node install.js",
+    "test": "node test/test.js",
+    "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js examples lib test",
+    "lint:fix": "npm run lint -- --fix"
   },
-  "keywords": [ "ssh", "ssh2", "sftp", "secure", "shell", "exec", "remote", "client" ],
-  "licenses": [ { "type": "MIT", "url": "http://github.com/cintolas/ssh2/raw/master/LICENSE" } ],
-  "repository" : { "type": "git", "url": "http://github.com/cintolas/ssh2.git" }
+
+  "keywords": [
+    "ssh",
+    "ssh2",
+    "sftp",
+    "secure",
+    "shell",
+    "exec",
+    "remote",
+    "client"
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/mscdex/ssh2.git"
+  }
+
 }

@@ -1,22 +1,20 @@
-var spawn = require('child_process').spawn,
-    join = require('path').join;
+'use strict';
 
-var files = require('fs').readdirSync(__dirname).filter(function(f) {
-      return (f.substr(0, 5) === 'test-');
-    }).map(function(f) {
-      return join(__dirname, f);
-    }),
-    f = -1;
+const { spawnSync } = require('child_process');
+const { readdirSync } = require('fs');
+const { join } = require('path');
 
-function next() {
-  if (++f < files.length) {
-    spawn(process.argv[0], [ files[f] ], { stdio: 'inherit' })
-      .on('exit', function(code) {
-        if (code === 0)
-          process.nextTick(next);
-        else
-          process.exit(code);
-      });
+const files = readdirSync(__dirname).sort();
+for (const filename of files) {
+  if (filename.startsWith('test-')) {
+    const path = join(__dirname, filename);
+    console.log(`> Running ${filename} ...`);
+    const result = spawnSync(`${process.argv0} ${path}`, {
+      shell: true,
+      stdio: 'inherit',
+      windowsHide: true
+    });
+    if (result.status !== 0)
+      process.exitCode = 1;
   }
 }
-next();
