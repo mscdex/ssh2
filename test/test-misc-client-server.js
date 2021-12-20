@@ -1224,6 +1224,8 @@ const setup = setupSimple.bind(undefined, debug);
       'aes256-ctr',
       'aes128-gcm@openssh.com',
       'aes256-gcm@openssh.com',
+      'aes128-gcm',
+      'aes256-gcm',
     ],
   },
   { desc: 'remove/append/prepend (strings)',
