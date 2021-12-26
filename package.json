@@ -12,11 +12,11 @@
     "bcrypt-pbkdf": "^1.0.2"
   },
   "devDependencies": {
-    "@mscdex/eslint-config": "^1.0.0",
-    "eslint": "^7.0.0"
+    "@mscdex/eslint-config": "^1.1.0",
+    "eslint": "^7.32.0"
   },
   "optionalDependencies": {
-    "cpu-features": "0.0.2",
+    "cpu-features": "mscdex/cpu-features#binarytest",
     "nan": "^2.15.0"
   },
   "scripts": {
