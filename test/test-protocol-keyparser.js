@@ -98,11 +98,12 @@ readdirSync(BASE_PATH).forEach((name) => {
 
     // Make sure parsing encrypted keys with an incorrect passphrase results in
     // an appropriate error
-    const errIncPass = parseKey(key, "incorrectPassphrase");
-    if (!(errIncPass instanceof Error))
+    const errIncPass = parseKey(key, 'incorrectPassphrase');
+    if (!(errIncPass instanceof Error)) {
       failMsg(name,
               'Expected error during parse with an incorrect passphrase',
               true);
+    }
     if (!/bad passphrase\?|unable to authenticate data/i
         .test(errIncPass.message)) {
       failMsg(name,
