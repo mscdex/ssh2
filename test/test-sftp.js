@@ -46,6 +46,11 @@ setup('close', mustCall((client, server) => {
   }));
 }));
 
+setup('eof', mustCall((client, server) => {
+  client.on('close', mustCall(() => {}));
+  client._protocol.channelEOF(client.outgoing.id);
+}));
+
 setup('read', mustCall((client, server) => {
   const expected = Buffer.from('node.jsnode.jsnode.jsnode.jsnode.jsnode.js');
   const handle_ = Buffer.from('node.js');
