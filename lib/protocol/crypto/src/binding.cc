@@ -1,4 +1,3 @@
-// TODO: switch from obsolete EVP_* APIs in CCP
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -6,6 +5,10 @@
 #include <node.h>
 #include <node_buffer.h>
 #include <nan.h>
+
+#if NODE_MAJOR_VERSION >= 17
+#  include <openssl/configuration.h>
+#endif
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -62,8 +65,14 @@ class ChaChaPolyCipher : public ObjectWrap {
   explicit ChaChaPolyCipher()
     : ctx_main_(nullptr),
       ctx_pktlen_(nullptr),
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      mac_(nullptr),
+      mac_ctx_(nullptr) {}
+#else
       md_ctx_(nullptr),
-      polykey_(nullptr) {}
+      polykey_(nullptr),
+      polykey_ctx_(nullptr) {}
+#endif
 
   ~ChaChaPolyCipher() {
     clear();
@@ -80,6 +89,16 @@ class ChaChaPolyCipher : public ObjectWrap {
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (mac_ctx_) {
+      EVP_MAC_CTX_free(mac_ctx_);
+      mac_ctx_ = nullptr;
+    }
+    if (mac_) {
+      EVP_MAC_free(mac_);
+      mac_ = nullptr;
+    }
+#else
     if (polykey_) {
       EVP_PKEY_free(polykey_);
       polykey_ = nullptr;
@@ -90,6 +109,7 @@ class ChaChaPolyCipher : public ObjectWrap {
     }
     // `polykey_ctx_` is not explicitly freed as it is freed implicitly when
     // `md_ctx_` is freed
+#endif
   }
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
@@ -108,7 +128,14 @@ class ChaChaPolyCipher : public ObjectWrap {
 
     if ((ctx_pktlen_ = EVP_CIPHER_CTX_new()) == nullptr
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        || (mac_ = EVP_MAC_fetch(nullptr,
+                                 "POLY1305",
+                                 "provider=default")) == nullptr
+        || (mac_ctx_ = EVP_MAC_CTX_new(mac_)) == nullptr
+#else
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
+#endif
         || EVP_EncryptInit_ex(ctx_pktlen_,
                               cipher,
                               nullptr,
@@ -206,6 +233,14 @@ out:
     }
 
     // Poly1305 over ciphertext
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (EVP_MAC_init(mac_ctx_, polykey, sizeof(polykey), nullptr) != 1
+        || EVP_MAC_update(mac_ctx_, packet, data_len) != 1
+        || EVP_MAC_final(mac_ctx_, packet + data_len, &sig_len, sig_len) != 1) {
+      r = kErrOpenSSL;
+      goto out;
+    }
+#else
     if (polykey_) {
       if (EVP_PKEY_CTX_ctrl(polykey_ctx_,
                             -1,
@@ -245,9 +280,10 @@ out:
       r = kErrOpenSSL;
       goto out;
     }
+#endif
 
-  out:
-    return r;
+    out:
+      return r;
   }
 
   static NAN_METHOD(New) {
@@ -328,9 +364,14 @@ out:
 
   EVP_CIPHER_CTX* ctx_main_;
   EVP_CIPHER_CTX* ctx_pktlen_;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  EVP_MAC* mac_;
+  EVP_MAC_CTX* mac_ctx_;
+#else
   EVP_MD_CTX* md_ctx_;
   EVP_PKEY* polykey_;
   EVP_PKEY_CTX* polykey_ctx_;
+#endif
 };
 
 class AESGCMCipher : public ObjectWrap {
@@ -930,8 +971,14 @@ class ChaChaPolyDecipher : public ObjectWrap {
   explicit ChaChaPolyDecipher()
     : ctx_main_(nullptr),
       ctx_pktlen_(nullptr),
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      mac_(nullptr),
+      mac_ctx_(nullptr) {}
+#else
       md_ctx_(nullptr),
-      polykey_(nullptr) {}
+      polykey_(nullptr),
+      polykey_ctx_(nullptr) {}
+#endif
 
   ~ChaChaPolyDecipher() {
     clear();
@@ -948,6 +995,16 @@ class ChaChaPolyDecipher : public ObjectWrap {
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (mac_ctx_) {
+      EVP_MAC_CTX_free(mac_ctx_);
+      mac_ctx_ = nullptr;
+    }
+    if (mac_) {
+      EVP_MAC_free(mac_);
+      mac_ = nullptr;
+    }
+#else
     if (polykey_) {
       EVP_PKEY_free(polykey_);
       polykey_ = nullptr;
@@ -958,6 +1015,7 @@ class ChaChaPolyDecipher : public ObjectWrap {
     }
     // `polykey_ctx_` is not explicitly freed as it is freed implicitly when
     // `md_ctx_` is freed
+#endif
   }
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
@@ -976,7 +1034,14 @@ class ChaChaPolyDecipher : public ObjectWrap {
 
     if ((ctx_pktlen_ = EVP_CIPHER_CTX_new()) == nullptr
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        || (mac_ = EVP_MAC_fetch(nullptr,
+                                 "POLY1305",
+                                 "provider=default")) == nullptr
+        || (mac_ctx_ = EVP_MAC_CTX_new(mac_)) == nullptr
+#else
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
+#endif
         || EVP_DecryptInit_ex(ctx_pktlen_,
                               cipher,
                               nullptr,
@@ -1083,6 +1148,15 @@ out:
     }
 
     // Poly1305 over ciphertext
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (EVP_MAC_init(mac_ctx_, polykey, sizeof(polykey), nullptr) != 1
+        || EVP_MAC_update(mac_ctx_, length_bytes, sizeof(length_bytes)) != 1
+        || EVP_MAC_update(mac_ctx_, packet, packet_len) != 1
+        || EVP_MAC_final(mac_ctx_, calc_mac, &sig_len, sig_len) != 1) {
+      r = kErrOpenSSL;
+      goto out;
+    }
+#else
     if (polykey_) {
       if (EVP_PKEY_CTX_ctrl(polykey_ctx_,
                             -1,
@@ -1128,6 +1202,7 @@ out:
       r = kErrOpenSSL;
       goto out;
     }
+#endif
 
     // Compare MACs
     if (CRYPTO_memcmp(mac, calc_mac, sizeof(calc_mac))) {
@@ -1289,9 +1364,14 @@ out:
   unsigned char length_bytes[4];
   EVP_CIPHER_CTX* ctx_main_;
   EVP_CIPHER_CTX* ctx_pktlen_;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  EVP_MAC* mac_;
+  EVP_MAC_CTX* mac_ctx_;
+#else
   EVP_MD_CTX* md_ctx_;
   EVP_PKEY* polykey_;
   EVP_PKEY_CTX* polykey_ctx_;
+#endif
 };
 
 class AESGCMDecipher : public ObjectWrap {
