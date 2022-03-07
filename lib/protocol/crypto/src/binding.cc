@@ -80,12 +80,10 @@ class ChaChaPolyCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_pktlen_) {
-      EVP_CIPHER_CTX_cleanup(ctx_pktlen_);
       EVP_CIPHER_CTX_free(ctx_pktlen_);
       ctx_pktlen_ = nullptr;
     }
     if (ctx_main_) {
-      EVP_CIPHER_CTX_cleanup(ctx_main_);
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
@@ -400,7 +398,6 @@ class AESGCMCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -647,7 +644,6 @@ class GenericCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -986,12 +982,10 @@ class ChaChaPolyDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_pktlen_) {
-      EVP_CIPHER_CTX_cleanup(ctx_pktlen_);
       EVP_CIPHER_CTX_free(ctx_pktlen_);
       ctx_pktlen_ = nullptr;
     }
     if (ctx_main_) {
-      EVP_CIPHER_CTX_cleanup(ctx_main_);
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
@@ -1400,7 +1394,6 @@ class AESGCMDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -1658,7 +1651,6 @@ class GenericDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
