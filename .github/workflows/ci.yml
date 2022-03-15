@@ -5,25 +5,30 @@ on:
   push:
     branches: [ master ]
 
+env:
+  CI_CHECK_FAIL: ssh2
+
 jobs:
   tests-linux:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [10.16.0, 10.x, 12.x, 14.x, 16.x]
+        node-version: [10.16.0, 10.x, 12.x, 14.x, 16.x, 17.x]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Check Node.js version
+        run: node -pe process.versions
       - name: Install module
         run: npm install
       - name: Run tests
         run: npm test
-  tests-windows:
-    runs-on: windows-latest
+  tests-macos:
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
@@ -34,6 +39,38 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-macos-homebrew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js (latest)
+        run: brew install node
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-windows:
+    runs-on: windows-2019
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16.x]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Check Node.js version
+        run: node -pe process.versions
       - name: Install module
         run: npm install
       - name: Run tests
