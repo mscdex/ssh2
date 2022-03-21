@@ -119,8 +119,30 @@ const {
               forceNative: (pair[1] === 'native'),
             },
           };
-          cipher = createCipher(config);
-          decipher = createDecipher(config);
+          try {
+            cipher = createCipher(config);
+          } catch (ex) {
+            if (ex.code === 'ERR_OSSL_EVP_UNSUPPORTED'
+                || /unsupported/i.test(ex.message)) {
+              console.log(
+                '  ... skipping because cipher is unsupported by OpenSSL'
+              );
+              continue;
+            }
+            throw ex;
+          }
+          try {
+            decipher = createDecipher(config);
+          } catch (ex) {
+            if (ex.code === 'ERR_OSSL_EVP_UNSUPPORTED'
+                || /unsupported/i.test(ex.message)) {
+              console.log(
+                '  ... skipping because cipher is unsupported by OpenSSL'
+              );
+              continue;
+            }
+            throw ex;
+          }
 
           if (pair[0] === 'binding')
             assert(/binding/i.test(cipher.constructor.name));

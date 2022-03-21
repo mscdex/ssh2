@@ -1,4 +1,3 @@
-// TODO: switch from obsolete EVP_* APIs in CCP
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -7,9 +6,33 @@
 #include <node_buffer.h>
 #include <nan.h>
 
+#if NODE_MAJOR_VERSION >= 17
+#  include <openssl/configuration.h>
+#endif
+
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+
+#ifndef _WIN32
+#  include <dlfcn.h>
+#endif
+
+typedef int (*ctx_iv_len_func)(const EVP_CIPHER_CTX*);
+typedef int (*ctx_key_len_func)(const EVP_CIPHER_CTX*);
+typedef int (*ctx_get_block_size_func)(const EVP_CIPHER_CTX*);
+typedef int (*cipher_flags_func)(const EVP_CIPHER*);
+ctx_iv_len_func ctx_iv_len = nullptr;
+ctx_key_len_func ctx_key_len = nullptr;
+ctx_get_block_size_func ctx_get_block_size = nullptr;
+cipher_flags_func cipher_flags = nullptr;
+
+#if REAL_OPENSSL_MAJOR < 3
+#  undef EVP_DigestSignUpdate
+#  define EVP_DigestSignUpdate EVP_DigestUpdate
+#  undef EVP_PKEY_OP_SIGNCTX
+#  define EVP_PKEY_OP_SIGNCTX (1 << 6)
+#endif
 
 using namespace node;
 using namespace v8;
@@ -62,8 +85,14 @@ class ChaChaPolyCipher : public ObjectWrap {
   explicit ChaChaPolyCipher()
     : ctx_main_(nullptr),
       ctx_pktlen_(nullptr),
+#if REAL_OPENSSL_MAJOR >= 3
+      mac_(nullptr),
+      mac_ctx_(nullptr) {}
+#else
       md_ctx_(nullptr),
-      polykey_(nullptr) {}
+      polykey_(nullptr),
+      polykey_ctx_(nullptr) {}
+#endif
 
   ~ChaChaPolyCipher() {
     clear();
@@ -71,15 +100,23 @@ class ChaChaPolyCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_pktlen_) {
-      EVP_CIPHER_CTX_cleanup(ctx_pktlen_);
       EVP_CIPHER_CTX_free(ctx_pktlen_);
       ctx_pktlen_ = nullptr;
     }
     if (ctx_main_) {
-      EVP_CIPHER_CTX_cleanup(ctx_main_);
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
+#if REAL_OPENSSL_MAJOR >= 3
+    if (mac_ctx_) {
+      EVP_MAC_CTX_free(mac_ctx_);
+      mac_ctx_ = nullptr;
+    }
+    if (mac_) {
+      EVP_MAC_free(mac_);
+      mac_ = nullptr;
+    }
+#else
     if (polykey_) {
       EVP_PKEY_free(polykey_);
       polykey_ = nullptr;
@@ -90,6 +127,7 @@ class ChaChaPolyCipher : public ObjectWrap {
     }
     // `polykey_ctx_` is not explicitly freed as it is freed implicitly when
     // `md_ctx_` is freed
+#endif
   }
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
@@ -108,7 +146,14 @@ class ChaChaPolyCipher : public ObjectWrap {
 
     if ((ctx_pktlen_ = EVP_CIPHER_CTX_new()) == nullptr
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
+#if REAL_OPENSSL_MAJOR >= 3
+        || (mac_ = EVP_MAC_fetch(nullptr,
+                                 "POLY1305",
+                                 "provider=default")) == nullptr
+        || (mac_ctx_ = EVP_MAC_CTX_new(mac_)) == nullptr
+#else
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
+#endif
         || EVP_EncryptInit_ex(ctx_pktlen_,
                               cipher,
                               nullptr,
@@ -122,7 +167,7 @@ class ChaChaPolyCipher : public ObjectWrap {
       r = kErrOpenSSL;
       goto out;
     }
-    if (EVP_CIPHER_CTX_iv_length(ctx_pktlen_) != 16) {
+    if (ctx_iv_len(ctx_pktlen_) != 16) {
       r = kErrBadIVLen;
       goto out;
     }
@@ -206,6 +251,14 @@ out:
     }
 
     // Poly1305 over ciphertext
+#if REAL_OPENSSL_MAJOR >= 3
+    if (EVP_MAC_init(mac_ctx_, polykey, sizeof(polykey), nullptr) != 1
+        || EVP_MAC_update(mac_ctx_, packet, data_len) != 1
+        || EVP_MAC_final(mac_ctx_, packet + data_len, &sig_len, sig_len) != 1) {
+      r = kErrOpenSSL;
+      goto out;
+    }
+#else
     if (polykey_) {
       if (EVP_PKEY_CTX_ctrl(polykey_ctx_,
                             -1,
@@ -245,9 +298,10 @@ out:
       r = kErrOpenSSL;
       goto out;
     }
+#endif
 
-  out:
-    return r;
+    out:
+      return r;
   }
 
   static NAN_METHOD(New) {
@@ -328,9 +382,14 @@ out:
 
   EVP_CIPHER_CTX* ctx_main_;
   EVP_CIPHER_CTX* ctx_pktlen_;
+#if REAL_OPENSSL_MAJOR >= 3
+  EVP_MAC* mac_;
+  EVP_MAC_CTX* mac_ctx_;
+#else
   EVP_MD_CTX* md_ctx_;
   EVP_PKEY* polykey_;
   EVP_PKEY_CTX* polykey_ctx_;
+#endif
 };
 
 class AESGCMCipher : public ObjectWrap {
@@ -359,7 +418,6 @@ class AESGCMCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -394,12 +452,12 @@ class AESGCMCipher : public ObjectWrap {
       goto out;
     }
 
-    //~ if (iv_len != static_cast<size_t>(EVP_CIPHER_CTX_iv_length(ctx_))) {
+    //~ if (iv_len != static_cast<size_t>(ctx_iv_len(ctx_))) {
       //~ r = kErrBadIVLen;
       //~ goto out;
     //~ }
 
-    if (key_len != static_cast<size_t>(EVP_CIPHER_CTX_key_length(ctx_))) {
+    if (key_len != static_cast<size_t>(ctx_key_len(ctx_))) {
       if (!EVP_CIPHER_CTX_set_key_length(ctx_, key_len)) {
         r = kErrBadKeyLen;
         goto out;
@@ -606,7 +664,6 @@ class GenericCipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -640,12 +697,12 @@ class GenericCipher : public ObjectWrap {
       goto out;
     }
 
-    if (iv_len != static_cast<size_t>(EVP_CIPHER_CTX_iv_length(ctx_))) {
+    if (iv_len != static_cast<size_t>(ctx_iv_len(ctx_))) {
       r = kErrBadIVLen;
       goto out;
     }
 
-    if (key_len != static_cast<size_t>(EVP_CIPHER_CTX_key_length(ctx_))) {
+    if (key_len != static_cast<size_t>(ctx_key_len(ctx_))) {
       if (!EVP_CIPHER_CTX_set_key_length(ctx_, key_len)) {
         r = kErrBadKeyLen;
         goto out;
@@ -930,8 +987,14 @@ class ChaChaPolyDecipher : public ObjectWrap {
   explicit ChaChaPolyDecipher()
     : ctx_main_(nullptr),
       ctx_pktlen_(nullptr),
+#if REAL_OPENSSL_MAJOR >= 3
+      mac_(nullptr),
+      mac_ctx_(nullptr) {}
+#else
       md_ctx_(nullptr),
-      polykey_(nullptr) {}
+      polykey_(nullptr),
+      polykey_ctx_(nullptr) {}
+#endif
 
   ~ChaChaPolyDecipher() {
     clear();
@@ -939,15 +1002,23 @@ class ChaChaPolyDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_pktlen_) {
-      EVP_CIPHER_CTX_cleanup(ctx_pktlen_);
       EVP_CIPHER_CTX_free(ctx_pktlen_);
       ctx_pktlen_ = nullptr;
     }
     if (ctx_main_) {
-      EVP_CIPHER_CTX_cleanup(ctx_main_);
       EVP_CIPHER_CTX_free(ctx_main_);
       ctx_main_ = nullptr;
     }
+#if REAL_OPENSSL_MAJOR >= 3
+    if (mac_ctx_) {
+      EVP_MAC_CTX_free(mac_ctx_);
+      mac_ctx_ = nullptr;
+    }
+    if (mac_) {
+      EVP_MAC_free(mac_);
+      mac_ = nullptr;
+    }
+#else
     if (polykey_) {
       EVP_PKEY_free(polykey_);
       polykey_ = nullptr;
@@ -958,6 +1029,7 @@ class ChaChaPolyDecipher : public ObjectWrap {
     }
     // `polykey_ctx_` is not explicitly freed as it is freed implicitly when
     // `md_ctx_` is freed
+#endif
   }
 
   ErrorType init(unsigned char* keys, size_t keys_len) {
@@ -976,7 +1048,14 @@ class ChaChaPolyDecipher : public ObjectWrap {
 
     if ((ctx_pktlen_ = EVP_CIPHER_CTX_new()) == nullptr
         || (ctx_main_ = EVP_CIPHER_CTX_new()) == nullptr
+#if REAL_OPENSSL_MAJOR >= 3
+        || (mac_ = EVP_MAC_fetch(nullptr,
+                                 "POLY1305",
+                                 "provider=default")) == nullptr
+        || (mac_ctx_ = EVP_MAC_CTX_new(mac_)) == nullptr
+#else
         || (md_ctx_ = EVP_MD_CTX_new()) == nullptr
+#endif
         || EVP_DecryptInit_ex(ctx_pktlen_,
                               cipher,
                               nullptr,
@@ -990,7 +1069,7 @@ class ChaChaPolyDecipher : public ObjectWrap {
       r = kErrOpenSSL;
       goto out;
     }
-    if (EVP_CIPHER_CTX_iv_length(ctx_pktlen_) != 16) {
+    if (ctx_iv_len(ctx_pktlen_) != 16) {
       r = kErrBadIVLen;
       goto out;
     }
@@ -1083,6 +1162,15 @@ out:
     }
 
     // Poly1305 over ciphertext
+#if REAL_OPENSSL_MAJOR >= 3
+    if (EVP_MAC_init(mac_ctx_, polykey, sizeof(polykey), nullptr) != 1
+        || EVP_MAC_update(mac_ctx_, length_bytes, sizeof(length_bytes)) != 1
+        || EVP_MAC_update(mac_ctx_, packet, packet_len) != 1
+        || EVP_MAC_final(mac_ctx_, calc_mac, &sig_len, sig_len) != 1) {
+      r = kErrOpenSSL;
+      goto out;
+    }
+#else
     if (polykey_) {
       if (EVP_PKEY_CTX_ctrl(polykey_ctx_,
                             -1,
@@ -1128,6 +1216,7 @@ out:
       r = kErrOpenSSL;
       goto out;
     }
+#endif
 
     // Compare MACs
     if (CRYPTO_memcmp(mac, calc_mac, sizeof(calc_mac))) {
@@ -1289,9 +1378,14 @@ out:
   unsigned char length_bytes[4];
   EVP_CIPHER_CTX* ctx_main_;
   EVP_CIPHER_CTX* ctx_pktlen_;
+#if REAL_OPENSSL_MAJOR >= 3
+  EVP_MAC* mac_;
+  EVP_MAC_CTX* mac_ctx_;
+#else
   EVP_MD_CTX* md_ctx_;
   EVP_PKEY* polykey_;
   EVP_PKEY_CTX* polykey_ctx_;
+#endif
 };
 
 class AESGCMDecipher : public ObjectWrap {
@@ -1320,7 +1414,6 @@ class AESGCMDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -1355,12 +1448,12 @@ class AESGCMDecipher : public ObjectWrap {
       goto out;
     }
 
-    //~ if (iv_len != static_cast<size_t>(EVP_CIPHER_CTX_iv_length(ctx_))) {
+    //~ if (iv_len != static_cast<size_t>(ctx_iv_len(ctx_))) {
       //~ r = kErrBadIVLen;
       //~ goto out;
     //~ }
 
-    if (key_len != static_cast<size_t>(EVP_CIPHER_CTX_key_length(ctx_))) {
+    if (key_len != static_cast<size_t>(ctx_key_len(ctx_))) {
       if (!EVP_CIPHER_CTX_set_key_length(ctx_, key_len)) {
         r = kErrBadKeyLen;
         goto out;
@@ -1578,7 +1671,6 @@ class GenericDecipher : public ObjectWrap {
 
   void clear() {
     if (ctx_) {
-      EVP_CIPHER_CTX_cleanup(ctx_);
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
     }
@@ -1613,12 +1705,12 @@ class GenericDecipher : public ObjectWrap {
       goto out;
     }
 
-    if (iv_len != static_cast<size_t>(EVP_CIPHER_CTX_iv_length(ctx_))) {
+    if (iv_len != static_cast<size_t>(ctx_iv_len(ctx_))) {
       r = kErrBadIVLen;
       goto out;
     }
 
-    if (key_len != static_cast<size_t>(EVP_CIPHER_CTX_key_length(ctx_))) {
+    if (key_len != static_cast<size_t>(ctx_key_len(ctx_))) {
       if (!EVP_CIPHER_CTX_set_key_length(ctx_, key_len)) {
         r = kErrBadKeyLen;
         goto out;
@@ -1673,7 +1765,11 @@ class GenericDecipher : public ObjectWrap {
     hmac_len_ = HMAC_size(ctx_hmac_);
     hmac_actual_len_ = hmac_actual_len;
     is_etm_ = is_etm;
+#if REAL_OPENSSL_MAJOR >= 3
     switch (EVP_CIPHER_CTX_mode(ctx_)) {
+#else
+    switch (cipher_flags(EVP_CIPHER_CTX_cipher(ctx_)) & EVP_CIPH_MODE) {
+#endif
       case EVP_CIPH_STREAM_CIPHER:
       case EVP_CIPH_CTR_MODE:
         is_stream_ = 1;
@@ -1681,7 +1777,7 @@ class GenericDecipher : public ObjectWrap {
       default:
         is_stream_ = 0;
     }
-    block_size_ = EVP_CIPHER_CTX_block_size(ctx_);
+    block_size_ = ctx_get_block_size(ctx_);
 
 out:
     return r;
@@ -1991,6 +2087,55 @@ out:
 
 
 NAN_MODULE_INIT(init) {
+  // These are needed because node-gyp (as of this writing) does not use the
+  // proper (OpenSSL) system headers when node was built against a shared
+  // version of OpenSSL. Usually this isn't an issue because OSes that build
+  // node in this way typically use the same version of OpenSSL as was bundled
+  // with node for a particular node version for the best compatibility. However
+  // with the inclusion of OpenSSL 3.x in node v17.x, some OSes are still
+  // linking with a shared OpenSSL 1.x, which can cause both compilation and
+  // runtime errors because of changes in OpenSSL's code.
+  //
+  // For that reason, we need to make sure we need to resolve some specific
+  // symbols at runtime to workaround these buggy situations.
+#ifdef _WIN32
+#  define load_sym(name) GetProcAddress(GetModuleHandle(NULL), name)
+#else
+#  define load_sym(name) dlsym(RTLD_DEFAULT, name)
+#endif
+  ctx_iv_len = reinterpret_cast<ctx_iv_len_func>(
+    load_sym("EVP_CIPHER_CTX_get_iv_length")
+  );
+  if (!ctx_iv_len) {
+    ctx_iv_len = reinterpret_cast<ctx_iv_len_func>(
+      load_sym("EVP_CIPHER_CTX_iv_length")
+    );
+  }
+  ctx_key_len = reinterpret_cast<ctx_key_len_func>(
+    load_sym("EVP_CIPHER_CTX_get_key_length")
+  );
+  if (!ctx_key_len) {
+    ctx_key_len = reinterpret_cast<ctx_key_len_func>(
+      load_sym("EVP_CIPHER_CTX_key_length")
+    );
+  }
+  cipher_flags = reinterpret_cast<cipher_flags_func>(
+    load_sym("EVP_CIPHER_get_flags")
+  );
+  if (!cipher_flags) {
+    cipher_flags = reinterpret_cast<cipher_flags_func>(
+      load_sym("EVP_CIPHER_flags")
+    );
+  }
+  ctx_get_block_size = reinterpret_cast<ctx_get_block_size_func>(
+    load_sym("EVP_CIPHER_CTX_get_block_size")
+  );
+  if (!ctx_get_block_size) {
+    ctx_get_block_size = reinterpret_cast<ctx_get_block_size_func>(
+      load_sym("EVP_CIPHER_CTX_block_size")
+    );
+  }
+
   ChaChaPolyCipher::Init(target);
   AESGCMCipher::Init(target);
   GenericCipher::Init(target);

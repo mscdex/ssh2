@@ -85,14 +85,30 @@ readdirSync(BASE_PATH).forEach((name) => {
   }
 
   if (isEncrypted && !isPublic) {
-    // Make sure parsing encrypted keys without a passhprase or incorrect
-    // passphrase results in an appropriate error
+    // Make sure parsing encrypted keys without a passphrase results in an
+    // appropriate error
     const err = parseKey(key);
     if (!(err instanceof Error))
       failMsg(name, 'Expected error during parse without passphrase', true);
     if (!/no passphrase/i.test(err.message)) {
       failMsg(name,
               `Error during parse without passphrase: ${err.message}`,
+              true);
+    }
+
+    // Make sure parsing encrypted keys with an incorrect passphrase results in
+    // an appropriate error
+    const errIncPass = parseKey(key, 'incorrectPassphrase');
+    if (!(errIncPass instanceof Error)) {
+      failMsg(name,
+              'Expected error during parse with an incorrect passphrase',
+              true);
+    }
+    if (!/bad passphrase\?|unable to authenticate data/i
+        .test(errIncPass.message)) {
+      failMsg(name,
+              'Error during parse with an incorrect passphrase: '
+                + errIncPass.message,
               true);
     }
   }
