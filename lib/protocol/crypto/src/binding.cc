@@ -1,10 +1,20 @@
+#if defined(__GNUC__) && __GNUC__ >= 8
+#define DISABLE_WCAST_FUNCTION_TYPE _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wcast-function-type\"")
+#define DISABLE_WCAST_FUNCTION_TYPE_END _Pragma("GCC diagnostic pop")
+#else
+#define DISABLE_WCAST_FUNCTION_TYPE
+#define DISABLE_WCAST_FUNCTION_TYPE_END
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
 #include <node.h>
 #include <node_buffer.h>
+DISABLE_WCAST_FUNCTION_TYPE
 #include <nan.h>
+DISABLE_WCAST_FUNCTION_TYPE_END
 
 #if NODE_MAJOR_VERSION >= 17
 #  include <openssl/configuration.h>
@@ -2145,4 +2155,6 @@ NAN_MODULE_INIT(init) {
   GenericDecipher::Init(target);
 }
 
+DISABLE_WCAST_FUNCTION_TYPE
 NODE_MODULE(sshcrypto, init)
+DISABLE_WCAST_FUNCTION_TYPE_END
