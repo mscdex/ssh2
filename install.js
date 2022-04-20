@@ -6,6 +6,7 @@ const forceFailOnNonZero = (process.env.CI_CHECK_FAIL === 'ssh2');
 
 // Attempt to build the bundled optional binding
 const args = [
+  '--loglevel=silly',
   `--target=${process.version}`,
   `--real_openssl_major=${/^\d+/.exec(process.versions.openssl)[0]}`,
   'rebuild',
