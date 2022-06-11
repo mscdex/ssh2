@@ -12,7 +12,7 @@
     "bcrypt-pbkdf": "^1.0.2"
   },
   "devDependencies": {
-    "@mscdex/eslint-config": "^1.0.0",
+    "@mscdex/eslint-config": "^1.1.0",
     "eslint": "^7.0.0"
   },
   "optionalDependencies": {
