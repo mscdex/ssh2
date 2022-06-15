@@ -10,9 +10,9 @@
 #include <string.h>
 #include <assert.h>
 
+DISABLE_WCAST_FUNCTION_TYPE
 #include <node.h>
 #include <node_buffer.h>
-DISABLE_WCAST_FUNCTION_TYPE
 #include <nan.h>
 DISABLE_WCAST_FUNCTION_TYPE_END
 
