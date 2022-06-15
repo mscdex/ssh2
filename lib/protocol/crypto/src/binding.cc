@@ -2221,37 +2221,45 @@ NAN_MODULE_INIT(init) {
 #else
 #  define load_sym(name) dlsym(RTLD_DEFAULT, name)
 #endif
-  ctx_iv_len = reinterpret_cast<ctx_iv_len_func>(
-    load_sym("EVP_CIPHER_CTX_get_iv_length")
-  );
   if (!ctx_iv_len) {
     ctx_iv_len = reinterpret_cast<ctx_iv_len_func>(
-      load_sym("EVP_CIPHER_CTX_iv_length")
+      load_sym("EVP_CIPHER_CTX_get_iv_length")
     );
+    if (!ctx_iv_len) {
+      ctx_iv_len = reinterpret_cast<ctx_iv_len_func>(
+        load_sym("EVP_CIPHER_CTX_iv_length")
+      );
+    }
   }
-  ctx_key_len = reinterpret_cast<ctx_key_len_func>(
-    load_sym("EVP_CIPHER_CTX_get_key_length")
-  );
   if (!ctx_key_len) {
     ctx_key_len = reinterpret_cast<ctx_key_len_func>(
-      load_sym("EVP_CIPHER_CTX_key_length")
+      load_sym("EVP_CIPHER_CTX_get_key_length")
     );
+    if (!ctx_key_len) {
+      ctx_key_len = reinterpret_cast<ctx_key_len_func>(
+        load_sym("EVP_CIPHER_CTX_key_length")
+      );
+    }
   }
-  cipher_flags = reinterpret_cast<cipher_flags_func>(
-    load_sym("EVP_CIPHER_get_flags")
-  );
   if (!cipher_flags) {
     cipher_flags = reinterpret_cast<cipher_flags_func>(
-      load_sym("EVP_CIPHER_flags")
+      load_sym("EVP_CIPHER_get_flags")
     );
+    if (!cipher_flags) {
+      cipher_flags = reinterpret_cast<cipher_flags_func>(
+        load_sym("EVP_CIPHER_flags")
+      );
+    }
   }
-  ctx_get_block_size = reinterpret_cast<ctx_get_block_size_func>(
-    load_sym("EVP_CIPHER_CTX_get_block_size")
-  );
   if (!ctx_get_block_size) {
     ctx_get_block_size = reinterpret_cast<ctx_get_block_size_func>(
-      load_sym("EVP_CIPHER_CTX_block_size")
+      load_sym("EVP_CIPHER_CTX_get_block_size")
     );
+    if (!ctx_get_block_size) {
+      ctx_get_block_size = reinterpret_cast<ctx_get_block_size_func>(
+        load_sym("EVP_CIPHER_CTX_block_size")
+      );
+    }
   }
 
   ChaChaPolyCipher::Init(target);
@@ -2264,5 +2272,5 @@ NAN_MODULE_INIT(init) {
 }
 
 DISABLE_WCAST_FUNCTION_TYPE
-NODE_MODULE(sshcrypto, init)
+NAN_MODULE_WORKER_ENABLED(sshcrypto, init)
 DISABLE_WCAST_FUNCTION_TYPE_END
