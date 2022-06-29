@@ -591,7 +591,7 @@ function checkValue(input, allowed) {
 // This simple SFTP server implements file uploading where the contents get
 // ignored ...
 
-new ssh2.Server({
+new Server({
   hostKeys: [readFileSync('host.key')]
 }, (client) => {
   console.log('Client connected!');
