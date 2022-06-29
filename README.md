@@ -702,7 +702,7 @@ You can find more examples in the `examples` directory of this repository.
 
 #### Client events
 
-* **banner**(< _string_ >message, < _string_ >language) - A notice was sent by the server upon connection.
+* **banner**(< _string_ >message) - A notice was sent by the server upon connection.
 
 * **change password**(< _string_ >prompt, < _function_ >done) - If using password-based user authentication, the server has requested that the user's password be changed. Call `done` with the new password.
 
