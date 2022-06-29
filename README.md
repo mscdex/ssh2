@@ -718,7 +718,7 @@ You can find more examples in the `examples` directory of this repository.
     // In this particular case `mac` is empty because there is no separate MAC
     // because it's integrated into AES in GCM mode
     { kex: 'ecdh-sha2-nistp256',
-      srvHostKey: 'rsa-sha2-512',
+      serverHostKey: 'rsa-sha2-512',
       cs: { // Client to server algorithms
         cipher: 'aes128-gcm',
         mac: '',
