@@ -740,8 +740,6 @@ You can find more examples in the `examples` directory of this repository.
 
 * **ready**() - Authentication was successful.
 
-* **rekey**() - Emitted when a rekeying operation has completed (either client or server-initiated).
-
 * **tcp connection**(< _object_ >details, < _function_ >accept, < _function_ >reject) - An incoming forwarded TCP connection is being requested. Calling `accept` accepts the connection and returns a `Channel` object. Calling `reject` rejects the connection and no further action is needed. `details` contains:
 
     * **destIP** - _string_ - The remote IP the connection was received on (given in earlier call to `forwardIn()`).
@@ -995,8 +993,6 @@ You can find more examples in the `examples` directory of this repository.
 * **openssh_noMoreSessions**(< _function_ >callback) - _(void)_ - OpenSSH extension that sends a request to reject any new sessions (e.g. exec, shell, sftp, subsys) for this connection. `callback` has 1 parameter: < _Error_ >err.
 
 * **openssh_unforwardInStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - OpenSSH extension that unbinds from a UNIX domain socket at `socketPath` on the server and stops forwarding incoming connections. `callback` has 1 parameter: < _Error_ >err.
-
-* **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the server. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
 * **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
 
