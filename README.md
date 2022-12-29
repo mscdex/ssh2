@@ -1028,14 +1028,14 @@ You can find more examples in the `examples` directory of this repository.
 
     Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
 
-```js
+    ```js
         { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
           version: {
             protocol: '2.0',
             software: 'OpenSSH_6.6.1p1'
           },
           comments: 'Ubuntu-2ubuntu2' }
-```
+    ```
 
     * **ip** - _string_ - The `remoteAddress` of the connection.
 
@@ -1123,7 +1123,7 @@ You can find more examples in the `examples` directory of this repository.
 
 * **handshake**(< _object_ >negotiated) - Emitted when a handshake has completed (either initial or rekey). `negotiated` contains the negotiated details of the handshake and is of the form:
 
-```js
+  ```js
     // In this particular case `mac` is empty because there is no separate MAC
     // because it's integrated into AES in GCM mode
     { kex: 'ecdh-sha2-nistp256',
@@ -1141,7 +1141,7 @@ You can find more examples in the `examples` directory of this repository.
         lang: ''
       }
     }
-```
+  ```
 
 * **openssh.streamlocal**(< _function_ >accept, < _function_ >reject, < _object_ >info) - Emitted when the client has requested a connection to a UNIX domain socket. `accept()` returns a new _Channel_ instance representing the connection. `info` contains:
 
