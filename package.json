@@ -16,7 +16,7 @@
     "eslint": "^7.0.0"
   },
   "optionalDependencies": {
-    "cpu-features": "~0.0.4",
+    "@napi-rs/sysinfo": "~0.0.1",
     "nan": "^2.16.0"
   },
   "scripts": {

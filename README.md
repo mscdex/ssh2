@@ -47,7 +47,7 @@ Changes (breaking or otherwise) in v1.0.0 can be found [here](https://github.com
 
 * [node.js](http://nodejs.org/) -- v10.16.0 or newer
   * node v12.0.0 or newer for Ed25519 key support
-* (Optional) [`cpu-features`](https://github.com/mscdex/cpu-features) is set as an optional package dependency (you do not need to install it explicitly/separately from `ssh2`) that will be automatically built and used if possible. See the project's documentation for its own requirements.
+* (Optional) [`@napi-rs/sysinfo`](https://github.com/Brooooooklyn/sysinfo) is set as an optional package dependency (you do not need to install it explicitly/separately from `ssh2`) that will be automatically built and used if possible. See the project's documentation for its own requirements.
   * This addon is currently used to help generate an optimal default cipher list
 
 ## Installation
