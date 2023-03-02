@@ -1205,6 +1205,8 @@ You can find more examples in the `examples` directory of this repository.
 
 * **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
 
+    * **term** - _string_ - The terminal type for the pseudo-TTY.
+
     * **cols** - _integer_ - The number of columns for the pseudo-TTY.
 
     * **height** - _integer_ - The height of the pseudo-TTY in pixels.
