@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ master ]
+    branches: [ master, ext_info ]
 
 env:
   CI_CHECK_FAIL: ssh2
@@ -23,6 +23,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Check Node.js version
         run: node -pe process.versions
+      - name: Install Python 2.x
+        if: ${{ matrix.node-version == '10.16.0' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: '2.7'
+          update-environment: true
       - name: Install module
         run: npm install
       - name: Run tests

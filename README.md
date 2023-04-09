@@ -525,7 +525,7 @@ new Server({
       case 'publickey':
         if (ctx.key.algo !== allowedPubKey.type
             || !checkValue(ctx.key.data, allowedPubKey.getPublicSSH())
-            || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature) !== true)) {
+            || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature, ctx.hashAlgo) !== true)) {
           return ctx.reject();
         }
         break;
@@ -1093,6 +1093,8 @@ You can find more examples in the `examples` directory of this repository.
 
         * **signature** - _Buffer_ - This contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
 
+        * **hashAlgo** - _mixed_ - This is either `undefined` or a _string_ containing an explicit hash algorithm to be used during verification (passed to `key.verify()`).
+
     * `keyboard-interactive`:
 
         * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
@@ -1116,6 +1118,8 @@ You can find more examples in the `examples` directory of this repository.
             * **data** - _Buffer_ - The actual key data.
 
         * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **hashAlgo** - _mixed_ - This is either `undefined` or a _string_ containing an explicit hash algorithm to be used during verification (passed to `key.verify()`).
 
 * **close**() - The client socket was closed.
 
