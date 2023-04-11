@@ -16,7 +16,7 @@
     "eslint": "^7.0.0"
   },
   "optionalDependencies": {
-    "cpu-features": "~0.0.5",
+    "cpu-features": "~0.0.6",
     "nan": "^2.17.0"
   },
   "scripts": {
