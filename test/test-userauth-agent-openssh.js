@@ -68,8 +68,9 @@ if (process.argv[2] === 'child') {
           break;
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
       }
       ctx.accept();
     }, 3)).on('ready', mustCall(() => {
