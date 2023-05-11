@@ -24,6 +24,8 @@ Changes (breaking or otherwise) in v1.0.0 can be found [here](https://github.com
 * [Server Examples](#server-examples)
   * [Password and public key authentication and non-interactive (exec) command execution](#password-and-public-key-authentication-and-non-interactive-exec-command-execution)
   * [SFTP-only server](#sftp-only-server)
+* [Other Examples](#other-examples)
+  * [Generate an SSH key](#generate-an-ssh-key)
 * [API](#api)
   * [Client](#client)
       * [Client events](#client-events)
@@ -668,6 +670,32 @@ new ssh2.Server({
 }).listen(0, '127.0.0.1', function() {
   console.log('Listening on port ' + this.address().port);
 });
+```
+
+## Other Examples
+
+### Generate an SSH key
+
+```js
+const { utils: { generateKeyPair, generateKeyPairSync } } = require('ssh2');
+
+// Generate unencrypted ED25519 SSH key synchronously
+let keys = generateKeyPairSync('ed25519');
+// ... use `keys.public` and `keys.private`
+
+// Generate unencrypted ECDSA SSH key synchronously with a comment set
+keys = generateKeyPairSync('ecdsa', { bits: 256, comment: 'node.js rules!' });
+// ... use `keys.public` and `keys.private`
+
+// Generate encrypted RSA SSH key asynchronously
+generateKeyPair(
+  'rsa',
+  { bits: 2048, passphrase: 'foobarbaz', cipher: 'aes256-cbc' },
+  (err, keys) => {
+    if (err) throw err;
+    // ... use `keys.public` and `keys.private`
+  }
+);
 ```
 
 You can find more examples in the `examples` directory of this repository.
@@ -1387,6 +1415,22 @@ XCASE          | Enable input and output of uppercase characters by preceding th
 * **(constructor)**(< _object_ >sshConfig[, < _object_ >agentConfig]) - Creates and returns a new `https.Agent` instance used to tunnel an HTTP connection over SSH. `sshConfig` is what is passed to `client.connect()` and `agentOptions` is passed to the `https.Agent` constructor.
 
 ### Utilities
+
+* **generateKeyPair**(< _string_ >keyType[, < _object_ >options], < _function_ >callback) - _(void)_ - Generates an SSH key pair of the given type. `keyType` may be one of `'rsa'`, `'ecdsa'`, or `'ed25519'` (node.js v12+). `callback` has the signature `(err, keys)` where `keys` is an _object_ containing `private` and `public` properties containing the generated SSH keys. `options` may contain:
+
+    * **bits** - _integer_ - For ECDSA and RSA keys, this is the key strength. For ECDSA, this is restricted to `256`, `384`, or `521`. **Default:** (none)
+
+    * **cipher** - _string_ - The (SSH, not OpenSSL) cipher to use to encrypt the key. **Default:** (none)
+
+    * **comment** - _string_ - A comment to include in the private and public keys. **Default:** `''`
+
+    * **format** - _string_ - The SSH key format to use. Currently only `'new'` is supported, which represents the current OpenSSH key formats. **Default:** `'new'`
+
+    * **passphrase** - _mixed_ - The desired passphrase for encrypting the key. This can either be a string or _Buffer_. **Default:** (none)
+
+    * **rounds** - _integer_ - For `'new'`-formatted SSH keys, this is the number of bcrypt rounds to use when generating cipher parameters for encrypted keys. **Default:** `16`
+
+* **generateKeyPairSync**(< _string_ >keyType[, < _object_ >options]) - _object_ - Generates an SSH key pair of the given type. This is a synchronous version of `generateKeyPair()`.
 
 * **parseKey**(< _mixed_ >keyData[, < _string_ >passphrase]) - _mixed_ - Parses a private/public key in OpenSSH, RFC4716, or PPK format. For encrypted private keys, the key will be decrypted with the given `passphrase`. `keyData` can be a _Buffer_ or _string_ value containing the key contents. The returned value will be an array of objects (currently in the case of modern OpenSSH keys) or an object with these properties and methods:
 
