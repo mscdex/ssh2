@@ -1,5 +1,11 @@
 'use strict';
 
+// This allows someone to disable this script for this repository only.
+// npm/yarn/pnpm only allow you to disable install scripts globally.
+if (process.env.SSH2_NODE_PURE_JS_ONLY) {
+  exit(0);
+}
+
 const { spawnSync } = require('child_process');
 
 const forceFailOnNonZero = (process.env.CI_CHECK_FAIL === 'ssh2');
