@@ -25,7 +25,9 @@ jobs:
         run: node -pe process.versions
       - name: Install Python 2.7
         if: ${{ matrix.node-version == '10.16.0' }}
-        run: sudo apt install python2.7
+        run: |
+          sudo apt install python2.7
+          echo "PYTHON=$(which python2.7)" >> "$GITHUB_ENV"
       - name: Install module
         run: npm install
       - name: Run tests
