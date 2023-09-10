@@ -17,18 +17,19 @@ jobs:
         node-version: [10.16.0, 10.x, 12.x, 14.x, 16.x, 18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - name: Check Node.js version
         run: node -pe process.versions
-      - name: Install Python 2.x
+      - name: Install Python 2.7
         if: ${{ matrix.node-version == '10.16.0' }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: '2.7'
-          update-environment: true
+        run: |
+          sudo apt install python2.7
+          echo "PYTHON=$(which python2.7)" >> "$GITHUB_ENV"
       - name: Install module
         run: npm install
       - name: Run tests
@@ -41,6 +42,8 @@ jobs:
         node-version: [16.x, 18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -55,6 +58,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Use Node.js (latest)
         run: brew install node
       - name: Check Node.js version
@@ -71,6 +76,8 @@ jobs:
         node-version: [16.x, 18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
