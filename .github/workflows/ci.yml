@@ -16,7 +16,7 @@ jobs:
       matrix:
         node-version: [10.16.0, 10.x, 12.x, 14.x, 16.x, 18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
@@ -41,13 +41,17 @@ jobs:
       matrix:
         node-version: [16.x, 18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: Check Node.js version
         run: node -pe process.versions
       - name: Install module
@@ -57,11 +61,15 @@ jobs:
   tests-macos-homebrew:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Use Node.js (latest)
         run: brew install node
+      - name: Install Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: Check Node.js version
         run: node -pe process.versions
       - name: Install module
@@ -75,7 +83,7 @@ jobs:
       matrix:
         node-version: [16.x, 18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
