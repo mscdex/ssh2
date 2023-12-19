@@ -1058,14 +1058,14 @@ You can find more examples in the `examples` directory of this repository.
 
     Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
 
-```js
+    ```js
         { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
           version: {
             protocol: '2.0',
             software: 'OpenSSH_6.6.1p1'
           },
           comments: 'Ubuntu-2ubuntu2' }
-```
+    ```
 
     * **ip** - _string_ - The `remoteAddress` of the connection.
 
