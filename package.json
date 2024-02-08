@@ -1,6 +1,6 @@
 {
   "name": "ssh2",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
   "main": "./lib/index.js",
@@ -45,5 +45,8 @@
   "repository": {
     "type": "git",
     "url": "http://github.com/mscdex/ssh2.git"
-  }
+  },
+  "files": [
+    "lib"
+  ]
 }
