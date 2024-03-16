@@ -1,6 +1,6 @@
 {
   "name": "ssh2",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "author": "Brian White <mscdex@mscdex.net>",
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
   "main": "./lib/index.js",
@@ -18,6 +18,14 @@
   "optionalDependencies": {
     "cpu-features": "~0.0.9",
     "nan": "^2.18.0"
+  },
+  "peerDependencies": {
+    "node-gyp": "*"
+  },
+  "peerDependenciesMeta": {
+    "node-gyp": {
+      "optional": true
+    }
   },
   "scripts": {
     "install": "node install.js",
