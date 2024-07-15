@@ -38,6 +38,7 @@ class PreSignedUrlFileSource implements FileSource {
   private fileSize: number;
   private getRequest: Array<ClientRequest | null> = [];
   private getStream: Array<IncomingMessage | null> = [];
+  private streamChunks: Array<{buffer: Array<Buffer>, length: number}> = [];
 
   constructor(private readonly agent: AgentInterface, chunks: PreSignedChunk[]) {
     this.chunks = chunks.sort((a, b) => a.start - b.start);
@@ -74,75 +75,119 @@ class PreSignedUrlFileSource implements FileSource {
     position: number,
     callback: (err: Error | null, bytesRead: number, buffer: Buffer | null) => void
   ): Promise<void> {
-    console.log('read', { handle, buffer, offset, length, position });
-
+    // console.log('read', { handle, buffer, offset, length, position });
 
     try {
-      const getStreamPromise = new Promise<IncomingMessage>((resolve, reject) => {
       const chunkIndex = this.findChunk(position);
-      const chunk = this.chunks[chunkIndex];
-      if (!chunk) {
-        throw new Error('Position out of bounds');
-      }
+      const getStreamPromise = new Promise<IncomingMessage>((resolve, reject) => {
+        const chunk = this.chunks[chunkIndex];
+        if (!chunk) {
+          console.error('No chunk found for position', position);
+          throw new Error('Position out of bounds');
+        }
 
-      if(!this.getRequest[chunkIndex]) {
-        const chunkOffset = position - chunk.start;
-        const readLength = Math.min(length, chunk.end - position + 1);
-  
-        this.getRequest[chunkIndex] = this.agent.get(chunk.url, {
-          headers: {
-            'Range': `bytes=${chunkOffset}-${chunkOffset + readLength - 1}`
-          }
-        });
-
-        this.getRequest[chunkIndex].on('error', (err) => {
-          console.error('get request error', err);
-          callback(err, 0, null);
-          reject(err);
-        });
-  
-        this.getRequest[chunkIndex].end();
-      }
-
-      this.getRequest[chunkIndex].on('response', (res) => {
-        console.log('response', res.statusCode);
-
-        if (!res.statusCode || res.statusCode >= 300) {
-          console.error('unsuccessful get response', res.statusCode);
-
-          // TODO: collect the response into a buffer and print it out properly when assembled;
-          res.on('data', (chunk: Buffer) => {
-            console.log('Failed get response data', { len: chunk.length, value: chunk?.toString('utf-8') });
+        if(!this.getRequest[chunkIndex]) {
+          const chunkOffset = chunk.start;
+          const readLength = Math.min(length, chunk.end - position + 1);
+    
+          console.log('---> Getting chunk', chunkIndex, chunkOffset, readLength, position, chunk);
+          this.getRequest[chunkIndex] = this.agent.get(chunk.url, {
+            headers: {
+              'Range': `bytes=${chunkOffset}-${chunkOffset + readLength - 1}`
+            }
           });
 
-          // try {
-          //   destroyPut();
-          // } catch (e) {
-          //   console.error('error destroying put request', e);
-          // }
-          return callback(new Error(res.statusMessage), 0, null);
-        } else {
-          console.log('successful get response', res.statusCode);
-
-          this.getStream[chunkIndex] = res;
-          resolve(this.getStream[chunkIndex]);
+          this.getRequest[chunkIndex].on('error', (err) => {
+            console.error('get request error', err);
+            callback(err, 0, null);
+            reject(err);
+          });
+    
+          this.getRequest[chunkIndex].end();
         }
+
+        this.getRequest[chunkIndex].on('response', (res) => {
+          // console.log('response', res.statusCode);
+
+          if (!res.statusCode || res.statusCode >= 300) {
+            console.error('unsuccessful get response', res.statusCode);
+
+            // TODO: collect the response into a buffer and print it out properly when assembled;
+            res.on('data', (chunk: Buffer) => {
+              console.log('Failed get response data', { len: chunk.length, value: chunk?.toString('utf-8') });
+            });
+
+            // try {
+            //   destroyPut();
+            // } catch (e) {
+            //   console.error('error destroying put request', e);
+            // }
+            return callback(new Error(res.statusMessage), 0, null);
+          } else {
+            // console.log('successful get response', res.statusCode);
+
+            this.getStream[chunkIndex] = res;
+            resolve(this.getStream[chunkIndex]);
+          }
+        });
       });
-    });
 
       const getStream = await getStreamPromise;
 
-      const chunk = getStream.read(length);
-      if(chunk === null) {
-        // now we need to wait until some data is available
-        getStream.once('data', (data) => {
-          console.log('data');
-          
-          callback(null, data.length, data);
-        });
-      } else {
-        callback(null, chunk.length, chunk);
-      }
+      getStream.on('data', (bufferChunk: Buffer) => {
+        if (!this.streamChunks[chunkIndex]) {
+          this.streamChunks[chunkIndex] = { buffer: [], length: 0 };
+        }
+        this.streamChunks[chunkIndex].buffer.push(bufferChunk);
+        this.streamChunks[chunkIndex].length += bufferChunk.length;
+      });
+
+      getStream.once('end', () => {
+        const data = Buffer.concat(this.streamChunks[chunkIndex].buffer, this.streamChunks[chunkIndex].length);
+
+        // Calculate how much data we can actually copy to the buffer
+        const bytesToCopy = Math.min(data.length, length);
+
+        // Copy the data into the provided buffer at the specified offset
+        console.log('Stream ended', chunkIndex, this.streamChunks[chunkIndex].buffer.length, this.streamChunks[chunkIndex].length, bytesToCopy)
+        data.copy(buffer, offset, 0, bytesToCopy);
+        callback(null, bytesToCopy, data);
+        getStream.destroy();
+      });
+
+      getStream.once('error', (err) => {
+        console.log('errored', err)
+        callback(err as Error, 0, null);
+      });
+
+      // const getStream = await getStreamPromise;
+      
+
+      // const chunk = getStream.read();
+      // let data = Buffer();
+
+      // // Listen for data chunks
+      // getStream.on('data', (chunk) => {
+      //   data += chunk;
+      // });
+
+      // // Listen for the end of the response
+      // getStream.on('end', () => {
+      //   data.copy(buffer, offset, 0, length);
+      //   callback(null, data.length, data);
+      //   console.log('Response has ended. Full data:', data);
+      // });
+      // if (chunk === null) {
+      //   // now we need to wait until some data is available
+      //   getStream.once('end', (data) => {
+      //     console.log('data', data.length);
+      //     data.copy(buffer, offset, 0, length);
+      //     callback(null, data.length, data);
+      //   });
+      // } else {
+      //   chunk.copy(buffer, offset, 0, length);
+      //   callback(null, chunk.length, chunk);
+      // }
     } catch (err) {
       callback(err as Error, 0, null);
     }
@@ -199,7 +244,7 @@ async function createPreSignedUrlFileSource(
 export async function createTestUrlFileSource(
   agentIf: AgentInterface,
   url: string,
-  chunkCount: number = 64
+  chunkSize: number = 32768
 ): Promise<PreSignedUrlFileSource> {
   // First, we need to determine the size of the file
   const headResponse = await fetch(url, { method: 'HEAD' });
@@ -207,7 +252,6 @@ export async function createTestUrlFileSource(
   if (!headResponse.ok) {
     throw new Error(`HTTP error! status: ${headResponse.status}`);
   }
-  console.log('HEAD response', headResponse);
   
   const contentLength = headResponse.headers.get('Content-Length');
   
@@ -216,12 +260,13 @@ export async function createTestUrlFileSource(
   }
   
   const fileSize = parseInt(contentLength, 10);
+  console.log('HEAD response', headResponse, fileSize);
   
   if (isNaN(fileSize)) {
     throw new Error('Invalid Content-Length header');
   }
 
-  const chunkSize = Math.ceil(fileSize / chunkCount);
+  const chunkCount = Math.ceil(fileSize / chunkSize);
   const chunks: PreSignedChunk[] = [];
 
   for (let i = 0; i < chunkCount; i++) {
@@ -234,7 +279,7 @@ export async function createTestUrlFileSource(
       end
     });
   }
-  console.log('chunks', chunks);
+  console.log('Total chunks', chunks.length);
 
   return new PreSignedUrlFileSource(agentIf, chunks);
 }

@@ -6,48 +6,40 @@ async function main() {
 
     const httpsAgent = new Agent({ keepAlive: true, maxSockets: 100 });
     const objectStorageSourceInterface = await createTestUrlFileSource({
-        get(url: string, options: { headers: Record<string, string> }) {
-            console.log('making get request');
-            return request(url, {
-                method: 'GET',
-                headers: options.headers,
-                agent: httpsAgent
-            });
-        }, 
-        put(url: string, options: { headers: Record<string, string> }) {
-            throw new Error('Not implemented');
-        }
-    }, 'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/file-small.txt?x-goog-signature=1a5a53545f4805c49994b155fd0157b829d81aa90ed7feb950e888aa6d3989bbe8962cedeb175ecc73e692d80cbefaaf59a622d472b7cb4f78dccd06534291e9c9e0ae454c56528e10d3685e3628474312e5c3f61f4f1b6a8a2f2cd4400ac17414cb8d19e694874797fa85b0d8fce712bb0247172eef52995a87326609fa76c711f05332f59a02b0f42a21b3af794e256c6f516dab7678f85f003bfab72e6779d1cecd31cee20edd84e1da411aefd52ff12648d764d3364b2d439e1f43a70b7cbff3f925e4d527325fb47686c5c62354c1ab1aa0d264744b46b2c75ae8175ee630d6881606e25deca417f3aa4f019cc2f8c8337d416b247a5ee7ada374b37abc&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240715%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240715T083746Z&x-goog-expires=10800&x-goog-signedheaders=host',
+      get(url: string, options: { headers: Record<string, string> }) {
+        console.log('making get request');
+        return request(url, {
+          method: 'GET',
+          headers: options.headers,
+          agent: httpsAgent
+        });
+      }, 
+      put(url: string, options: { headers: Record<string, string> }) {
+        throw new Error('Not implemented');
+      }
+    }, 'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/100-mb-example-jpg.jpg?x-goog-signature=356e7861d78e1e5f380afd84f2fd08b6e16fd07adc2f675d41f920f8cce8d7776d103171674c2b5ea46776286e09fd700be4939b42426319a3a4dbc64d8af254cd1c192f5053db43a79dc4d845f87f43e55b63d0f5f2510a1cacb2da1fb312e61acf67e5e682cbc19058a59d567ac02c192aee8a862afe2a5e40c87f1af5b8ceae07e312c02ecc10949f66d9a730a5aee2d97aaf59c352febb6d712c70a614542748eabc427779fc929d4a09865c2092155dbcb6a9072294b06eb233faaae1bc134ff891e26f2d7674ad83e9e37087edd43d6c6297fa354f9792226bcedb087ed248f5f31ad251e589280bf1293d91d5df4fe0887fc7ddd3fec3418e4096fef5&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240715%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240715T135558Z&x-goog-expires=10800&x-goog-signedheaders=host',
     );
 
     const conn = new Client();
 
     conn.on('ready', () => {
-        console.log('Client :: ready');
-        conn.sftp((err: Error, sftp: any) => {
+      console.log('Client :: ready');
+      conn.sftp((err: Error, sftp: any) => {
+        if (err) throw err;
+
+        sftp.fastPutSled(objectStorageSourceInterface, '100mb.jpg', '100mb.jpg', { concurrency: 64 }, (err: Error) => {
           if (err) throw err;
-
-          sftp.fastPutSled(objectStorageSourceInterface, 'file-small.txt', 'file-small.txt', (err: Error) => {
-            if (err) throw err;
-            console.log('File transferred');
-            conn.end();
-          });
-
+          console.log('File transferred');
+          conn.end();
         });
-      }).connect({
-        host: 'eu-west-1.sftpcloud.io',
-        username: 'test-sftp',
-        port: 22,
-        password: 'ejbxw4sPo1JQqYmvUQlROpeqFH6gwCb7'
-      });
 
-    // fastXfer(objectStorageSourceInterface, dst, 'dummy-path', dstPath, { concurrency: 64 }, (err) => {
-    //     if (err) {
-    //       console.error('Transfer failed:', err);
-    //     } else {
-    //       console.log('Transfer completed successfully');
-    //     }
-    //   });
+      });
+    }).connect({
+      host: 'eu-west-1.sftpcloud.io',
+      username: 'test-sftp',
+      port: 22,
+      password: 'ejbxw4sPo1JQqYmvUQlROpeqFH6gwCb7'
+    });
 }
 
 main();
