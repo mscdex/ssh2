@@ -12,8 +12,12 @@
     "bcrypt-pbkdf": "^1.0.2"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.614.0",
+    "@aws-sdk/s3-request-presigner": "^3.614.0",
     "@mscdex/eslint-config": "^1.1.0",
-    "eslint": "^7.32.0"
+    "@swc/core": "latest",
+    "eslint": "^7.32.0",
+    "ts-node": "^10.9.2"
   },
   "optionalDependencies": {
     "cpu-features": "~0.0.10",
@@ -24,7 +28,8 @@
     "rebuild": "node install.js",
     "test": "node test/test.js",
     "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js examples lib test",
-    "lint:fix": "npm run lint -- --fix"
+    "lint:fix": "npm run lint -- --fix",
+    "sled": "ts-node --swc --logError test.ts "
   },
   "keywords": [
     "ssh",
