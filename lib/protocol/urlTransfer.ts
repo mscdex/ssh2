@@ -1,6 +1,4 @@
 import { ClientRequest, IncomingMessage } from 'node:http';
-import { S3Client, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 interface FileSource {
   open(path: string, flags: string, callback: (err: Error | null, handle: any) => void): void;
@@ -197,48 +195,6 @@ class PreSignedUrlFileSource implements FileSource {
     console.log('findChunk', { position });
     return this.chunks.findIndex(chunk => chunk.start <= position && chunk.end >= position);
   }
-}
-
-
-
-async function createPreSignedUrlFileSource(
-  agentIf: AgentInterface,
-  bucket: string,
-  key: string,
-  region: string,
-  chunkCount: number = 64,
-  expiresIn: number = 3600 // URL expiration time in seconds
-): Promise<PreSignedUrlFileSource> {
-  const s3Client = new S3Client({ region });
-
-  // Get object size
-  const headObjectCommand = new HeadObjectCommand({ Bucket: bucket, Key: key });
-  const headObjectResponse = await s3Client.send(headObjectCommand);
-  const objectSize = headObjectResponse.ContentLength;
-
-  if (!objectSize) {
-    throw new Error("Unable to determine object size");
-  }
-
-  const chunkSize = Math.ceil(objectSize / chunkCount);
-  const chunks: PreSignedChunk[] = [];
-
-  for (let i = 0; i < chunkCount; i++) {
-    const start = i * chunkSize;
-    const end = Math.min(start + chunkSize - 1, objectSize - 1);
-
-    const getObjectCommand = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Range: `bytes=${start}-${end}`
-    });
-
-    const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn });
-
-    chunks.push({ url, start, end });
-  }
-
-  return new PreSignedUrlFileSource(agentIf, chunks);
 }
 
 export async function createTestUrlFileSource(
