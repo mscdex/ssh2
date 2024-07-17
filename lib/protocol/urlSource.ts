@@ -1,10 +1,13 @@
 import { ClientRequest, IncomingMessage } from 'node:http';
+interface CallbackFn<T = void> {
+  (err: Error | null, extra?: T): void
+}
 
 interface FileSource {
-  open(path: string, flags: string, callback: (err: Error | null, handle: any) => void): void;
-  close(handle: any, callback: (err: Error | null) => void): void;
-  fstat(handle: any, callback: (err: Error | null, stats: { size: number }) => void): void;
-  stat(path: string, callback: (err: Error | null, stats: { size: number }) => void): void;
+  open(path: string, flags: string, callback: CallbackFn<any>): void;
+  close(handle: any, callback: CallbackFn): void;
+  fstat(handle: any, callback: CallbackFn<{ size: number }>): void;
+  stat(path: string, callback: CallbackFn<{ size: number }>): void;
   read(
     handle: any,
     buffer: Buffer,
@@ -43,24 +46,24 @@ class PreSignedUrlFileSource implements FileSource {
     this.fileSize = this.chunks[this.chunks.length - 1].end + 1;
   }
 
-  open(path: string, flags: string, callback: (err: Error | null, handle: any) => void): void {
+  open(path: string, flags: string, callback: CallbackFn<any>): void {
     console.log('open', { path, flags });
     // We don't need to open anything, so we just call the callback immediately
     callback(null, null);
   }
 
-  close(handle: any, callback: (err: Error | null) => void): void {
+  close(handle: any, callback: CallbackFn): void {
     console.log('close', { handle });
     // We don't need to close anything, so we just call the callback immediately
     callback(null);
   }
 
-  fstat(handle: any, callback: (err: Error | null, stats: { size: number }) => void): void {
+  fstat(handle: any, callback: CallbackFn<{ size: number }>): void {
     console.log('fstat', { handle });
     callback(null, { size: this.fileSize });
   }
 
-  stat(path: string, callback: (err: Error | null, stats: { size: number }) => void): void {
+  stat(path: string, callback: CallbackFn<{ size: number }>): void {
     console.log('stat', { path });
     callback(null, { size: this.fileSize });
   }
@@ -73,8 +76,6 @@ class PreSignedUrlFileSource implements FileSource {
     position: number,
     callback: (err: Error | null, bytesRead: number, buffer: Buffer | null) => void
   ): Promise<void> {
-    // console.log('read', { handle, buffer, offset, length, position });
-
     try {
       const chunkIndex = this.findChunk(position);
       const getStreamPromise = new Promise<IncomingMessage>((resolve, reject) => {
@@ -105,8 +106,7 @@ class PreSignedUrlFileSource implements FileSource {
         }
 
         this.getRequest[chunkIndex].on('response', (res) => {
-          // console.log('response', res.statusCode);
-
+          
           if (!res.statusCode || res.statusCode >= 300) {
             console.error('unsuccessful get response', res.statusCode);
 
@@ -115,15 +115,8 @@ class PreSignedUrlFileSource implements FileSource {
               console.log('Failed get response data', { len: chunk.length, value: chunk?.toString('utf-8') });
             });
 
-            // try {
-            //   destroyPut();
-            // } catch (e) {
-            //   console.error('error destroying put request', e);
-            // }
             return callback(new Error(res.statusMessage), 0, null);
           } else {
-            // console.log('successful get response', res.statusCode);
-
             this.getStream[chunkIndex] = res;
             resolve(this.getStream[chunkIndex]);
           }
@@ -142,12 +135,8 @@ class PreSignedUrlFileSource implements FileSource {
 
       getStream.once('end', () => {
         const data = Buffer.concat(this.streamChunks[chunkIndex].buffer, this.streamChunks[chunkIndex].length);
-
-        // Calculate how much data we can actually copy to the buffer
         const bytesToCopy = Math.min(data.length, length);
 
-        // Copy the data into the provided buffer at the specified offset
-        console.log('Stream ended', chunkIndex, this.streamChunks[chunkIndex].buffer.length, this.streamChunks[chunkIndex].length, bytesToCopy)
         data.copy(buffer, offset, 0, bytesToCopy);
         callback(null, bytesToCopy, data);
         getStream.destroy();
@@ -157,35 +146,6 @@ class PreSignedUrlFileSource implements FileSource {
         console.log('errored', err)
         callback(err as Error, 0, null);
       });
-
-      // const getStream = await getStreamPromise;
-      
-
-      // const chunk = getStream.read();
-      // let data = Buffer();
-
-      // // Listen for data chunks
-      // getStream.on('data', (chunk) => {
-      //   data += chunk;
-      // });
-
-      // // Listen for the end of the response
-      // getStream.on('end', () => {
-      //   data.copy(buffer, offset, 0, length);
-      //   callback(null, data.length, data);
-      //   console.log('Response has ended. Full data:', data);
-      // });
-      // if (chunk === null) {
-      //   // now we need to wait until some data is available
-      //   getStream.once('end', (data) => {
-      //     console.log('data', data.length);
-      //     data.copy(buffer, offset, 0, length);
-      //     callback(null, data.length, data);
-      //   });
-      // } else {
-      //   chunk.copy(buffer, offset, 0, length);
-      //   callback(null, chunk.length, chunk);
-      // }
     } catch (err) {
       callback(err as Error, 0, null);
     }
