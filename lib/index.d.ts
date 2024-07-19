@@ -1368,10 +1368,24 @@ export interface SubsystemInfo {
     name: string;
 }
 
+  
+interface CustomFS {
+    open(path: string, flags: string, callback: ErrorCallback): void;
+    close(handle: unknown, callback: ErrorCallback): void;
+    fchmod(handle: unknown, mode: number, callback: ErrorCallback): void;
+    chmod(path: string, mode: number, callback: ErrorCallback): void;
+    write(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: ErrorCallback): void;
+    
+    fstat(handle: unknown, callback: (err: Error | null, extra: { size: number; }) => void): void;
+    stat(path: string, callback: (err: Error | null, extra: { size: number; }) => void): void;
+    read(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: (err: Error | null, bytesRead: number, buffer: Buffer | null) => void): void;
+}
+
 export interface TransferOptions {
     concurrency?: number;
     chunkSize?: number;
     fileSize?: number;
+    customFs?: CustomFS;
     step?: (total: number, nb: number, fsize: number) => void;
     mode?: number | string;
 }
