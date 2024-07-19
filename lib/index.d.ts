@@ -1370,11 +1370,11 @@ export interface SubsystemInfo {
 
   
 interface CustomFS {
-    open(path: string, flags: string, callback: ErrorCallback): void;
-    close(handle: unknown, callback: ErrorCallback): void;
-    fchmod(handle: unknown, mode: number, callback: ErrorCallback): void;
-    chmod(path: string, mode: number, callback: ErrorCallback): void;
-    write(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: ErrorCallback): void;
+    open(path: string, flags: string, callback: Callback): void;
+    close(handle: unknown, callback: Callback): void;
+    fchmod(handle: unknown, mode: number, callback: Callback): void;
+    chmod(path: string, mode: number, callback: Callback): void;
+    write(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: Callback): void;
     
     fstat(handle: unknown, callback: (err: Error | null, extra: { size: number; }) => void): void;
     stat(path: string, callback: (err: Error | null, extra: { size: number; }) => void): void;
