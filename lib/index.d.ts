@@ -1370,15 +1370,15 @@ export interface SubsystemInfo {
 
   
 interface CustomFS {
-    open(path: string, flags: string, callback: Callback): void;
-    close(handle: unknown, callback: Callback): void;
-    fchmod(handle: unknown, mode: number, callback: Callback): void;
+    open(path: string, flags: number | OpenMode, callback: Callback): void;
+    close(handle: Buffer, callback: Callback): void;
+    fchmod(handle: Buffer, mode: number, callback: Callback): void;
     chmod(path: string, mode: number, callback: Callback): void;
-    write(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: Callback): void;
+    write(handle: Buffer, buffer: Buffer, offset: number, length: number, position: number, callback: Callback): void;
     
-    fstat(handle: unknown, callback: (err: Error | null, extra: { size: number; }) => void): void;
-    stat(path: string, callback: (err: Error | null, extra: { size: number; }) => void): void;
-    read(handle: unknown, buffer: Buffer, offset: number, length: number, position: number, callback: (err: Error | null, bytesRead: number, buffer: Buffer | null) => void): void;
+    fstat(handle: Buffer, callback: (err: Error | undefined, extra: Stats) => void): void;
+    stat(path: string, callback: (err: Error | undefined, extra: Stats) => void): void;
+    read(handle: Buffer, buffer: Buffer, offset: number, length: number, position: number, callback: (err: Error | undefined, bytesRead: number, buffer: Buffer | null) => void): void;
 }
 
 export interface TransferOptions {
