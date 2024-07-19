@@ -12,10 +12,7 @@
     "bcrypt-pbkdf": "^1.0.2"
   },
   "devDependencies": {
-    "@mscdex/eslint-config": "^1.1.0",
-    "@swc/core": "latest",
-    "eslint": "^7.32.0",
-    "ts-node": "^10.9.2"
+    "@mscdex/eslint-config": "^1.1.0"
   },
   "optionalDependencies": {
     "cpu-features": "~0.0.10",
@@ -26,8 +23,7 @@
     "rebuild": "node install.js",
     "test": "node test/test.js",
     "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js examples lib test",
-    "lint:fix": "npm run lint -- --fix",
-    "sled": "ts-node --swc --logError test.ts "
+    "lint:fix": "npm run lint -- --fix"
   },
   "keywords": [
     "ssh",

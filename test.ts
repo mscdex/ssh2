@@ -1,7 +1,7 @@
-import { createTestUrlFileSource } from "./lib/protocol/urlSource";
+import { createTestUrlFileSource } from "./urlSource";
 import { Agent, request } from 'node:https';
-import Client from './lib/client';
-import { createTestUrlFileDestination } from "./lib/protocol/urlDestination";
+import { Client } from './lib/index';
+import { createTestUrlFileDestination } from "./urlDestination";
 
 async function main() {
     const httpsAgent = new Agent({ keepAlive: true, maxSockets: 100 });
@@ -23,12 +23,12 @@ async function main() {
     };
     // const objectStorageSource = await createTestUrlFileSource(
     //   agent,
-    //   'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/100-mb-example-jpg.jpg?x-goog-signature=356e7861d78e1e5f380afd84f2fd08b6e16fd07adc2f675d41f920f8cce8d7776d103171674c2b5ea46776286e09fd700be4939b42426319a3a4dbc64d8af254cd1c192f5053db43a79dc4d845f87f43e55b63d0f5f2510a1cacb2da1fb312e61acf67e5e682cbc19058a59d567ac02c192aee8a862afe2a5e40c87f1af5b8ceae07e312c02ecc10949f66d9a730a5aee2d97aaf59c352febb6d712c70a614542748eabc427779fc929d4a09865c2092155dbcb6a9072294b06eb233faaae1bc134ff891e26f2d7674ad83e9e37087edd43d6c6297fa354f9792226bcedb087ed248f5f31ad251e589280bf1293d91d5df4fe0887fc7ddd3fec3418e4096fef5&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240715%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240715T135558Z&x-goog-expires=10800&x-goog-signedheaders=host',
+    //   'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/numbers.txt?x-goog-signature=70ff63101c2553696fa0f86dff3700de8cde5053928560f93167d2db2aae00bce578a743fdc22d8f8be4111920ab45368c77bc4786887107c11e3cd32ee51c176b6aa929a0efb131b5b18258ee1f009c8f94965761e532d34466cbf91eb91458f7379579afc83e36d2f9492c31b6124c35f6e021c7330e135f590f7d8171ddfb3ea6d659807cf0bf0e930e8631abcb7cdeec5eade16151def5dd91dec156eaf7abd58003c5e345387c9bac6bde158a6d696a826dd3230fa650a90bbd857ee25ff8d9c1956e8c6430df1b115177ba1bc6c839ad4653657542c280b4e04ac3aaf6a91e2ab652f74d080c8cb61d1924344e21e4968e19321f1dbd78cac9a0182d22&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240718%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240718T124357Z&x-goog-expires=10800&x-goog-signedheaders=host',
     // );
 
     const objectStorageDestination = await createTestUrlFileDestination(
       agent,
-      'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/image.png?x-goog-signature=1b28c1a9ffccd629916f1a2e53eaf9e8c301076906a994969dd29c4a94414d47a08441d1532001bc5e641d28ca6e7ec3ccb54644fd9d57fc1c38e3da90f25476e8730b193075e260c027914953c1edacd663f34ae555ba7a819af8c29f606bbeb3ff618fac27dc08f853a8e4dbcf6a5c203ebe2d24611e61da28119acdd4d4fda0f550ddc26491c47c75cfcc52f991c14d141cad780e2f03ea7426a1df90a1840e1f3ffd1c603e0efc1f84c8e8b90d3021b396782087d4e24587fef07743ee3b28a3c877bf34853220b7e216fd3db480a60c65109c224901a30a7a6a2140924657d2972c3b73d3f7e6edc90bcbc15ce19806553dccfefe2a41cf3e809864942f&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240717%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240717T122325Z&x-goog-expires=10800&x-goog-signedheaders=host',
+      'https://storage.googleapis.com/will-gcs-test-bucket/gcs-file-source/sftp-numbers.txt?x-goog-signature=af620afbf74043824e8c85dc23f67c6574893e4a824853707d40867c147ba9838a3ae4ee7d352e6745b3e6c859893c116e1fd04c61f90c85c970279f45b3c1abb5caa92d7d102fbeb93f8b53103a18b9e39678782037c09558efc7a2d6faa020a1dc898b9fb3d425dc156eb3a0274628c1d373598c342ed38ec0f9a72a8e1d2b8cce7f09ae6678befe3e8be7438d2bf3e432a7449985e9cef0332629c5c72250dd4bb71de79bcad7f24723a345b3c180029d817229327ac7767581ae2aee03729c4ab8522bfcaa0ea31bb8019dd5df395fe04dec0647a5a5d87e481e2ddb4171940ecb7189062f1a0f7e21e0a9353f48a1d5864382487e82f665c6dceee030bd&x-goog-algorithm=GOOG4-RSA-SHA256&x-goog-credential=double-hop-gcs%40williams-bobsled-te--conductor.iam.gserviceaccount.com%2F20240719%2Feurope-west1%2Fstorage%2Fgoog4_request&x-goog-date=20240719T060759Z&x-goog-expires=10800&x-goog-signedheaders=content-range%3Bhost',
     );
 
     const conn = new Client();
@@ -38,22 +38,32 @@ async function main() {
       conn.sftp((err: Error, sftp: any) => {
         if (err) throw err;
 
-        // sftp.fastPut('-', '100mb.jpg', { concurrency: 64, customFs: objectStorageDestination }, (err: Error) => {
+        // sftp.fastPut('-', 'gcs-numbers.txt', {
+        //   concurrency: 64,
+        //   customFs: objectStorageSource,
+        //   // chunkSize: 131072,
+        //   // fileSize: 2_188_895
+        //   // 45959
+        //   offset: 1_000_000,
+        //   length: 1_000_000,
+        // }, (err: Error) => {
         //   if (err) throw err;
         //   console.log('File transferred');
         //   conn.end();
         // });
 
-        sftp.fastGet('image.png', '-', {
+        sftp.fastGet('numbers.txt', '-', {
           concurrency: 64,
           customFs: objectStorageDestination,
+          // chunkSize: 131072,
+          // fileSize: 2_188_895
+          // offset: 1_000_000,
+          // length: 1_000_000,
         }, (err: Error) => {
           if (err) throw err;
           console.log('File transferred');
           conn.end();
         });
-
-
       });
     }).connect({
       host: 'eu-west-1.sftpcloud.io',

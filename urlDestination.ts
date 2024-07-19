@@ -52,16 +52,22 @@ class PreSignedUrlFileDestination implements FileDestination {
       console.log('Closing');
       this.chunks = this.chunks.sort((a, b) => a.start - b.start);
       const fileToSend = Buffer.concat(this.chunks.map(({ buffer }) => buffer));
+
+      const startByte = this.chunks[0].start;
+      const endByte = startByte + fileToSend.length - 1;
+
+      console.log('Sending with headers', JSON.stringify({
+        'Content-Range': `bytes ${startByte}-${endByte}/${endByte + 1}`,
+      }));
       const request = this.agent.put(this.url, {
         headers: {
-          // Range: `bytes=${offset}-${offset + adjustedLength - 1}`,
-          'Content-Length': `${fileToSend.length}`,
+          'Content-Range': `bytes ${startByte}-${endByte}/${endByte + 1}`,
         },
       });
       request.write(fileToSend);
 
       request.on("error", (err) => {
-        console.error("get request error", err);
+        console.error("put request error", err);
         callback(err);
       });
 
@@ -69,11 +75,11 @@ class PreSignedUrlFileDestination implements FileDestination {
 
       request.on("response", (stream) => {
         if (!stream.statusCode || stream.statusCode >= 300) {
-          console.error("unsuccessful get response", stream.statusCode);
+          console.error("unsuccessful put response", stream.statusCode);
 
           // TODO: collect the response into a buffer and print it out properly when assembled;
           stream.on("data", (chunk: Buffer) => {
-            console.log("Failed get response data", {
+            console.log("Failed put response data", {
               len: chunk.length,
               value: chunk?.toString("utf-8"),
             });
@@ -119,6 +125,7 @@ class PreSignedUrlFileDestination implements FileDestination {
     position: number,
     callback: CallbackFn
   ): Promise<void> {
+    console.log('Writing', handle, offset, length, position);
     if (offset < 0 || length < 0 || offset + length > buffer.length) {
       throw new Error('Invalid offset or length');
     }
