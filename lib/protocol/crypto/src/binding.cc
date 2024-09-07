@@ -84,11 +84,15 @@ class ChaChaPolyCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "encrypt", Encrypt);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("ChaChaPolyCipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -387,8 +391,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
@@ -414,11 +418,15 @@ class AESGCMCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "encrypt", Encrypt);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("AESGCMCipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -633,8 +641,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
@@ -651,11 +659,15 @@ class GenericCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "encrypt", Encrypt);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("GenericCipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -1014,8 +1026,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
@@ -1044,11 +1056,15 @@ class ChaChaPolyDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "decryptLen", DecryptLen);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("ChaChaPolyDecipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -1440,8 +1456,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
@@ -1468,11 +1484,15 @@ class AESGCMDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "decrypt", Decrypt);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("AESGCMDecipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -1697,8 +1717,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
@@ -1716,11 +1736,15 @@ class GenericDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "decrypt", Decrypt);
     SetPrototypeMethod(tpl, "free", Free);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
+    Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
+    Local<Context> context = Nan::GetCurrentContext();
+    v8::Isolate* isolate = context->GetIsolate();
+
+    constructor().Set(isolate, func);
 
     Nan::Set(target,
              Nan::New("GenericDecipher").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+             func);
   }
 
  private:
@@ -2183,8 +2207,8 @@ out:
     obj->clear();
   }
 
-  static inline Nan::Persistent<Function> & constructor() {
-    static Nan::Persistent<Function> my_constructor;
+  static inline v8::Eternal<v8::Function> & constructor() {
+    static v8::Eternal<v8::Function> my_constructor;
     return my_constructor;
   }
 
