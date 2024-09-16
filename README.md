@@ -1056,16 +1056,18 @@ You can find more examples in the `examples` directory of this repository.
 
         * **comments** - _string_ - Any text that comes after the software name/version.
 
-    Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
+        Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
 
-```js
-        { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
+        ```js
+        {
+          identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
           version: {
             protocol: '2.0',
             software: 'OpenSSH_6.6.1p1'
           },
-          comments: 'Ubuntu-2ubuntu2' }
-```
+          comments: 'Ubuntu-2ubuntu2'
+        }
+        ```
 
     * **ip** - _string_ - The `remoteAddress` of the connection.
 
