@@ -608,6 +608,8 @@ new ssh2.Server({
         if (!checkValue(Buffer.from(ctx.password), allowedPassword))
           return ctx.reject();
         break;
+      case 'none':
+        return ctx.reject(['password']);
       default:
         return ctx.reject();
     }
@@ -1130,6 +1132,10 @@ You can find more examples in the `examples` directory of this repository.
         * **prompt**(< _array_ >prompts[, < _string_ >title[, < _string_ >instructions]], < _function_ >callback) - _(void)_ - Send prompts to the client. `prompts` is an array of `{ prompt: 'Prompt text', echo: true }` objects (`prompt` being the prompt text and `echo` indicating whether the client's response to the prompt should be echoed to their display). `callback` is called with `(responses)`, where `responses` is an array of string responses matching up to the `prompts`.
 
         * **submethods** - _array_ - A list of preferred authentication "sub-methods" sent by the client. This may be used to determine what (if any) prompts to send to the client.
+
+    * `none`:
+
+        * This is sometimes used by SFTP clients to determine what methods are actually usable. In particular FileZilla and Cyberduck use this when initially connecting. You can pass such a list of methods as an array to ctx.reject(), ex. `ctx.reject(['password'])` would tell the client only the password method is available.
 
     * `password`:
 
