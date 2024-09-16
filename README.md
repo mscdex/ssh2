@@ -1093,6 +1093,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
+    * **getDHParams** - _function_ - To unable support for `diffie-hellman-group-exchange-*` key exchanges, set this to a function that receives the client's prime size requirements and preference (`minBits`, `prefBits`, `maxBits`) as its three arguments, and returns either an array containing the secure prime (see `crypto.createDiffieHellman`) as a `Buffer` (array index 0), and optionally the matching generator as a `Buffer` (array index 1 - **default**: `Buffer.from([0x02])`) or a falsy value if no prime matching the client's request is available. Note that processing these primes is a very CPU-intensive synchronous operation that blocks Node.js' event loop for a long time upon each new handshake, therefore, the use of this property is not recommended. **Default:** (none)
+
     * **greeting** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Note:** Most clients usually ignore this. **Default:** (none)
 
     * **highWaterMark** - _integer_ - This is the `highWaterMark` to use for the parser stream. **Default:** `32 * 1024`
