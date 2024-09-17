@@ -105,10 +105,12 @@ setup('read (overflow)', mustCall((client, server) => {
     if (reqs === 3)
       server.end();
   }, 3));
-  client.read(handle_, buf, 0, buf.length, 0, mustCall((err, nb) => {
+  let reqPos = 0
+  client.read(handle_, buf, 0, buf.length, reqPos, mustCall((err, nb, retBuf, retPos) => {
     assert(!err, `Unexpected read() error: ${err}`);
     assert.deepStrictEqual(buf, expected);
     assert.strictEqual(nb, buf.length, 'read nb mismatch');
+    assert.strictEqual(reqPos, retPos, 'read ressource position does not match request');
   }));
 }));
 
