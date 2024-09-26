@@ -889,7 +889,7 @@ You can find more examples in the `examples` directory of this repository.
 
             ```js
             {
-              type: 'password'
+              type: 'password',
               username: 'foo',
               password: 'bar',
             }
@@ -897,7 +897,7 @@ You can find more examples in the `examples` directory of this repository.
 
             ```js
             {
-              type: 'publickey'
+              type: 'publickey',
               username: 'foo',
               // Can be a string, Buffer, or parsed key containing a private key
               key: ...,
@@ -908,7 +908,7 @@ You can find more examples in the `examples` directory of this repository.
 
             ```js
             {
-              type: 'hostbased'
+              type: 'hostbased',
               username: 'foo',
               localHostname: 'baz',
               localUsername: 'quux',
@@ -921,7 +921,7 @@ You can find more examples in the `examples` directory of this repository.
 
             ```js
             {
-              type: 'agent'
+              type: 'agent',
               username: 'foo',
               // Can be a string that is interpreted exactly like the `agent`
               // connection config option or can be a custom agent
@@ -932,7 +932,7 @@ You can find more examples in the `examples` directory of this repository.
 
             ```js
             {
-              type: 'keyboard-interactive'
+              type: 'keyboard-interactive',
               username: 'foo',
               // This works exactly the same way as a 'keyboard-interactive'
               // Client event handler
