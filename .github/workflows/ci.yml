@@ -1,9 +1,9 @@
 name: CI
 
-on:
-  pull_request:
-  push:
-    branches: [ master ]
+#on:
+#  pull_request:
+#  push:
+#    branches: [ master ]
 
 env:
   CI_CHECK_FAIL: ssh2
