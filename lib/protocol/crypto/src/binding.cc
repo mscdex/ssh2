@@ -16,9 +16,9 @@ DISABLE_WCAST_FUNCTION_TYPE
 #include <nan.h>
 DISABLE_WCAST_FUNCTION_TYPE_END
 
-#if NODE_MAJOR_VERSION >= 17
-#  include <openssl/configuration.h>
-#endif
+// #if NODE_MAJOR_VERSION >= 17
+// #  include <openssl/configuration.h>
+// #endif
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
