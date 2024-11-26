@@ -2,3 +2,4 @@
 .idea
 lib/protocol/crypto/build
 package-lock.json
+build

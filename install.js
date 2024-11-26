@@ -10,12 +10,7 @@ const args = [
   `--real_openssl_major=${/^\d+/.exec(process.versions.openssl)[0]}`,
   'rebuild',
 ];
-const cmd_args = process.argv.slice(2);
-let exe = "node-gyp";
-if (cmd_args[0]) {
-  exe = `${cmd_args[0]} node-gyp`
-}
-const result = spawnSync(exe, args, {
+const result = spawnSync('node-gyp', args, {
   cwd: 'lib/protocol/crypto',
   encoding: 'utf8',
   shell: true,

@@ -23,7 +23,7 @@
     "nan": "^2.20.0"
   },
   "scripts": {
-    "install": "prebuild-install --verbose || node install.js ",
+    "install": "prebuild-install --verbose || node-gyp rebuild --release ",
     "rebuild": "node install.js",
     "test": "node test/test.js",
     "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js examples lib test",
