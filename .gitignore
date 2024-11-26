@@ -1,0 +1,4 @@
+/node_modules/
+.idea
+lib/protocol/crypto/build
+package-lock.json
