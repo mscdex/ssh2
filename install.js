@@ -11,7 +11,7 @@ const args = [
   'rebuild',
 ];
 const result = spawnSync('node-gyp', args, {
-  cwd: 'lib/protocol/crypto',
+  // cwd: 'lib/protocol/crypto',
   encoding: 'utf8',
   shell: true,
   stdio: 'inherit',
