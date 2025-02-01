@@ -25,11 +25,16 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Check Node.js version
         run: node -pe process.versions
-      - name: Install Python 2.7
-        if: ${{ matrix.node-version == '10.16.0' }}
-        run: |
-          sudo apt install python2.7
-          echo "PYTHON=$(which python2.7)" >> "$GITHUB_ENV"
+      - name: Check npm version
+        run: npm -v
+      - name: Install Python 2.7 (node <16.x)
+        if: ${{ contains(fromJSON('["10.16.0", "10.x", "12.x", "14.x"]'), matrix.node-version) }}
+        uses: LizardByte/setup-python-action@v2024.1105.190605
+        with:
+          python-version: '2.7'
+      - name: Use Python 2.7 (node <16.x)
+        if: ${{ contains(fromJSON('["10.16.0", "10.x", "12.x", "14.x"]'), matrix.node-version) }}
+        run: echo "PYTHON=$(which python2.7)" >> "$GITHUB_ENV"
       - name: Install module
         run: npm install
       - name: Run tests
@@ -54,6 +59,8 @@ jobs:
           python-version: '3.10'
       - name: Check Node.js version
         run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
       - name: Install module
         run: npm install
       - name: Run tests
@@ -72,6 +79,8 @@ jobs:
           python-version: '3.10'
       - name: Check Node.js version
         run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
       - name: Install module
         run: npm install
       - name: Run tests
@@ -92,6 +101,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Check Node.js version
         run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
       - name: Install module
         run: npm install
       - name: Run tests
