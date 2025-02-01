@@ -7,6 +7,7 @@ on:
 
 env:
   CI_CHECK_FAIL: ssh2
+  OPENSSL_CONF: /dev/null
 
 jobs:
   tests-linux:
