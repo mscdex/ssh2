@@ -3,7 +3,7 @@
 const { timingSafeEqual } = require('crypto');
 const { constants, readFileSync } = require('fs');
 
-const { Server, sftp: { OPEN_MODE, STATUS_CODE } } = require('ssh2');
+const { Server, utils: { sftp: { OPEN_MODE, STATUS_CODE } } } = require('ssh2');
 
 const allowedUser = Buffer.from('foo');
 const allowedPassword = Buffer.from('bar');
