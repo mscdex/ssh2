@@ -1028,7 +1028,7 @@ You can find more examples in the `examples` directory of this repository.
 
 * **setNoDelay**([< _boolean_ >noDelay]) - _Client_ - Calls [`setNoDelay()`](https://nodejs.org/docs/latest/api/net.html#socketsetnodelaynodelay) on the underlying socket. Disabling Nagle's algorithm improves latency at the expense of lower throughput.
 
-* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
+* **sftp**([< _object_ >env, ]< _function_ >callback) - _(void)_ - Starts an SFTP session. `env` is an environment to use when executing `sftp` methods. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
 
 * **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
