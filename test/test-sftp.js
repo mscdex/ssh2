@@ -755,6 +755,48 @@ setup('WriteStream', mustCall((client, server) => {
   }));
 }
 
+{
+  const { client, server } = setup_(
+    'SFTP server sets environment and aborts with exit-status',
+    {
+      client: { username: 'foo', password: 'bar' },
+      server: { hostKeys: [ fixture('ssh_host_rsa_key') ] },
+    },
+  );
+
+  const env = { SSH2NODETEST: 'foo' };
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('env', mustCall((accept, reject, info) => {
+          accept && accept();
+          assert(info.key === Object.keys(env)[0], 'Wrong env key');
+          assert(info.val === Object.values(env)[0], 'Wrong env value');
+        })).on('sftp', mustCall((accept, reject) => {
+          const sftp = accept();
+
+          // XXX: hack
+          sftp._protocol.exitStatus(sftp.outgoing.id, 127);
+          sftp._protocol.channelClose(sftp.outgoing.id);
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    const timeout = setTimeout(mustNotCall(), 1000);
+    client.sftp(env, mustCall((err, sftp) => {
+      clearTimeout(timeout);
+      assert(err, 'Expected error');
+      assert(err.code === 127, `Expected exit code 127, saw: ${err.code}`);
+      client.end();
+    }));
+  }));
+}
+
 
 // =============================================================================
 function setup(title, cb) {
