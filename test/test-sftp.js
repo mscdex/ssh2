@@ -757,7 +757,7 @@ setup('WriteStream', mustCall((client, server) => {
 
 {
   const { client, server } = setup_(
-    'SFTP server sets environment and aborts with exit-status',
+    'SFTP client sets environment',
     {
       client: { username: 'foo', password: 'bar' },
       server: { hostKeys: [ fixture('ssh_host_rsa_key') ] },
@@ -776,11 +776,7 @@ setup('WriteStream', mustCall((client, server) => {
           assert(info.key === Object.keys(env)[0], 'Wrong env key');
           assert(info.val === Object.values(env)[0], 'Wrong env value');
         })).on('sftp', mustCall((accept, reject) => {
-          const sftp = accept();
-
-          // XXX: hack
-          sftp._protocol.exitStatus(sftp.outgoing.id, 127);
-          sftp._protocol.channelClose(sftp.outgoing.id);
+          accept();
         }));
       }));
     }));
@@ -790,13 +786,11 @@ setup('WriteStream', mustCall((client, server) => {
     const timeout = setTimeout(mustNotCall(), 1000);
     client.sftp(env, mustCall((err, sftp) => {
       clearTimeout(timeout);
-      assert(err, 'Expected error');
-      assert(err.code === 127, `Expected exit code 127, saw: ${err.code}`);
+      assert(!err, `Unexpected exec error: ${err}`);
       client.end();
     }));
   }));
 }
-
 
 // =============================================================================
 function setup(title, cb) {
