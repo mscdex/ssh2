@@ -13,8 +13,6 @@ jobs:
     runs-on: self-hosted
  
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
  
       - name: Build Docker Image
         run: docker build -t myapp:${{ github.sha }} .
