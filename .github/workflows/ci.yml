@@ -21,5 +21,5 @@ jobs:
       
       - name: Push Docker Image
         run: |
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login tcss-agent.tencentcloudcr.com --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
           docker push myapp:${{ github.sha }}
