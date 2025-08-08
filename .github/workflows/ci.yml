@@ -22,3 +22,8 @@ jobs:
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login tcss-agent.tencentcloudcr.com --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
           docker tag myapp:${{ github.sha }} tcss-agent.tencentcloudcr.com/tcss/zunlong:${{ github.sha }}
           docker push tcss-agent.tencentcloudcr.com/tcss/zunlong:${{ github.sha }}
+      - name: Scan image by cicd-scanner
+        run: >
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --network=host
+            ccr.ccs.tencentyun.com/cwp/cicdscanner:latest
+            --token=${{ secrets.CICD_TOKEN }} --imageId=${{ env.REPO_TAG }}
