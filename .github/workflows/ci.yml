@@ -87,7 +87,7 @@ jobs:
       - name: Run tests
         run: npm test
   tests-windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
