@@ -30,7 +30,7 @@ jobs:
         run: npm -v
       - name: Install Python 2.7 (node <16.x)
         if: ${{ contains(fromJSON('["10.16.0", "10.x", "12.x", "14.x"]'), matrix.node-version) }}
-        uses: LizardByte/setup-python-action@v2024.1105.190605
+        uses: LizardByte/actions/actions/setup_python@v2025.715.25226
         with:
           python-version: '2.7'
       - name: Use Python 2.7 (node <16.x)
