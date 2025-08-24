@@ -982,6 +982,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **tryKeyboard** - _boolean_ - Try keyboard-interactive user authentication if primary user authentication method fails. If you set this to `true`, you need to handle the `keyboard-interactive` event. **Default:** `false`
 
+    * **passwordPrompt** - _boolean_ - Emit a password event that takes a callback with the password instead of using the password supplied in the password field.  You need to handle the `password` event. **Default** `false`
+
     * **username** - _string_ - Username for authentication. **Default:** (none)
 
 * **end**() - _(void)_ - Disconnects the socket.
