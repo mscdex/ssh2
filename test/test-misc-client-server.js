@@ -25,6 +25,8 @@ const {
   setupSimple,
 } = require('./common.js');
 
+const { mlkemSupported } = require('../lib/protocol/constants.js');
+
 const KEY_RSA_BAD = fixture('bad_rsa_private_key');
 const HOST_RSA_MD5 = '64254520742d3d0792e918f3ce945a64';
 const clientCfg = { username: 'foo', password: 'bar' };
@@ -1457,4 +1459,235 @@ const setup = setupSimple.bind(undefined, debug);
       assert(err instanceof Error);
     }));
   }));
+}
+
+// NOTE: Hybrid PQ/T KEX tests
+if (mlkemSupported) {
+  {
+    const { client, server } = setup_(
+      'should work if client and server use '
+      + 'mlkem768x25519-sha256 as kex algorithm',
+      {
+        client: {
+          ...clientCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        },
+        server: {
+          ...serverCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        }
+      },
+    );
+
+    const execCommand = 'echo "hello, world!"';
+    const successfulExit = 0;
+
+    server.on('connection', mustCall((conn) => {
+      conn.on('authentication', mustCall((ctx) => {
+        ctx.accept();
+      })).on('ready', mustCall(() => {
+        conn.on('session', mustCall((accept, reject) => {
+
+          const session = accept();
+          session.on('exec', mustCall((accept, reject, info) => {
+
+            assert(
+              info.command === execCommand,
+              `Wrong exec command: ${info.command}`
+            );
+
+            const stream = accept();
+            stream.exit(successfulExit);
+            stream.end();
+
+          }));
+
+        }));
+      }));
+    }));
+
+    let handshakeComplete = false;
+
+    client.on('handshake', mustCall((info) => {
+
+      assert.strictEqual(
+        info.kex,
+        'mlkem768x25519-sha256',
+        `Wrong KEX algorithm: ${info.kex}`
+      );
+      handshakeComplete = true;
+
+    })).on('ready', mustCall(() => {
+
+      assert(handshakeComplete, 'handshake should complete before ready');
+      client.exec(execCommand, mustCall((err, stream) => {
+
+        assert(!err, `Unexpected exec error: ${err}`);
+
+        stream.on('exit', mustCall((code, _) => {
+          assert.strictEqual(code, successfulExit, `Wrong exit code: ${code}`);
+          client.end();
+        })).resume();
+
+      }));
+
+    }));
+  }
+
+  {
+    const { client, server } = setup_(
+      'should fail if server accepts mlkem768x25519-sha256 and client'
+      + 'uses something different',
+      {
+        client: {
+          ...clientCfg,
+          algorithms: { kex: ['curve25519-sha256'] }
+        },
+        server: {
+          ...serverCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        },
+
+        noForceClientReady: true,
+        noForceServerReady: true,
+      },
+    );
+
+    client.removeAllListeners('error');
+
+    function onError(err) {
+      assert.strictEqual(err.level, 'handshake');
+      assert(
+        /no matching key exchange/i.test(err.message),
+        'Wrong error message'
+      );
+    }
+
+    server.on('connection', mustCall((conn) => {
+      conn.removeAllListeners('error');
+
+      conn.on('authentication', mustNotCall())
+        .on('ready', mustNotCall())
+        .on('handshake', mustNotCall())
+        .on('error', mustCall(onError))
+        .on('close', mustCall(() => { }));
+    }));
+
+    client.on('ready', mustNotCall())
+      .on('error', mustCall(onError))
+      .on('close', mustCall(() => { }));
+  }
+
+  {
+    const { client, server } = setup_(
+      'should fail if client uses mlkem768x25519-sha256 and server'
+      + 'accepts something different',
+      {
+        client: {
+          ...clientCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        },
+        server: {
+          ...serverCfg,
+          algorithms: { kex: ['curve25519-sha256'] }
+        },
+
+        noForceClientReady: true,
+        noForceServerReady: true,
+      },
+    );
+
+    client.removeAllListeners('error');
+
+    function onError(err) {
+      assert.strictEqual(err.level, 'handshake');
+      assert(
+        /no matching key exchange/i.test(err.message),
+        'Wrong error message'
+      );
+    }
+
+    server.on('connection', mustCall((conn) => {
+      conn.removeAllListeners('error');
+
+      conn.on('authentication', mustNotCall())
+        .on('ready', mustNotCall())
+        .on('handshake', mustNotCall())
+        .on('error', mustCall(onError))
+        .on('close', mustCall(() => { }));
+    }));
+
+    client.on('ready', mustNotCall())
+      .on('error', mustCall(onError))
+      .on('close', mustCall(() => { }));
+  }
+
+  {
+    const { client, server } = setup_(
+      'both sides should compute same secret when using mlkem768x25519-sha256',
+      {
+        client: {
+          ...clientCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        },
+        server: {
+          ...serverCfg,
+          algorithms: { kex: ['mlkem768x25519-sha256'] }
+        }
+      },
+    );
+
+    let clientK_PQ = null;
+    let clientK_CL = null;
+    let serverK_PQ = null;
+    let serverK_CL = null;
+
+    server.on('connection', mustCall((conn) => {
+      conn.on('handshake', mustCall((_) => {
+
+        const kex = conn._protocol._kex;
+        serverK_PQ = kex.K_PQ;
+        serverK_CL = kex.K_CL;
+
+      })).on('authentication', mustCall((ctx) => {
+        ctx.accept();
+      })).on('ready', mustCall(() => {
+
+        assert(serverK_PQ !== null, 'server did not generate K_PQ');
+        assert(serverK_CL !== null, 'server did not generate K_CL');
+
+        assert(
+          clientK_PQ.equals(serverK_PQ),
+          'K_PQ mismatch'
+        );
+        assert(
+          clientK_CL.equals(serverK_CL),
+          'K_CL mismatch'
+        );
+
+        conn.end();
+      }));
+    }));
+
+    client.on('handshake', mustCall(() => {
+
+      const kex = client._protocol._kex;
+      clientK_PQ = kex.K_PQ;
+      clientK_CL = kex.K_CL;
+
+    })).on('ready', mustCall(() => {
+
+      assert(clientK_PQ !== null, 'client did not generate K_PQ');
+      assert(clientK_CL !== null, 'client did not generate K_CL');
+      assert(
+        clientK_PQ.equals(serverK_PQ),
+        'K_PQ mismatch between client and server'
+      );
+      assert(
+        clientK_CL.equals(serverK_CL),
+        'K_CL mismatch between client and server'
+      );
+
+    }));
+  }
 }
