@@ -1093,6 +1093,8 @@ You can find more examples in the `examples` directory of this repository.
 
     * **debug** - _function_ - Set this to a function that receives a single string argument to get detailed (local) debug information. **Default:** (none)
 
+    * **getDHParams** - _function_ - To enable support for `diffie-hellman-group-exchange-*` key exchanges, set this to a function that receives the client's prime size requirements and preference (`minBits`, `prefBits`, `maxBits`) and a `callback` as its four arguments. The callback has the signature `(err, prime, generator)` where `prime` and `generator` are `Buffer`s (see `crypto.createDiffieHellman`). Call the callback with an `Error` as the first argument if no prime matching the client's request is available. The async callback pattern allows offloading the CPU-intensive prime generation/lookup to worker threads or child processes. **Default:** (none)
+
     * **greeting** - _string_ - A message that is sent to clients immediately upon connection, before handshaking begins. **Note:** Most clients usually ignore this. **Default:** (none)
 
     * **highWaterMark** - _integer_ - This is the `highWaterMark` to use for the parser stream. **Default:** `32 * 1024`
