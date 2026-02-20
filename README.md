@@ -79,6 +79,8 @@ conn.on('ready', () => {
       console.log('STDERR: ' + data);
     });
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -114,6 +116,8 @@ conn.on('ready', () => {
     });
     stream.end('ls -l\nexit\n');
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -168,6 +172,8 @@ conn.on('ready', () => {
       ''
     ].join('\r\n'));
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -219,6 +225,8 @@ conn.on('ready', () => {
     '',
     ''
   ].join('\r\n'));
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -259,6 +267,8 @@ conn.on('ready', () => {
       conn.end();
     });
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.100.100',
   port: 22,
@@ -307,12 +317,16 @@ conn1.on('ready', () => {
       console.log('FIRST :: forwardOut error: ' + err);
       return conn1.end();
     }
-    conn2.connect({
+    conn2.on('error', (err) => {
+      console.error(err)
+    }).connect({
       sock: stream,
       username: 'user2',
       password: 'password2',
     });
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.1.1',
   username: 'user1',
@@ -368,6 +382,8 @@ conn.on('ready', () => {
       code = exitcode;
     });
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '192.168.1.1',
   username: 'foo',
@@ -475,6 +491,8 @@ conn.on('ready', () => {
       console.log(data);
     }).write(xmlhello);
   });
+}).on('error', (err) => {
+  console.error(err)
 }).connect({
   host: '1.2.3.4',
   port: 22,
