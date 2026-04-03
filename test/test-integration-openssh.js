@@ -116,8 +116,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
           assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
         // We should not expect any further auth attempts after we verify a
         // signature
         authAttempt = Infinity;
@@ -190,8 +191,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
           assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
         // We should not expect any further auth attempts after we verify a
         // signature
         authAttempt = Infinity;
@@ -257,8 +259,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
           assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
         // We should not expect any further auth attempts after we verify a
         // signature
         authAttempt = Infinity;
@@ -323,8 +326,9 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
           assert(false, 'Unexpected number of auth attempts');
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
         // We should not expect any further auth attempts after we verify a
         // signature
         authAttempt = Infinity;
@@ -436,6 +440,7 @@ function setup(title, configs) {
         // default, so we explicitly enable it here
         args.push('-o', 'HostKeyAlgorithms=+ssh-dss');
         args.push('-o', 'PubkeyAcceptedKeyTypes=+ssh-dss');
+        args.push('-o', 'PubkeyAcceptedAlgorithms=+ssh-dss');
       }
 
       args.push('-p', server.address().port.toString(),

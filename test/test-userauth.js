@@ -65,8 +65,9 @@ const debug = false;
           break;
       }
       if (ctx.signature) {
-        assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-               'Could not verify publickey signature');
+        const result =
+          clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+        assert(result === true, 'Could not verify publickey signature');
       }
       ctx.accept();
     }, 3)).on('ready', mustCall(() => {
@@ -220,7 +221,7 @@ const debug = false;
           assert(ctx.method === 'publickey',
                  `Wrong auth method: ${ctx.method}`);
           return ctx.reject();
-        case 3:
+        case 3: {
           assert(ctx.method === 'hostbased',
                  `Wrong auth method: ${ctx.method}`);
           assert(ctx.key.algo === clientKey.key.type,
@@ -231,10 +232,12 @@ const debug = false;
           assert(ctx.signature, 'Expected signature');
           assert(ctx.localHostname === localHostname, 'Wrong local hostname');
           assert(ctx.localUsername === localUsername, 'Wrong local username');
-          assert(clientKey.key.verify(ctx.blob, ctx.signature) === true,
-                 'Could not verify hostbased signature');
+          const result =
+            clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo);
+          assert(result === true, 'Could not verify hostbased signature');
 
           break;
+        }
       }
       ctx.accept();
     }, 3)).on('ready', mustCall(() => {

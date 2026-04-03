@@ -82,6 +82,22 @@ readdirSync(BASE_PATH).forEach((name) => {
                   + `Received: ${inspect(details)}`)
       );
     });
+
+    // Test `equals()`
+    let copy;
+    if (isEncrypted)
+      copy = parseKey(key, (isPPK ? 'node.js' : 'password'));
+    else
+      copy = parseKey(key);
+    if (!Array.isArray(copy))
+      copy = [copy];
+    for (let i = 0; i < res.length; ++i) {
+      assert.strictEqual(
+        res[i].equals(copy[i]),
+        true,
+        failMsg(name, 'equals() failed with copy')
+      );
+    }
   }
 
   if (isEncrypted && !isPublic) {

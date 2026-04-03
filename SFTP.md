@@ -341,7 +341,13 @@ SFTP methods
 
 * **ext_openssh_lsetstat**(< _string_ >path, < _ATTRS_ >attributes, < _function_ >callback) - _(void)_ - **OpenSSH extension** Similar to `setstat()`, but instead sets attributes on symlinks. `callback` has 1 parameter: < _Error_ >err.
 
-* **ext_openssh_expandPath**(< _string_ >path, < _function_ >callback) - _(void)_ - **OpenSSH extension** Similar to `realpath()`, but supports tilde-expansion, i.e. "\~", "\~/..." and "\~user/...". These paths are expanded using shell-like rules. `callback` has 2 parameters: < _Error_ >err, < _string_ >absPath.
+* **ext_openssh_expandPath**(< _string_ >path, < _function_ >callback) - _(void)_ - **OpenSSH extension** Similar to `realpath()`, but supports tilde-expansion, i.e. "\~", "\~/..." and "\~user/...". These paths are expanded using shell-like rules. `callback` has 2 parameters: < _Error_ >err, < _string_ >expandedPath.
+
+* **ext_copy_data**(< _Buffer_ >srcHandle, < _number_ >srcOffset, < _number_ >length, < _Buffer_ >dstHandle, < _number_ >dstOffset, < _function_ >callback) - _(void)_ - Performs a remote file copy. If `length` is 0, then the server will read from `srcHandle` until EOF is reached. `callback` has 1 parameter: < _Error_ >err.
+
+* **ext_home_dir**(< _string_ >username, < _function_ >callback) - _(void)_ - Retrieves the home directory of the user identified by `username`. Use an empty string to refer to the current user. `callback` has 2 parameters: < _Error_ >err, < _string_ >homeDirectory.
+
+* **ext_users_groups**(< _array_ >uids, < _array_ >gids, < _function_ >callback) - _(void)_ - Retrieves the user names and group names associated with the user IDs in `uids` and group IDs in `gids` respectively. Either array can be empty or contain one or more 32-bit unsigned integers. The retrieved user names and group names match the same order as the IDs in `uids` and `gids` respectively. If the server was unable to find a name for a given ID, it will use an empty string. `callback` has 3 parameters: < _Error_ >err, < _array_ >userNames, < _array_ >groupNames.
 
 
 **Server-only methods**

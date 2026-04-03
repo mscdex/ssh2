@@ -24,6 +24,8 @@ Changes (breaking or otherwise) in v1.0.0 can be found [here](https://github.com
 * [Server Examples](#server-examples)
   * [Password and public key authentication and non-interactive (exec) command execution](#password-and-public-key-authentication-and-non-interactive-exec-command-execution)
   * [SFTP-only server](#sftp-only-server)
+* [Other Examples](#other-examples)
+  * [Generate an SSH key](#generate-an-ssh-key)
 * [API](#api)
   * [Client](#client)
       * [Client events](#client-events)
@@ -525,7 +527,7 @@ new Server({
       case 'publickey':
         if (ctx.key.algo !== allowedPubKey.type
             || !checkValue(ctx.key.data, allowedPubKey.getPublicSSH())
-            || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature) !== true)) {
+            || (ctx.signature && allowedPubKey.verify(ctx.blob, ctx.signature, ctx.hashAlgo) !== true)) {
           return ctx.reject();
         }
         break;
@@ -668,6 +670,32 @@ new ssh2.Server({
 }).listen(0, '127.0.0.1', function() {
   console.log('Listening on port ' + this.address().port);
 });
+```
+
+## Other Examples
+
+### Generate an SSH key
+
+```js
+const { utils: { generateKeyPair, generateKeyPairSync } } = require('ssh2');
+
+// Generate unencrypted ED25519 SSH key synchronously
+let keys = generateKeyPairSync('ed25519');
+// ... use `keys.public` and `keys.private`
+
+// Generate unencrypted ECDSA SSH key synchronously with a comment set
+keys = generateKeyPairSync('ecdsa', { bits: 256, comment: 'node.js rules!' });
+// ... use `keys.public` and `keys.private`
+
+// Generate encrypted RSA SSH key asynchronously
+generateKeyPair(
+  'rsa',
+  { bits: 2048, passphrase: 'foobarbaz', cipher: 'aes256-cbc' },
+  (err, keys) => {
+    if (err) throw err;
+    // ... use `keys.public` and `keys.private`
+  }
+);
 ```
 
 You can find more examples in the `examples` directory of this repository.
@@ -848,7 +876,7 @@ You can find more examples in the `examples` directory of this repository.
             * Other supported names:
               * `ssh-dss`
 
-    * **authHandler** - _mixed_ - Either an array of objects as described below or a function with parameters `(methodsLeft, partialSuccess, callback)` where `methodsLeft` and `partialSuccess` are `null` on the first authentication attempt, otherwise are an array and boolean respectively. Return or call `callback()` with either the name of the authentication method or an object containing the method name along with method-specific details to try next (return/pass `false` to signal no more methods to try). Valid method names are: `'none', 'password', 'publickey', 'agent', 'keyboard-interactive', 'hostbased'`. **Default:** function that follows a set method order: None -> Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased
+    * **authHandler** - _mixed_ - Must be an array of objects as described below, an array of strings containing valid authentication method names (username and credentials are pulled from the object passed to `connect()`), or a function with parameters `(methodsLeft, partialSuccess, callback)` where `methodsLeft` and `partialSuccess` are `null` on the first authentication attempt, otherwise are an array and boolean respectively. Return or call `callback()` with either the name of the authentication method or an object containing the method name along with method-specific details to try next (return/pass `false` to signal no more methods to try). Valid method names are: `'none', 'password', 'publickey', 'agent', 'keyboard-interactive', 'hostbased'`. **Default:** function that follows a set method order: None -> Password -> Private Key -> Agent (-> keyboard-interactive if `tryKeyboard` is `true`) -> Hostbased
 
         * When returning or calling `callback()` with an object, it can take one of the following forms:
 
@@ -924,7 +952,7 @@ You can find more examples in the `examples` directory of this repository.
 
     * **hostHash** - _string_ - Any valid hash algorithm supported by node. The host's key is hashed using this algorithm and passed to the **hostVerifier** function as a hex string. **Default:** (none)
 
-    * **hostVerifier** - _function_ - Function with parameters `(hashedKey[, callback])` where `hashedKey` is a string hex hash of the host's key for verification purposes. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
+    * **hostVerifier** - _function_ - Function with parameters `(key[, callback])` for verifying host keys, where `key` is either a hex _string_ of the hash of the key if `hostHash` was set, otherwise it is the raw host key in _Buffer_ form. Use `utils.parseKey()` to get the host key type. Return `true` to continue with the handshake or `false` to reject and disconnect, or call `callback()` with `true` or `false` if you need to perform asynchronous verification. **Default:** (auto-accept if `hostVerifier` is not set)
 
     * **keepaliveCountMax** - _integer_ - How many consecutive, unanswered SSH-level keepalive packets that can be sent to the server before disconnection (similar to OpenSSH's ServerAliveCountMax config option). **Default:** `3`
 
@@ -998,7 +1026,9 @@ You can find more examples in the `examples` directory of this repository.
 
 * **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the server. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
-* **sftp**(< _function_ >callback) - _(void)_ - Starts an SFTP session. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
+* **setNoDelay**([< _boolean_ >noDelay]) - _Client_ - Calls [`setNoDelay()`](https://nodejs.org/docs/latest/api/net.html#socketsetnodelaynodelay) on the underlying socket. Disabling Nagle's algorithm improves latency at the expense of lower throughput.
+
+* **sftp**([< _object_ >env, ]< _function_ >callback) - _(void)_ - Starts an SFTP session. `env` is an environment to use when executing `sftp` methods. `callback` has 2 parameters: < _Error_ >err, < _SFTP_ >sftp. For methods available on `sftp`, see the [`SFTP` client documentation](https://github.com/mscdex/ssh2/blob/master/SFTP.md).
 
 * **shell**([[< _mixed_ >window,] < _object_ >options]< _function_ >callback) - _(void)_ - Starts an interactive shell session on the server, with an optional `window` object containing pseudo-tty settings (see 'Pseudo-TTY settings'). If `window === false`, then no pseudo-tty is allocated. `options` supports the `x11` and `env` options as described in `exec()`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
@@ -1026,16 +1056,18 @@ You can find more examples in the `examples` directory of this repository.
 
         * **comments** - _string_ - Any text that comes after the software name/version.
 
-    Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
+        Example: the identification string `SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2` would be parsed as:
 
-```js
-        { identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
+        ```js
+        {
+          identRaw: 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
           version: {
             protocol: '2.0',
             software: 'OpenSSH_6.6.1p1'
           },
-          comments: 'Ubuntu-2ubuntu2' }
-```
+          comments: 'Ubuntu-2ubuntu2'
+        }
+        ```
 
     * **ip** - _string_ - The `remoteAddress` of the connection.
 
@@ -1073,7 +1105,7 @@ You can find more examples in the `examples` directory of this repository.
 
 #### Connection events
 
-* **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `abort` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
+* **authentication**(< _AuthContext_ >ctx) - The client has requested authentication. `ctx.username` contains the client username, `ctx.method` contains the requested authentication method, and `ctx.accept()` and `ctx.reject([< Array >authMethodsLeft[, < Boolean >isPartialSuccess]])` are used to accept or reject the authentication request respectively. `'abort'` is emitted if the client aborts the authentication request. Other properties/methods available on `ctx` depends on the `ctx.method` of authentication the client has requested:
 
     * `hostbased`:
 
@@ -1090,6 +1122,8 @@ You can find more examples in the `examples` directory of this repository.
         * **localUsername** - _string_ - The local username provided by the client.
 
         * **signature** - _Buffer_ - This contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **hashAlgo** - _mixed_ - This is either `undefined` or a _string_ containing an explicit hash algorithm to be used during verification (passed to `key.verify()`).
 
     * `keyboard-interactive`:
 
@@ -1114,6 +1148,8 @@ You can find more examples in the `examples` directory of this repository.
             * **data** - _Buffer_ - The actual key data.
 
         * **signature** - _mixed_ - If the value is `undefined`, the client is only checking the validity of the `key`. If the value is a _Buffer_, then this contains a signature to be verified that is passed to (along with the blob) `key.verify()` where `key` is a public key parsed with [`parseKey()`](#utilities).
+
+        * **hashAlgo** - _mixed_ - This is either `undefined` or a _string_ containing an explicit hash algorithm to be used during verification (passed to `key.verify()`).
 
 * **close**() - The client socket was closed.
 
@@ -1185,6 +1221,8 @@ You can find more examples in the `examples` directory of this repository.
 
 * **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
 
+* **setNoDelay**([< _boolean_ >noDelay]) - _Connection_ - Calls [`setNoDelay()`](https://nodejs.org/docs/latest/api/net.html#socketsetnodelaynodelay) on the underlying socket. Disabling Nagle's algorithm improves latency at the expense of lower throughput.
+
 * **x11**(< _string_ >originAddr, < _integer_ >originPort, < _function_ >callback) - _(void)_ - Alert the client of an incoming X11 client connection from `originAddr` on port `originPort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 #### Session events
@@ -1204,6 +1242,8 @@ You can find more examples in the `examples` directory of this repository.
     * **command** - _string_ - The command line to be executed.
 
 * **pty**(< _mixed_ >accept, < _mixed_ >reject, < _object_ >info) - The client requested allocation of a pseudo-TTY for this session. `accept` and `reject` are functions if the client requested a response. `info` has these properties:
+
+    * **term** - _string_ - The terminal type for the pseudo-TTY.
 
     * **cols** - _integer_ - The number of columns for the pseudo-TTY.
 
@@ -1377,6 +1417,22 @@ XCASE          | Enable input and output of uppercase characters by preceding th
 * **(constructor)**(< _object_ >sshConfig[, < _object_ >agentConfig]) - Creates and returns a new `https.Agent` instance used to tunnel an HTTP connection over SSH. `sshConfig` is what is passed to `client.connect()` and `agentOptions` is passed to the `https.Agent` constructor.
 
 ### Utilities
+
+* **generateKeyPair**(< _string_ >keyType[, < _object_ >options], < _function_ >callback) - _(void)_ - Generates an SSH key pair of the given type. `keyType` may be one of `'rsa'`, `'ecdsa'`, or `'ed25519'` (node.js v12+). `callback` has the signature `(err, keys)` where `keys` is an _object_ containing `private` and `public` properties containing the generated SSH keys. `options` may contain:
+
+    * **bits** - _integer_ - For ECDSA and RSA keys, this is the key strength. For ECDSA, this is restricted to `256`, `384`, or `521`. **Default:** (none)
+
+    * **cipher** - _string_ - The (SSH, not OpenSSL) cipher to use to encrypt the key. **Default:** (none)
+
+    * **comment** - _string_ - A comment to include in the private and public keys. **Default:** `''`
+
+    * **format** - _string_ - The SSH key format to use. Currently only `'new'` is supported, which represents the current OpenSSH key formats. **Default:** `'new'`
+
+    * **passphrase** - _mixed_ - The desired passphrase for encrypting the key. This can either be a string or _Buffer_. **Default:** (none)
+
+    * **rounds** - _integer_ - For `'new'`-formatted SSH keys, this is the number of bcrypt rounds to use when generating cipher parameters for encrypted keys. **Default:** `16`
+
+* **generateKeyPairSync**(< _string_ >keyType[, < _object_ >options]) - _object_ - Generates an SSH key pair of the given type. This is a synchronous version of `generateKeyPair()`.
 
 * **parseKey**(< _mixed_ >keyData[, < _string_ >passphrase]) - _mixed_ - Parses a private/public key in OpenSSH, RFC4716, or PPK format. For encrypted private keys, the key will be decrypted with the given `passphrase`. `keyData` can be a _Buffer_ or _string_ value containing the key contents. The returned value will be an array of objects (currently in the case of modern OpenSSH keys) or an object with these properties and methods:
 

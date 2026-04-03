@@ -538,10 +538,19 @@ const setup = setupSimple.bind(undefined, debug);
 {
   const BANNER = 'Hello world!';
 
+  let authCb;
   const { client, server } = setup_(
     'Server banner',
     {
-      client: clientCfg,
+      client: {
+        ...clientCfg,
+        // This test uses a custom auth handler to avoid a race condition where
+        // we don't get the complete banner packet before the default auth
+        // handler immediately sends the initial auth method
+        authHandler: (authsLeft, partialSuccess, cb) => {
+          authCb = cb;
+        },
+      },
       server: {
         ...serverCfg,
         banner: BANNER,
@@ -566,6 +575,7 @@ const setup = setupSimple.bind(undefined, debug);
         .on('banner', mustCall((message) => {
     assert.strictEqual(message, 'Hello world!\r\n');
     sawBanner = true;
+    authCb('password');
   }));
 }
 
