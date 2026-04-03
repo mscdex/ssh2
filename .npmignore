@@ -1,0 +1,10 @@
+*
+*/**
+**/.DS_Store
+!package.json
+!LICENSE
+!README.md
+!install.js
+!lib/**/*.js
+!lib/**/*.gyp
+!lib/**/*.cc

@@ -1,0 +1,87 @@
+name: Publish Package
+on:
+  workflow_dispatch: null
+  push:
+    tags:
+      - v*
+permissions:
+  id-token: write   # NPM
+  contents: write   # Release
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Get Version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No tags found in the repository"
+            exit 1
+          fi
+          echo "VERSION=$LATEST_TAG" >> $GITHUB_ENV
+          echo "Using version: $LATEST_TAG"
+      - name: Check Existing Release
+        run: |
+          # Try to get the release information
+          RELEASE_INFO=$(gh release view ${{ env.VERSION }} --json assets,url 2>/dev/null || echo "")
+          if [ ! -z "$RELEASE_INFO" ]; then
+            echo "Release exists"
+            echo "RELEASE_EXISTS=yes" >> $GITHUB_ENV
+            # Get the TGZ asset URL from the release
+            TGZ_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith(".tgz")) | .url')
+            if [ ! -z "$TGZ_URL" ]; then
+              echo "Found existing TGZ file"
+              echo "TGZ_URL=$TGZ_URL" >> $GITHUB_ENV
+              echo "TGZ_NAME=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith(".tgz")) | .name')" >> $GITHUB_ENV
+            fi
+          else
+            echo "RELEASE_EXISTS=no" >> $GITHUB_ENV
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Download Existing TGZ
+        if: env.RELEASE_EXISTS == 'yes' && env.TGZ_URL != ''
+        run: |
+          gh api ${{ env.TGZ_URL }} --header 'Accept: application/octet-stream' > ${{ env.TGZ_NAME }}
+          echo "CHECKSUM=$(sha256sum ${{ env.TGZ_NAME }} | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Setup Node.js
+        if: env.RELEASE_EXISTS == 'no'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+      - name: Build
+        if: env.RELEASE_EXISTS == 'no'
+        run: |
+          npm ci
+          npm pack
+          TGZ_NAME=$(ls *.tgz)
+          CHECKSUM=$(sha256sum $TGZ_NAME | cut -d ' ' -f 1)
+          echo "TGZ_NAME=$TGZ_NAME" >> $GITHUB_ENV
+          echo "CHECKSUM=$CHECKSUM" >> $GITHUB_ENV
+          echo "$CHECKSUM" > "$TGZ_NAME.sha256"
+      - name: Release
+        if: env.RELEASE_EXISTS == 'no'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.TGZ_NAME }}
+            ${{ env.TGZ_NAME }}.sha256
+          name: ${{ env.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          body: |
+            Release ${{ env.VERSION }}
+
+            ## Checksum (SHA-256)
+            ```
+            ${{ env.CHECKSUM }}
+            ```
+      - name: Publish to NPM Registry
+        run: npm publish --access=public
