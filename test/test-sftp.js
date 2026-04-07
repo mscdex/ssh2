@@ -755,6 +755,39 @@ setup('WriteStream', mustCall((client, server) => {
   }));
 }
 
+
+{
+  const { client, server } = setup_(
+    'SFTP server destroy() sends exit-status 0',
+    {
+      client: { username: 'foo', password: 'bar' },
+      server: { hostKeys: [ fixture('ssh_host_rsa_key') ] },
+    },
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('sftp', mustCall((accept, reject) => {
+          const sftp = accept();
+          sftp.destroy();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    const timeout = setTimeout(mustNotCall(), 1000);
+    client.sftp(mustCall((err, sftp) => {
+      clearTimeout(timeout);
+      assert(err, 'Expected error');
+      assert(err.code === 0, `Expected exit code 0, saw: ${err.code}`);
+      client.end();
+    }));
+  }));
+}
 {
   const { client, server } = setup_(
     'SFTP client sets environment',
