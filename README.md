@@ -1217,6 +1217,9 @@ You can find more examples in the `examples` directory of this repository.
 
 * **forwardOut**(< _string_ >boundAddr, < _integer_ >boundPort, < _string_ >remoteAddr, < _integer_ >remotePort, < _function_ >callback) - _(void)_ - Alert the client of an incoming TCP connection on `boundAddr` on port `boundPort` from `remoteAddr` on port `remotePort`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
+* **openssh_authAgent**(< _function_ >callback) - _boolean_ - Alert the client of an incoming `ssh-agent` socket connection. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream. Returns `false` if you should wait for the `continue` event before sending any more traffic.
+
+
 * **openssh_forwardOutStreamLocal**(< _string_ >socketPath, < _function_ >callback) - _(void)_ - Alert the client of an incoming UNIX domain socket connection on `socketPath`. `callback` has 2 parameters: < _Error_ >err, < _Channel_ >stream.
 
 * **rekey**([< _function_ >callback]) - _(void)_ - Initiates a rekey with the client. If `callback` is supplied, it is added as a one-time handler for the `rekey` event.
