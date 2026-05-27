@@ -5,7 +5,7 @@
   "description": "SSH2 client and server modules written in pure JavaScript for node.js",
   "main": "./lib/index.js",
   "engines": {
-    "node": ">=10.16.0"
+    "node": ">=16.0.0"
   },
   "dependencies": {
     "asn1": "^0.2.6",

@@ -12,8 +12,6 @@ const {
 
 const { mustCall } = require('./common.js');
 
-const nodeMajor = +/(?<=^v)\d+/.exec(process.version)[0];
-
 function tryParse(...args) {
   const ret = parseKey(...args);
   if (ret instanceof Error)
@@ -34,10 +32,6 @@ const inputs = [
   if (inputs.length === 0)
     return;
   const { args, sshType } = inputs.shift();
-  if (args[0] === 'ed25519' && nodeMajor < 12) {
-    console.log('Skipping ed25519 on node < 12');
-    return;
-  }
   const passphrase = (args[1] && args[1].passphrase);
   const comment = ((args[1] && args[1].comment) || '');
   const check = (keys) => {
