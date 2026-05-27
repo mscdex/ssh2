@@ -848,6 +848,7 @@ You can find more examples in the `examples` directory of this repository.
 
         * **kex** - _mixed_ - Key exchange algorithms.
             * Default list (in order from most to least preferable):
+              * `mlkem768x25519-sha256` (node v24.7.0+)
               * `curve25519-sha256` (node v14.0.0+)
               * `curve25519-sha256@libssh.org` (node v14.0.0+)
               * `ecdh-sha2-nistp256`
