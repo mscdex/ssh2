@@ -104,6 +104,8 @@ jobs:
         run: node -pe process.versions
       - name: Check npm version
         run: npm -v
+      - name: Install setuptools (for distutils compat)
+        run: pip install setuptools
       - name: Install module
         run: npm install
       - name: Run tests
