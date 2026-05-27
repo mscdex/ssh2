@@ -85,8 +85,7 @@ class ChaChaPolyCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
@@ -419,8 +418,7 @@ class AESGCMCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
@@ -660,8 +658,7 @@ class GenericCipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
@@ -1057,8 +1054,7 @@ class ChaChaPolyDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
@@ -1485,8 +1481,7 @@ class AESGCMDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
@@ -1737,8 +1732,7 @@ class GenericDecipher : public ObjectWrap {
     SetPrototypeMethod(tpl, "free", Free);
 
     Local<Function> func = Nan::GetFunction(tpl).ToLocalChecked();
-    Local<Context> context = Nan::GetCurrentContext();
-    v8::Isolate* isolate = context->GetIsolate();
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     constructor().Set(isolate, func);
 
