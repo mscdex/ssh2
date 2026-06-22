@@ -44,6 +44,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "http://github.com/mscdex/ssh2.git"
+    "url": "https://github.com/mscdex/ssh2.git"
   }
 }
