@@ -1458,3 +1458,37 @@ const setup = setupSimple.bind(undefined, debug);
     }));
   }));
 }
+
+{
+  const { client, server } = setup_(
+    'Outbound data flushed after cleanup should not throw (compression)',
+    {
+      client: {
+        ...clientCfg,
+        algorithms: { compress: [ 'zlib' ] },
+      },
+      server: {
+        ...serverCfg,
+        algorithms: { compress: [ 'zlib' ] },
+      },
+    },
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {}));
+  }));
+
+  client.on('handshake', mustCall((info) => {
+    assert(info.cs.compress === 'zlib', 'wrong compress value');
+  })).on('ready', mustCall(() => {
+    client.end();
+  })).on('close', mustCall(() => {
+    // The protocol instance (and with it the zlib instances) is cleaned up
+    // before this event is emitted. Data that was still queued when the
+    // connection went away can get flushed after that point, and doing so
+    // must not throw, since there is nothing that could catch it.
+    client._protocol.channelData(0, Buffer.from('foo'));
+  }));
+}
