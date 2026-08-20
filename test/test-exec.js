@@ -339,6 +339,41 @@ const setup = setupSimple.bind(undefined, DEBUG);
 }
 
 {
+  const { client, server } = setup('Exec with signal() after EOF');
+
+  const COMMAND = 'foo --bar';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        let stream;
+        accept().on('exec', mustCall((accept, reject, info) => {
+          assert(info.command === COMMAND,
+                 `Wrong exec command: ${info.command}`);
+          stream = accept();
+        })).on('signal', mustCall((accept, reject, info) => {
+          assert(info.name === 'TERM',
+                 `Wrong client signal name: ${info.name}`);
+          stream.exit(100);
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      // Model the post-EOF state directly. The in-process test server
+      // closes the channel when it receives EOF, unlike OpenSSH.
+      stream.outgoing.state = 'eof';
+      stream.signal('TERM');
+    }));
+  }));
+}
+
+{
   const { client, server } = setup('Exec with environment set');
 
   const env = { SSH2NODETEST: 'foo' };
