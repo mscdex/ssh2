@@ -92,6 +92,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Check Node.js version
         run: node -pe process.versions
       - name: Check npm version
