@@ -1458,3 +1458,82 @@ const setup = setupSimple.bind(undefined, debug);
     }));
   }));
 }
+
+{
+  // Regression for https://github.com/mscdex/ssh2/issues/1508: closing a
+  // channel while writes are parked awaiting window credit must not drop
+  // the pending write callbacks. Previously, a WINDOW_ADJUST arriving
+  // after close() re-entered _write() with outgoing.state === 'closing',
+  // which returned without invoking the callback — silently discarding the
+  // buffered data and leaving the Writable waiting forever ('finish' never
+  // emitted, every later write queued indefinitely).
+  const { client, server } = setup(
+    'Parked write callbacks are invoked when close() precedes WINDOW_ADJUST'
+  );
+
+  const assignedPort = 31337;
+  let resumeReceiver;
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('request', mustCall((accept, reject, name, info) => {
+        assert(name === 'tcpip-forward', 'Wrong request name');
+        accept(assignedPort);
+        conn.forwardOut(info.bindAddr,
+                        assignedPort,
+                        'remote',
+                        12345,
+                        mustCall((err, ch) => {
+          assert(!err, `Unexpected error: ${err}`);
+          // Apply backpressure so the sender exhausts its window and parks;
+          // resume (triggering WINDOW_ADJUST) only after the sender closed.
+          ch.pause();
+          resumeReceiver = () => {
+            ch.on('data', () => {});
+            ch.resume();
+          };
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.forwardIn('good', 0, mustCall((err, port) => {
+      assert(!err, `Unexpected error: ${err}`);
+      assert(port === assignedPort, 'Wrong assigned port');
+    }));
+  })).on('tcp connection', mustCall((details, accept, reject) => {
+    const ch = accept();
+    // The write callbacks may complete with an error (the channel closed
+    // before they could be sent); the requirement is that they complete.
+    ch.on('error', () => {});
+
+    // Queue chunks until both the window and the writable buffer are full,
+    // so a tail of writes is parked awaiting WINDOW_ADJUST. Every callback
+    // must eventually be invoked (success or error) — none silently dropped.
+    const chunk = Buffer.alloc(64 * 1024);
+    let queued = 0;
+    let completed = 0;
+    let ok = true;
+    const onWrite = () => {
+      if (++completed === queued)
+        client.end();
+    };
+    while (ok) {
+      ++queued;
+      ok = ch.write(chunk, mustCall(onWrite));
+    }
+
+    ch.end();
+    ch.close();
+    // The receiver resumes only now, so its WINDOW_ADJUST reaches this side
+    // after outgoing.state left 'open'. (The server's forwardOut callback
+    // may not have run yet; wait for it.)
+    const triggerResume = () => {
+      if (resumeReceiver === undefined)
+        return setImmediate(triggerResume);
+      resumeReceiver();
+    };
+    setImmediate(triggerResume);
+  }));
+}
