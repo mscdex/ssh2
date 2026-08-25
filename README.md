@@ -850,14 +850,14 @@ You can find more examples in the `examples` directory of this repository.
               * `ecdh-sha2-nistp256`
               * `ecdh-sha2-nistp384`
               * `ecdh-sha2-nistp521`
-              * `diffie-hellman-group-exchange-sha256`
+              * `diffie-hellman-group-exchange-sha256` (not supported when running as server)
               * `diffie-hellman-group14-sha256`
               * `diffie-hellman-group15-sha512`
               * `diffie-hellman-group16-sha512`
               * `diffie-hellman-group17-sha512`
               * `diffie-hellman-group18-sha512`
             * Other supported names:
-              * `diffie-hellman-group-exchange-sha1`
+              * `diffie-hellman-group-exchange-sha1` (not supported when running as server)
               * `diffie-hellman-group14-sha1`
               * `diffie-hellman-group1-sha1`
 
