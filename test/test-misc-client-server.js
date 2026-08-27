@@ -1458,3 +1458,34 @@ const setup = setupSimple.bind(undefined, debug);
     }));
   }));
 }
+
+{
+  const { DISCONNECT_REASON } = require('../lib/protocol/constants.js');
+  const { client, server } = setup_(
+    'Server disconnect with custom reason and message',
+    {
+      client: clientCfg,
+      server: serverCfg,
+      noClientError: true,
+    },
+  );
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      ctx.accept();
+    })).on('ready', mustCall(() => {
+      conn.end(
+        DISCONNECT_REASON.PROTOCOL_ERROR,
+        'Too many authentication failures'
+      );
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {}));
+  client.on('error', mustCall((err) => {
+    assert(err.code === DISCONNECT_REASON.PROTOCOL_ERROR,
+      `Expected reason ${DISCONNECT_REASON.PROTOCOL_ERROR}, got: ${err.code}`);
+    assert(err.message === 'Too many authentication failures',
+      `Expected custom message, got: ${err.message}`);
+  }));
+}
