@@ -185,6 +185,41 @@ const debug = false;
     process.nextTick(done, newPassword);
   }));
 }
+{
+  const username = 'Password User';
+  const password = 'hi mom';
+  const { client, server } = setup(
+    'Password (prompt)',
+    {
+      client: { username, passwordPrompt: true },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  server.on('connection', mustCall((conn) => {
+    let authAttempt = 0;
+    conn.on('authentication', mustCall((ctx) => {
+      assert(ctx.username === username,
+             `Wrong username: ${ctx.username}`);
+      if (++authAttempt === 1) {
+        assert(ctx.method === 'none', `Wrong auth method: ${ctx.method}`);
+        return ctx.reject();
+      }
+      assert(ctx.method === 'password',
+             `Wrong auth method: ${ctx.method}`);
+      assert(ctx.password === password,
+        `Wrong password: ${ctx.password}`);
+      ctx.accept();
+    }, 2)).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+  client.on('password', mustCall((cb) => {
+      cb(password);
+  }));
+}
 
 
 // Hostbased ===================================================================
