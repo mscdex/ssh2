@@ -576,3 +576,37 @@ const setup = setupSimple.bind(undefined, DEBUG);
     }));
   }));
 }
+
+{
+  const { client, server } = setup('Exec with numeric x11 screen');
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        let sawX11 = false;
+        accept().on('x11', mustCall((accept, reject, info) => {
+          assert.strictEqual(info.screen,
+                             0,
+                             `Wrong x11 screen: ${info.screen}`);
+          sawX11 = true;
+          accept && accept();
+        })).on('exec', mustCall((accept, reject, info) => {
+          assert(sawX11, 'Expected x11-req before exec');
+          assert(info.command === 'foo --bar',
+                 `Wrong exec command: ${info.command}`);
+          const stream = accept();
+          stream.exit(100);
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.exec('foo --bar', { x11: 0 }, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.resume();
+    }));
+  }));
+}

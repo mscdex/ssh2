@@ -107,3 +107,36 @@ const setup = setupSimple.bind(undefined, DEBUG);
     }));
   }));
 }
+
+{
+  const { client, server } = setup('Shell with numeric x11 screen');
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        let sawX11 = false;
+        accept().on('pty', mustCall((accept, reject) => {
+          accept && accept();
+        })).on('x11', mustCall((accept, reject, info) => {
+          assert.strictEqual(info.screen,
+                             1,
+                             `Wrong x11 screen: ${info.screen}`);
+          sawX11 = true;
+          accept && accept();
+        })).on('shell', mustCall((accept, reject) => {
+          assert(sawX11, 'Expected x11-req before shell');
+          const stream = accept();
+          stream.end();
+          conn.end();
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    client.shell({ x11: 1 }, mustCall((err, stream) => {
+      assert(!err, `Unexpected shell error: ${err}`);
+      stream.resume();
+    }));
+  }));
+}
