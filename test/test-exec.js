@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const { randomBytes } = require('crypto');
 const { inspect } = require('util');
 
 const {
@@ -573,6 +574,62 @@ const setup = setupSimple.bind(undefined, DEBUG);
     })).exec('foo --bar', { x11 }, mustCall((err, stream) => {
       assert(!err, `Unexpected exec error: ${err}`);
       stream.resume();
+    }));
+  }));
+}
+
+{
+  const { client, server } = setup(
+    'Exec with stdout and stderr both waiting for the window'
+  );
+
+  // Each write is larger than the client's default channel window, so each
+  // one has to wait for a window adjustment before it is fully sent.
+  const STDOUT_DATA_1 = randomBytes(3 * 1024 * 1024);
+  const STDOUT_DATA_2 = randomBytes(1024 * 1024);
+  const STDERR_DATA = randomBytes(3 * 1024 * 1024);
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          const stream = accept();
+          stream.write(STDOUT_DATA_1, mustCall(() => {
+            // stdout has resumed after waiting for the window. Now stderr
+            // waits for the window while no stdout write is pending.
+            setTimeout(mustCall(() => {
+              stream.stderr.write(STDERR_DATA, mustCall(() => {
+                stream.write(STDOUT_DATA_2, mustCall(() => {
+                  stream.exit(0);
+                  stream.end();
+                  conn.end();
+                }));
+              }));
+            }), 100);
+          }));
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    const out = [];
+    const outErr = [];
+    client.on('close', mustCall(() => {
+      assert(Buffer.concat(out).equals(Buffer.concat([STDOUT_DATA_1,
+                                                      STDOUT_DATA_2])),
+             'Wrong stdout data');
+      assert(Buffer.concat(outErr).equals(STDERR_DATA), 'Wrong stderr data');
+    })).exec('foo --bar', mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.on('data', (d) => {
+        out.push(d);
+      }).stderr.on('data', (d) => {
+        outErr.push(d);
+      });
+      // Read nothing for a moment so the server runs out of window.
+      stream.pause();
+      setTimeout(mustCall(() => stream.resume()), 300);
     }));
   }));
 }
