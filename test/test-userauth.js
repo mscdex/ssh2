@@ -77,6 +77,81 @@ const debug = false;
 });
 
 
+// USERAUTH_PK_OK and server-sig-algs on the wire =============================
+[
+  { desc: 'rsa-sha2-256',
+    clientKey: fixtureKey('id_rsa'),
+    pkOkAlgo: 'rsa-sha2-256' },
+  { desc: 'rsa-sha2-512',
+    clientKey: fixtureKey('id_rsa'),
+    clientSigAlgs: ['rsa-sha2-512'],
+    pkOkAlgo: 'rsa-sha2-512' },
+  { desc: 'ssh-rsa',
+    clientKey: fixtureKey('id_rsa'),
+    clientSigAlgs: ['ssh-rsa'],
+    pkOkAlgo: 'ssh-rsa' },
+  { desc: 'ECDSA',
+    clientKey: fixtureKey('id_ecdsa'),
+    pkOkAlgo: 'ecdsa-sha2-nistp256' },
+].forEach((test) => {
+  const { desc, clientKey, clientSigAlgs, pkOkAlgo } = test;
+  const username = 'Key User';
+  const { client, server } = setup(
+    `USERAUTH_PK_OK algo (${desc})`,
+    {
+      client: { username, privateKey: clientKey.raw },
+      server: serverCfg,
+
+      debug,
+    }
+  );
+
+  const connect = client.connect;
+  client.connect = function(...args) {
+    const ret = connect.apply(this, args);
+    const handlers = this._protocol._handlers;
+
+    const onExtInfo = handlers.EXT_INFO;
+    handlers.EXT_INFO = mustCall((p, exts) => {
+      const ext = exts.find((ext) => ext.name === 'server-sig-algs');
+      assert(ext, 'Missing server-sig-algs');
+      for (const algo of ['ecdsa-sha2-nistp521', 'rsa-sha2-512'])
+        assert(ext.algs.includes(algo), `Missing ${algo}: ${ext.algs}`);
+      // Narrow what the client sees to steer which algorithm it requests
+      if (clientSigAlgs)
+        exts = [{ name: 'server-sig-algs', algs: clientSigAlgs }];
+      return onExtInfo(p, exts);
+    });
+
+    const onPKOK = handlers.USERAUTH_PK_OK;
+    handlers.USERAUTH_PK_OK = mustCall((p, keyAlgo, key) => {
+      assert(keyAlgo === pkOkAlgo, `Wrong PK_OK algo: ${keyAlgo}`);
+      assert.deepStrictEqual(key, clientKey.key.getPublicSSH(),
+                             'Wrong PK_OK key');
+      return onPKOK(p, keyAlgo, key);
+    });
+
+    return ret;
+  };
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('authentication', mustCall((ctx) => {
+      if (ctx.method === 'none')
+        return ctx.reject();
+      assert(ctx.key.algo === clientKey.key.type,
+             `Wrong key algo: ${ctx.key.algo}`);
+      if (ctx.signature) {
+        assert(clientKey.key.verify(ctx.blob, ctx.signature, ctx.hashAlgo),
+               'Could not verify publickey signature');
+      }
+      ctx.accept();
+    }, 3)).on('ready', mustCall(() => {
+      conn.end();
+    }));
+  }));
+});
+
+
 // Password ====================================================================
 {
   const username = 'Password User';
