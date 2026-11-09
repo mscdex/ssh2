@@ -24,6 +24,7 @@ const CLIENT_TIMEOUT = 5000;
 const debug = false;
 const opensshPath = 'ssh';
 let opensshVer;
+let dsaSupported;
 
 // TODO: figure out why this test is failing on Windows
 if (process.platform === 'win32') {
@@ -62,6 +63,16 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
 
   opensshVer = m[1];
   console.log(`Testing with OpenSSH version: ${opensshVer}`);
+
+  // OpenSSH 10.0 removed DSA support and some 9.x builds already disable it,
+  // so ask the client instead of guessing from the version. `-Q` is missing
+  // before OpenSSH 6.3, which still supports DSA.
+  const { error: qErr, status, stdout: keyTypes } =
+    spawnSync(opensshPath, ['-Q', 'key'], SPAWN_OPTS);
+  dsaSupported = (!!qErr || status !== 0
+                  || keyTypes.toString().split(/\s+/).includes('ssh-dss'));
+  if (!dsaSupported)
+    console.log('Skipping DSA tests, unsupported by this OpenSSH version');
 }
 
 
@@ -72,10 +83,11 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
   { desc: 'RSA user key (new OpenSSH)',
     clientKey: fixtureKey('openssh_new_rsa') },
   { desc: 'DSA user key',
-    clientKey: fixtureKey('id_dsa') },
+    clientKey: fixtureKey('id_dsa'),
+    dsa: true },
   { desc: 'ECDSA user key',
     clientKey: fixtureKey('id_ecdsa') },
-].forEach((test) => {
+].filter((test) => !test.dsa || dsaSupported).forEach((test) => {
   const { desc, clientKey } = test;
   const username = 'KeyUser';
   const { server } = setup(
@@ -144,12 +156,13 @@ for (const file of readdirSync(FIXTURES_DIR, { withFileTypes: true })) {
   { desc: 'RSA host key (new OpenSSH)',
     hostKey: fixture('openssh_new_rsa') },
   { desc: 'DSA host key',
-    hostKey: fixture('ssh_host_dsa_key') },
+    hostKey: fixture('ssh_host_dsa_key'),
+    dsa: true },
   { desc: 'ECDSA host key',
     hostKey: fixture('ssh_host_ecdsa_key') },
   { desc: 'PPK',
     hostKey: fixture('id_rsa.ppk') },
-].forEach((test) => {
+].filter((test) => !test.dsa || dsaSupported).forEach((test) => {
   const { desc, hostKey } = test;
   const clientKey = fixtureKey('openssh_new_rsa');
   const username = 'KeyUser';
@@ -435,7 +448,7 @@ function setup(title, configs) {
       if (clientCfg.privateKeyPath)
         args.push('-o', `IdentityFile=${clientCfg.privateKeyPath}`);
 
-      if (!/^[0-6]\./.test(opensshVer)) {
+      if (dsaSupported && !/^[0-6]\./.test(opensshVer)) {
         // OpenSSH 7.0+ disables DSS/DSA host (and user) key support by
         // default, so we explicitly enable it here
         args.push('-o', 'HostKeyAlgorithms=+ssh-dss');
