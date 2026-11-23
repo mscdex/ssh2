@@ -576,3 +576,59 @@ const setup = setupSimple.bind(undefined, DEBUG);
     }));
   }));
 }
+
+{
+  const { client, server } = setup(
+    'Exec exit status sent after EOF (half-open channel)'
+  );
+
+  const COMMAND = 'foo --bar';
+  const STDOUT_DATA = 'stdout data!\n';
+
+  server.on('connection', mustCall((conn) => {
+    conn.on('ready', mustCall(() => {
+      conn.on('session', mustCall((accept, reject) => {
+        accept().on('exec', mustCall((accept, reject, info) => {
+          const stream = accept();
+          stream.resume();
+          stream.on('end', mustCall(() => {
+            // OpenSSH sends EOF when the command's output closes, and the
+            // exit status only once it has reaped the command, so the status
+            // can arrive after the EOF. exit() refuses after eof(), so the
+            // status is sent with the protocol directly.
+            stream.write(STDOUT_DATA);
+            stream.eof();
+            setTimeout(mustCall(() => {
+              assert(stream.outgoing.state === 'eof',
+                     'Client closed the channel before the exit status');
+              stream._client._protocol.exitStatus(stream.outgoing.id, 100);
+              stream.close();
+              conn.end();
+            }), 100);
+          }));
+        }));
+      }));
+    }));
+  }));
+
+  client.on('ready', mustCall(() => {
+    let out = '';
+    const EXPECTED_EXIT_CLOSE_ARGS = [ 100 ];
+    client.exec(COMMAND, mustCall((err, stream) => {
+      assert(!err, `Unexpected exec error: ${err}`);
+      stream.on('data', mustCallAtLeast((d) => {
+        out += d;
+      })).on('exit', mustCall((...args) => {
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong exit args: ${inspect(args)}`);
+      })).on('close', mustCall((...args) => {
+        assert(out === STDOUT_DATA, `Wrong stdout data: ${inspect(out)}`);
+        assert.deepStrictEqual(args,
+                               EXPECTED_EXIT_CLOSE_ARGS,
+                               `Wrong close args: ${inspect(args)}`);
+      }));
+      stream.end();
+    }));
+  }));
+}
