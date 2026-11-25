@@ -28,6 +28,26 @@ const inputs = [
     sshType: 'ssh-rsa' },
   { args: ['rsa', { bits: 2048, comment: 'foobarbaz' }], sshType: 'ssh-rsa' },
 ];
+// About 1 in 256 ed25519 public keys start with a zero byte. Such keys used to
+// be written with that byte stripped, producing key files that neither this
+// module nor OpenSSH could read. Generate enough keys to be all but certain to
+// hit that case.
+{
+  console.log('Testing generateKeyPairSync("ed25519") with leading zeros ...');
+  let leadingZeros = 0;
+  for (let i = 0; i < 4000; ++i) {
+    const keys = generateKeyPairSync('ed25519');
+    const pub = tryParse(keys.public).getPublicSSH();
+    // Layout: string "ssh-ed25519" followed by string <32 byte public key>
+    assert.strictEqual(pub.length, 4 + 11 + 4 + 32);
+    assert.strictEqual(pub.readUInt32BE(4 + 11), 32);
+    if (pub[4 + 11 + 4] === 0x00)
+      ++leadingZeros;
+    assert.deepStrictEqual(tryParse(keys.private).getPublicSSH(), pub);
+  }
+  assert(leadingZeros > 0, 'Expected a public key with a leading zero byte');
+}
+
 (function next() {
   if (inputs.length === 0)
     return;
